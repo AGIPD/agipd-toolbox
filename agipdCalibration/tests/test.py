@@ -1,41 +1,38 @@
 import h5py
 import numpy as np
+from agipdCalibration.tests.h5py_display import h5disp
 
 import matplotlib.pyplot as plt
 import pyqtgraph as pg
 
-# dataFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/python_saved_workspace/lysozymeData_m3_equalized.h5'
-#
-# dataFile = h5py.File(dataFileName, 'r', libver='latest')
-# dset_analogCorrected = dataFile['/analogCorrected']
-# dset_digitalGainStage = dataFile['/digitalGainStage']
-#
-# # print(dset_analogCorrected.shape)
-#
-# # pg.image(dset_analogCorrected[0,0,...].T)
-# # pg.image(dset_digitalGainStage[0,0,...])
-# tmp = dset_digitalGainStage[...]
-# # plt.hist(tmp.flatten(), 3)
-# # plt.show()
-#
-# # tmp = dset_analogCorrected[0,...].transpose(0,2,1)
-# # tmp_median = np.median(tmp, axis=0)
-# # pg.image(tmp_median)
-#
-# print('max = ', tmp.max())
-
-
-dataFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/python_saved_workspace/lysozymeData_m3_averageFiltered.h5'
+dataFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/darkOffset_m3.h5'
 
 dataFile = h5py.File(dataFileName, 'r', libver='latest')
-medianFiltered = dataFile['/medianFiltered'][...]
-meanFiltered = dataFile['/meanFiltered'][...]
+offset = dataFile['/darkOffset'][...]   #shape = (352, 128, 512)
 
-#print(dset_analogCorrected.shape)
+dataFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/lysozymeData_m3_darkcal_inSitu.h5'
+dataFile = h5py.File(dataFileName, 'r', libver='latest')
+offset_inSitu = dataFile['/darkOffset'][...]   #shape = (352, 128, 512)
 
-# pg.image(dset_analogCorrected[0,0,...].T)
+offset2D = np.empty([128*512, 11, 32])
+offset2D = offset[:, 0:128, 0:512]
+offset2D = offset2D.transpose(1, 2, 0) #shape = (64, 64, 352)
+offset2D = offset2D.reshape([128, 512, 11, 32])
 
-a = pg.image(medianFiltered.transpose(0,2,1))
-b = pg.image(meanFiltered.transpose(0,2,1))
+offset2D_inSitu = np.empty([128*512, 11, 32])
+offset2D_inSitu = offset_inSitu[:, 0:128, 0:512]
+offset2D_inSitu = offset2D_inSitu.transpose(1, 2, 0) #shape = (64, 64, 352)
+offset2D_inSitu = offset2D_inSitu.reshape([128, 512, 11, 32])
 
+overviewOffset = np.empty((128 * 11, 512 * 32))
+overviewOffset_inSitu = np.empty((128 * 11, 512 * 32))
+for y in np.arange(128):
+    for x in np.arange(512):
+        overviewOffset[y * 11:(y + 1) * 11, x * 32:(x + 1) * 32] = offset2D[y, x, ...]
+        overviewOffset_inSitu[y * 11:(y + 1) * 11, x * 32:(x + 1) * 32] = offset2D_inSitu[y, x, ...]
+
+
+pg.image(overviewOffset.transpose(1,0))
+pg.image(overviewOffset_inSitu.transpose(1,0))
+# pg.image((overviewOffset-overviewOffset_inSitu).transpose(1,0))
 i = 1

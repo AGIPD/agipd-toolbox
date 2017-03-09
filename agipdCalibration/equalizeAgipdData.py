@@ -5,9 +5,9 @@ import sys
 import matplotlib.pyplot as plt
 import pyqtgraph as pg
 
-dataFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/python_saved_workspace/lysozymeData_m' + sys.argv[1] + '_correctionChunked.h5'
-combinedCalibrationConstantsFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/agipdCalibration_workspace/combinedCalibrationConstants_m' + sys.argv[1] + '.h5'
-saveFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/python_saved_workspace/lysozymeData_m' + sys.argv[1] + '_equalized.h5'
+dataFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/lysozymeData_m' + sys.argv[1] + '_correctionChunked.h5'
+combinedCalibrationConstantsFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/combinedCalibrationConstants_m' + sys.argv[1] + '.h5'
+saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/lysozymeData_m' + sys.argv[1] + '_equalized.h5'
 
 dataFile = h5py.File(dataFileName, 'r', libver='latest')
 dset_analog = dataFile['/analog']

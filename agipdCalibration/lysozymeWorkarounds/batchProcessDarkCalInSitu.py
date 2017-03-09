@@ -19,8 +19,8 @@ def computeDarkCalsOnePixel(analog, linearIndex):
 
 if __name__ == '__main__':
     moduleNumber = sys.argv[1]
-    dataFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/python_saved_workspace/lysozymeData_m' + moduleNumber + '.h5'
-    saveFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/python_saved_workspace/lysozymeData_m' + moduleNumber + '_darkcal_inSitu.h5'
+    dataFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/lysozymeData_m' + moduleNumber + '.h5'
+    saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/lysozymeData_m' + moduleNumber + '_darkcal_inSitu.h5'
 
     saveFile = h5py.File(saveFileName, "w", libver='latest')
     dset_darkOffset = saveFile.create_dataset("darkOffset", shape=(352, 128, 512), chunks=(1, 128, 512), dtype='int16')

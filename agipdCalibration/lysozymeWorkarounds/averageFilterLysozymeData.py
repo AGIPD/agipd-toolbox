@@ -8,7 +8,7 @@ import pyqtgraph as pg
 dataFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/lysozymeData_m' + sys.argv[1] + '_equalized.h5'
 maskFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/mask_m' + sys.argv[1] + '.h5'
 saveFileName_filtered = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/lysozymeData_m' + sys.argv[1] + '_averageFiltered.h5'
-saveFileName_badPixelMask = '//gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/lysozymeData_m' + sys.argv[1] + '_badPixelMask.h5'
+saveFileName_badPixelMask = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/lysozymeData_m' + sys.argv[1] + '_badPixelMask.h5'
 
 minValidDataCount = 30
 

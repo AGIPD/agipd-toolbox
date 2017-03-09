@@ -4,12 +4,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pyqtgraph as pg
 
-analogGainsFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/agipdCalibration_workspace/analogGains_m3.h5'
-digitalMeansFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/agipdCalibration_workspace/digitalMeans_m3.h5'
-darkOffsetFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/agipdCalibration_workspace/lysozymeData_m3_darkcal_inSitu.h5'
-photonSpacingFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/agipdCalibration_workspace/photonSpacing_m3_inSitu.h5'
+moduleNumber = 2
+analogGainsFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/analogGains_m' + str(moduleNumber) + '.h5'
+digitalMeansFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/digitalMeans_m' + str(moduleNumber) + '.h5'
+darkOffsetInSituFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/lysozymeData_m' + str(moduleNumber) + '_darkcal_inSitu.h5'
+darkOffsetFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/darkOffset_m' + str(moduleNumber) + '.h5'
+photonSpacingFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/photonSpacing_m' + str(moduleNumber) + '_inSitu.h5'
 
-saveFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/agipdCalibration_workspace/mask_m3.h5'
+saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/mask_m' + str(moduleNumber) + '.h5'
 
 saveFile = h5py.File(saveFileName, "w", libver='latest')
 dset_badCellMask = saveFile.create_dataset("badCellMask", shape=(352, 128, 512), dtype=bool)
@@ -17,6 +19,7 @@ dset_badCellMask = saveFile.create_dataset("badCellMask", shape=(352, 128, 512),
 analogGainsFile = h5py.File(analogGainsFileName, 'r', libver='latest')
 digitalMeansFile = h5py.File(digitalMeansFileName, 'r', libver='latest')
 darkOffsetFile = h5py.File(darkOffsetFileName, 'r', libver='latest')
+darkOffsetInSituFile = h5py.File(darkOffsetInSituFileName, 'r', libver='latest')
 photonSpacingFile = h5py.File(photonSpacingFileName, 'r', libver='latest')
 
 analogGains = analogGainsFile["/analogGains"][...]  # shape=(3, 352, 128, 512)
@@ -29,40 +32,95 @@ digitalStdDeviations = digitalMeansFile["/digitalStdDeviations"][...]  # shape=(
 digitalStdDeviations = digitalStdDeviations.transpose((1, 0, 2, 3))  # shape=(3, 352, 128, 512)
 digitalMeans = digitalMeans.transpose((1, 0, 2, 3))  # shape=(3, 352, 128, 512)
 
+darkOffsetInSitu = darkOffsetInSituFile["/darkOffset"][...]  # shape=(352, 128, 512)
+
 darkOffset = darkOffsetFile["/darkOffset"][...]  # shape=(352, 128, 512)
-# darkStandardDeviation = darkOffsetFile["/darkStandardDeviation"][...]  # shape=(352, 128, 512)
+darkStandardDeviation = darkOffsetFile["/darkStandardDeviation"][...]  # shape=(352, 128, 512)
 
 photonSpacing = photonSpacingFile["/photonSpacing"][...]  # shape=(128, 512)
 # photonSpacingQuality = photonSpacingFile["/quality"][...]  # shape=(128, 512)
 
 ########### fix values
-analogFitErrorRange = np.array([[0, 40], [0, 20], [0, 0]])
-analogGainsRange = np.array([[25, 40], [0.8, 1.2], [0, 0]])
-analogLineOffsetsRange = np.array([[2000, 5000], [4000, 6600], [0, 0]])
-digitalStdDeviationsRange = np.array([[0, 160], [0, 80], [0, 0]])
-digitalSpacingsSafetyFactorsMin = np.array([7, 0])
-digitalMeansRange = np.array([[5000, 7000], [6000, 8000], [0, 0]])
-digitalThresholdsRange = np.array([[6000, 7200], [0, 0]])
-darkOffsetRange = np.array([2500, 5500])
-# darkStandardDeviationRange = np.array([0, 40])
-photonSpacingRange = np.array([100, 200])
-# photonSpacingQualityMin = 0
+if moduleNumber == 1:
+    # darkOffsetRange = np.array([3150, 4800])
+    # darkStandardDeviationRange = np.array([0, 40])
+    darkOffsetInSituRange = np.array([3150, 4800])
+    analogFitErrorRange = np.array([[0, 25], [0, 15], [0, 0]])
+    analogGainsRange = np.array([[30, 42], [0.9, 1.2], [0, 0]])
+    analogLineOffsetsRange = np.array([[2950, 5250], [4300, 6200], [0, 0]])
+    digitalStdDeviationsRange = np.array([[0, 80], [0, 35], [0, 0]])
+    digitalSpacingsSafetyFactorsMin = np.array([9, 0])
+    digitalMeansRange = np.array([[5580, 7000], [6740, 8000], [0, 0]])
+    digitalThresholdsRange = np.array([[6000, 7600], [0, 0]])
+    photonSpacingRange = np.array([120, 200])
+    # photonSpacingQualityMin = 0
+
+if moduleNumber == 2:
+    darkOffsetRange = np.array([3400, 6100])
+    darkStandardDeviationRange = np.array([10, 19])
+    darkOffsetInSituRange = np.array([3100, 4600])
+    analogFitErrorRange = np.array([[0, 18], [0, 14], [0, 0]])
+    analogGainsRange = np.array([[32, 41], [0.95, 1.16], [0, 0]])
+    analogLineOffsetsRange = np.array([[3000, 4600], [4100, 6600], [0, 0]])
+    digitalStdDeviationsRange = np.array([[0, 80], [0, 35], [0, 0]])
+    digitalSpacingsSafetyFactorsMin = np.array([10, 0])
+    digitalMeansRange = np.array([[5500, 6750], [6580, 7800], [0, 0]])
+    digitalThresholdsRange = np.array([[6000, 7400], [0, 0]])
+    photonSpacingRange = np.array([120, 190])
+    # photonSpacingQualityMin = 0
+
+if moduleNumber == 3:
+    darkOffsetRange = np.array([3650, 5750])
+    darkStandardDeviationRange = np.array([10, 19])
+    darkOffsetInSituRange = np.array([3250, 4700])
+    analogFitErrorRange = np.array([[0, 25], [0, 15], [0, 0]])
+    analogGainsRange = np.array([[29, 40], [0.87, 1.15], [0, 0]])
+    analogLineOffsetsRange = np.array([[2700, 4000], [4500, 6000], [0, 0]])
+    digitalStdDeviationsRange = np.array([[0, 90], [0, 50], [0, 0]])
+    digitalSpacingsSafetyFactorsMin = np.array([8, 0])
+    digitalMeansRange = np.array([[5550, 6500], [6600, 7600], [0, 0]])
+    digitalThresholdsRange = np.array([[6000, 7200], [0, 0]])
+    photonSpacingRange = np.array([100, 200])
+    # photonSpacingQualityMin = 0
+
+if moduleNumber == 4:
+    darkOffsetRange = np.array([3400, 6100])
+    darkStandardDeviationRange = np.array([10, 19])
+    darkOffsetInSituRange = np.array([3000, 5500])
+    analogFitErrorRange = np.array([[0, 20], [0, 14.5], [0, 0]])
+    analogGainsRange = np.array([[32, 43], [0.92, 1.2], [0, 0]])
+    analogLineOffsetsRange = np.array([[2800, 4700], [4400, 5850], [0, 0]])
+    digitalStdDeviationsRange = np.array([[0, 100], [0, 50], [0, 0]])
+    digitalSpacingsSafetyFactorsMin = np.array([8, 0])
+    digitalMeansRange = np.array([[5400, 6800], [6600, 7900], [0, 0]])
+    digitalThresholdsRange = np.array([[6000, 7400], [0, 0]])
+    photonSpacingRange = np.array([100, 200])
+    # photonSpacingQualityMin = 0
 ###########
 
 badCellMask = np.zeros((352, 128, 512), dtype=bool)
 
 ################# manual mask
 manualMask = np.zeros((128, 512), dtype=bool)
-manualMask[65:105, 200:260] = True
-manualMask[80:105, 200:511] = True
 
-manualMask[80:86, 22:43] = True
-manualMask[75:100, 31:43] = True
+if moduleNumber == 3:
+    manualMask[65:105, 200:260] = True
+    manualMask[80:105, 200:511] = True
 
-manualMask[64:127, 127:195] = True
+    manualMask[80:86, 22:43] = True
+    manualMask[75:100, 31:43] = True
+
+    manualMask[64:127, 127:195] = True
 
 badCellMask = np.logical_or(manualMask, badCellMask)
 ###########
+
+######### systematic mask
+systematicMask = np.zeros((128, 512, 11, 32), dtype=bool)
+systematicMask[..., 27:29] = True  # 32-column tips
+systematicMask = systematicMask.reshape((128, 512, 352)).transpose(2, 0, 1)
+badCellMask = np.logical_or(systematicMask, badCellMask)
+#########
 
 
 badAsicBordersMask = np.zeros((352, 128, 512), dtype=bool)
@@ -87,6 +145,72 @@ badPixelMask = np.logical_or(badAsicBordersMask[0, ...], ~np.isfinite(photonSpac
 figure = plt.figure()
 axes = figure.gca()
 figure.show()
+
+if not ('darkOffsetRange' in locals()):
+    darkOffsetRange = np.zeros((2,))
+    axes.clear()
+    axes.hist(darkOffset[~badCellMask], bins='sqrt')
+    figure.canvas.draw()
+    darkOffsetRange[0] = float(input('minimum darkOffset = '))
+    darkOffsetRange[1] = float(input('maximum darkOffset = '))
+
+darkOffset = darkOffset.transpose(1, 2, 0)  # shape = (128, 512, 352)
+darkOffset = darkOffset.reshape([128, 512, 11, 32])
+badOffsetPixelMask = np.zeros((128, 512, 11, 32), dtype=bool)
+badOffsetPixelMask[darkOffset < darkOffsetRange[0]] = True
+badOffsetPixelMask[darkOffset > darkOffsetRange[1]] = True
+for y in np.arange(128):
+    for x in np.arange(512):
+        lineMediansOffset = np.median(darkOffset[y, x, ...], axis=1)
+        tmp = np.median(lineMediansOffset)
+        if tmp > darkOffsetRange[1] or tmp < darkOffsetRange[0]:
+            badOffsetPixelMask[y, x, ...] = True
+        else:
+            for line in np.arange(11):
+                if lineMediansOffset[line] > darkOffsetRange[1] or lineMediansOffset[line] < darkOffsetRange[0]:
+                    badOffsetPixelMask[y, x, line, :] = True
+
+badDarkOffsetMask = badOffsetPixelMask.reshape((128, 512, 352)).transpose(2, 0, 1)
+badCellMask = np.logical_or.reduce((badCellMask, badDarkOffsetMask))
+
+if not ('darkStandardDeviationRange' in locals()):
+    darkStandardDeviationRange = np.zeros((2,))
+    axes.clear()
+    axes.hist(darkStandardDeviation[~badCellMask], bins='sqrt')
+    figure.canvas.draw()
+    darkStandardDeviationRange[0] = float(input('minimum darkStandardDeviation = '))
+    darkStandardDeviationRange[1] = float(input('maximum darkStandardDeviation = '))
+
+darkStandardDeviation = darkStandardDeviation.transpose(1, 2, 0)  # shape = (128, 512, 352)
+darkStandardDeviation = darkStandardDeviation.reshape([128, 512, 11, 32])
+badStdDevPixelMask = np.zeros((128, 512, 11, 32), dtype=bool)
+badStdDevPixelMask[darkStandardDeviation < darkStandardDeviationRange[0]] = True
+badStdDevPixelMask[darkStandardDeviation > darkStandardDeviationRange[1]] = True
+for y in np.arange(128):
+    for x in np.arange(512):
+        lineMediansStdDev = np.median(darkStandardDeviation[y, x, ...], axis=1)
+        tmp = np.median(lineMediansStdDev)
+        if tmp > darkStandardDeviationRange[1] or tmp < darkStandardDeviationRange[0]:
+            badStdDevPixelMask[y, x, ...] = True
+        else:
+            for line in np.arange(11):
+                if lineMediansStdDev[line] > darkStandardDeviationRange[1] or lineMediansStdDev[line] < darkStandardDeviationRange[0]:
+                    badStdDevPixelMask[y, x, line, :] = True
+
+badDarkStandardDeviationMask = badStdDevPixelMask.reshape((128, 512, 352)).transpose(2, 0, 1)
+badCellMask = np.logical_or.reduce((badCellMask, badDarkStandardDeviationMask))
+
+if not ('darkOffsetInSituRange' in locals()):
+    darkOffsetInSituRange = np.zeros((2,))
+    axes.clear()
+    axes.hist(darkOffsetInSitu[~badCellMask], bins=2 ** 10)
+    figure.canvas.draw()
+    darkOffsetInSituRange[0] = float(input('minimum darkOffsetInSitu = '))
+    darkOffsetInSituRange[1] = float(input('maximum darkOffsetInSitu = '))
+
+badDarkOffsetInSituMask = np.zeros((352, 128, 512), dtype=bool)
+badDarkOffsetInSituMask[~np.all((darkOffsetInSituRange[0] <= darkOffsetInSitu, darkOffsetInSitu <= darkOffsetInSituRange[1]), axis=0)] = True
+badCellMask = np.logical_or.reduce((badCellMask, badDarkOffsetInSituMask))
 
 if not ('analogFitErrorRange' in locals()):
     analogFitErrorRange = np.zeros((3, 2))
@@ -251,29 +375,6 @@ badDigitalThresholdsMask[
 #     1, ~np.all((digitalThresholdsRange[1, 0] <= digitalThresholds[1, ...], digitalThresholds[1, ...] <= digitalThresholdsRange[1, 1]), axis=0)] = True
 badCellMask = np.logical_or.reduce((badCellMask, badDigitalThresholdsMask[0, ...], badDigitalThresholdsMask[1, ...]))
 
-if not ('darkOffsetRange' in locals()):
-    darkOffsetRange = np.zeros((2,))
-    axes.clear()
-    axes.hist(darkOffset[~badCellMask], bins=2 ** 10)
-    figure.canvas.draw()
-    darkOffsetRange[0] = float(input('minimum darkOffset = '))
-    darkOffsetRange[1] = float(input('maximum darkOffset = '))
-
-badDarkOffsetMask = np.zeros((352, 128, 512), dtype=bool)
-badDarkOffsetMask[~np.all((darkOffsetRange[0] <= darkOffset, darkOffset <= darkOffsetRange[1]), axis=0)] = True
-badCellMask = np.logical_or.reduce((badCellMask, badDarkOffsetMask))
-
-# if not ('darkStandardDeviationRange' in locals()):
-#     darkStandardDeviationRange = np.zeros((2,))
-#     axes.clear()
-#     axes.hist(darkStandardDeviation[~badCellMask], bins='sqrt')
-#     figure.canvas.draw()
-#     darkStandardDeviationRange[ 1] = float(input('maximum darkStandardDeviation = '))
-#
-# badDarkStandardDeviationMask = np.zeros((352, 128, 512), dtype=bool)
-# badDarkStandardDeviationMask[~np.all((darkOffsetRange[0] <= darkStandardDeviation, darkStandardDeviation <= darkOffsetRange[1]), axis=0)] = True
-# badCellMask = np.logical_or.reduce((badCellMask, badDarkStandardDeviationMask))
-
 if not ('photonSpacingRange' in locals()):
     photonSpacingRange = np.zeros((2,))
     axes.clear()
@@ -303,6 +404,9 @@ saveFile.close()
 print('badCellMask saved in ', saveFileName)
 
 print('\n\n\nentered values:')
+print('darkOffsetInSituRange = \n', darkOffsetInSituRange)
+print('darkOffsetRange = \n', darkOffsetRange)
+print('darkStandardDeviationRange = \n', darkStandardDeviationRange)
 print('analogFitErrorRange = \n', analogFitErrorRange)
 print('analogGainsRange = \n', analogGainsRange)
 print('analogLineOffsetsRange = \n', analogLineOffsetsRange)
@@ -310,8 +414,6 @@ print('digitalStdDeviationsRange = \n', digitalStdDeviationsRange)
 print('digitalSpacingsSafetyFactorsMin = \n', digitalSpacingsSafetyFactorsMin)
 print('digitalMeansRange = \n', digitalMeansRange)
 print('digitalThresholdsRange = \n', digitalThresholdsRange)
-print('darkOffsetRange = \n', darkOffsetRange)
-# print('darkStandardDeviationRange = \n', darkStandardDeviationRange)
 print('photonSpacingRange = \n', photonSpacingRange)
 # print('photonSpacingQualityMin = \n', photonSpacingQualityMin)
 
@@ -320,5 +422,6 @@ badCellMaskFile = h5py.File(saveFileName, "r", libver='latest')
 badCellMask = badCellMaskFile['badCellMask'][...]
 pg.image(badCellMask.transpose(0, 2, 1))
 
+print('\n\n percentage of masked cells: ', 100 * badCellMask.flatten().sum() / badCellMask.size)
 print('\n\n\npress enter to quit')
 tmp = input()

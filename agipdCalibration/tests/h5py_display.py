@@ -3,7 +3,7 @@ import h5py
 
 def print_attrs(name, obj):
     print(name)
-    for key, val in obj.attrs.iteritems():
+    for key, val in obj.attrs.items():
         print("     ", key, val)
 
 
