@@ -5,14 +5,14 @@ import matplotlib.pyplot as plt
 import pyqtgraph as pg
 
 moduleNumber = 4
-analogGainsFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/agipdCalibration_workspace/analogGains_m' + str(moduleNumber) + '.h5'
-digitalMeansFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/agipdCalibration_workspace/digitalMeans_m' + str(moduleNumber) + '.h5'
-darkOffsetFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/agipdCalibration_workspace/lysozymeData_m' + str(moduleNumber) + '_darkcal_inSitu.h5'
-photonSpacingFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/agipdCalibration_workspace/photonSpacing_m' + str(moduleNumber) + '_inSitu.h5'
+analogGainsFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/analogGains_m' + str(moduleNumber) + '.h5'
+digitalMeansFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/digitalMeans_m' + str(moduleNumber) + '.h5'
+darkOffsetFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/lysozymeData_m' + str(moduleNumber) + '_darkcal_inSitu.h5'
+photonSpacingFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/photonSpacing_m' + str(moduleNumber) + '_inSitu.h5'
 photonSpacingCellNumber = 175
 keV_perPhoton = 1
 
-saveFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/agipdCalibration_workspace/combinedCalibrationConstants_m' + str(moduleNumber) + '.h5'
+saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/combinedCalibrationConstants_m' + str(moduleNumber) + '.h5'
 
 analogGains = h5py.File(analogGainsFileName, 'r', libver='latest')['/analogGains'][...]
 digitalThresholds = h5py.File(digitalMeansFileName, 'r', libver='latest')['/digitalThresholds'][...]
