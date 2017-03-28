@@ -70,9 +70,9 @@ def getOnePhotonAdcCountsMoKAlpha(analog, applyLowpass=True, localityRadius=801,
     # plt.plot(photonHistogramBins[0:-1], photonHistogramValuesSmooth)
     # plt.show()
 
-    peakSizes = photonHistogramValuesSmooth[peakIndices]
-    if peakSizes.size < 2:
+    if peakIndices.size < 2:
         return (0, 0)
+    peakSizes = photonHistogramValuesSmooth[peakIndices]
     sizeSortIndices = np.argsort(peakSizes)[::-1]
     sizeSortedPeakLocations = photonHistogramBins[peakIndices[sizeSortIndices]]
     sizeSortedPeakIndices = peakIndices[sizeSortIndices]
