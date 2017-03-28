@@ -64,14 +64,14 @@ def getOnePhotonAdcCountsMoKAlpha(analog, applyLowpass=True, localityRadius=801,
     smoothWindowRange = (5, 50)
     smoothWindowStep = 4
     peakIndices = np.unique(np.array(find_peaks_cwt(photonHistoramValues, np.arange(smoothWindowRange[0], smoothWindowRange[1], smoothWindowStep))))
+    if peakIndices.size < 2:
+        return (0, 0)
 
     smoothWindowSize = np.round(smoothWindowRange[0] + 0.5 * (smoothWindowRange[1] - smoothWindowRange[0])).astype(int)
     photonHistogramValuesSmooth = convolve(photonHistoramValues, np.ones((smoothWindowSize,)), mode='same')
     # plt.plot(photonHistogramBins[0:-1], photonHistogramValuesSmooth)
     # plt.show()
 
-    if peakIndices.size < 2:
-        return (0, 0)
     peakSizes = photonHistogramValuesSmooth[peakIndices]
     sizeSortIndices = np.argsort(peakSizes)[::-1]
     sizeSortedPeakLocations = photonHistogramBins[peakIndices[sizeSortIndices]]
