@@ -80,4 +80,5 @@ for row in np.arange(8):
 
     f.close()
 
+saveFile.close()
 print('gatherPulsedCapacitorData took time:  ', time.time() - totalTime, '\n\n')
