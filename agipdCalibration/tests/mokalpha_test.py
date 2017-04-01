@@ -1,7 +1,7 @@
 from agipdCalibration.helperFunctions import *
 
 from agipdCalibration.algorithms.moKAlphaFitting import *
-from agipdCalibration.batchProcessing.gatherMokalphaData import *
+from agipdCalibration.batchProcessing.gatherXRayTubeData import *
 
 
 # for interactive pycharm: %matplotlib tk

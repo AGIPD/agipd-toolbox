@@ -17,14 +17,14 @@ def computeCurrentSourceCalibrationOneMemoryCell(analog, digital, linearIndex, p
 
 
 if __name__ == '__main__':
-    workspacePath = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/'
-    dataFileName = workspacePath + 'currentSource_chunked.h5'
-    saveFileName_analogGains = workspacePath + 'analogGains_currentSource.h5'
-    saveFileName_digitalMeans = workspacePath + 'digitalMeans_currentSource.h5'
+    # workspacePath = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/'
+    # dataFileName = workspacePath + 'currentSource_chunked.h5'
+    # saveFileName_analogGains = workspacePath + 'analogGains_currentSource.h5'
+    # saveFileName_digitalMeans = workspacePath + 'digitalMeans_currentSource.h5'
 
-    # dataFileName = sys.argv[1]
-    # saveFileName_analogGains = sys.argv[2]
-    # saveFileName_digitalMeans = sys.argv[3]
+    dataFileName = sys.argv[1]
+    saveFileName_analogGains = sys.argv[2]
+    saveFileName_digitalMeans = sys.argv[3]
 
     print('\n\n\nstart batchProcessPulsedCapacitor')
     print('dataFileName = ', dataFileName)
@@ -51,8 +51,8 @@ if __name__ == '__main__':
     dataFile = h5py.File(dataFileName, 'r', libver='latest')
     columnsToLoadPerIteration = 64
     rowsToLoadPerIteration = 64
-    for column in np.arange(1):#np.arange(512 / columnsToLoadPerIteration):
-        for row in np.arange(1):#np.arange(128 / rowsToLoadPerIteration):
+    for column in np.arange(512 / columnsToLoadPerIteration): #np.arange(1):
+        for row in np.arange(128 / rowsToLoadPerIteration): #np.arange(1):
             consideredPixelsY = (int(row * rowsToLoadPerIteration), int((row + 1) * rowsToLoadPerIteration))
             consideredPixelsX = (int(column * columnsToLoadPerIteration), int((column + 1) * columnsToLoadPerIteration))
 

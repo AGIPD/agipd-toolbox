@@ -1,34 +1,32 @@
 #!/usr/bin/env bash
 
-mokalphaDataFileName=$1
-gatheredMokalphaFileName=$2
+xRayTubeDataFileName=$1
+gatheredXRayTubeDataFileName=$2
 photonSpacingFileName=$3
 
-pulsedCapacitorDataFolder=$4
-pulsedCapacitorModuleNumber=$5
-gatheredPulsedCapacitorDataSaveFileName=$6
-analogGainsSaveFileName=$7
-digitalMeansSaveFileName=$8
-processingFilesFolder=$9
+currentSourceScanFileName=$4
+gatheredCurrentSourceScanFileName=$5
+analogGainsFileName=$6
+digitalMeansFileName=$7
+processingFilesFolder=$8
 
-workspaceFolder=${10}
+workspaceFolder=${9}
 
-moduleNumber=${11}
+moduleNumber=${10}
 
-batchJobCreationFolder=${12}
+batchJobCreationFolder=${11}
 
 sbatch --job-name=processAgipdCalibration_module${moduleNumber} \
 		--output=${workspaceFolder}batchJobProcessMokalphaData_m${moduleNumber}.output \
 		--error=${workspaceFolder}batchJobProcessMokalphaData_m${moduleNumber}.error \
 		${batchJobCreationFolder}batchJob_processAgipdCalibration_oneModule.sh \
-		${mokalphaDataFileName} \
-		${gatheredMokalphaFileName} \
+		${xRayTubeDataFileName} \
+		${gatheredXRayTubeDataFileName} \
 		${photonSpacingFileName} \
-		${pulsedCapacitorDataFolder} \
-		${pulsedCapacitorModuleNumber} \
-		${gatheredPulsedCapacitorDataSaveFileName} \
-		${analogGainsSaveFileName} \
-		${digitalMeansSaveFileName} \
+		${currentSourceScanFileName} \
+		${gatheredCurrentSourceScanFileName} \
+		${analogGainsFileName} \
+		${digitalMeansFileName} \
 		${processingFilesFolder} 
 		
 

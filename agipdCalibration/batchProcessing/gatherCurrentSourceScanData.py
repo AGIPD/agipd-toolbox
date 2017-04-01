@@ -1,11 +1,16 @@
 import h5py
 import time
+import sys
 import numpy as np
 
-dataFileName = '/gpfs/cfel/fsds/labs/processed/m1_m233_drscsvr160_i80_00002.nxs'
-dataPathInFile = '/entry/instrument/detector/data'
+# dataFileName = '/gpfs/cfel/fsds/labs/processed/m1_m233_drscsvr160_i80_00002.nxs'
+# dataPathInFile = '/entry/instrument/detector/data'
+#
+# saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/currentSource_chunked.h5'
 
-saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/currentSource_chunked.h5'
+dataFileName = sys.argv[1]
+dataPathInFile = '/entry/instrument/detector/data'
+saveFileName = sys.argv[2]
 
 f = h5py.File(dataFileName, 'r', libver='latest')
 dataCount = int(f[dataPathInFile].shape[0] / 2 / 352)

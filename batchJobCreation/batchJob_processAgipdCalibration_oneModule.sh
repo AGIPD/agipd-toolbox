@@ -5,23 +5,23 @@
 #SBATCH --nodes=1
 #SBATCH --cores-per-socket=16
 
-mokalphaDataFileName=$1
-gatheredMokalphaFileName=$2
+xRayTubeDataFileName=$1
+gatheredXRayTubeDataFileName=$2
 photonSpacingFileName=$3
 
-pulsedCapacitorDataFolder=$4
-pulsedCapacitorModuleNumber=$5
-gatheredPulsedCapacitorDataSaveFileName=$6
-analogGainsSaveFileName=$7
-digitalMeansSaveFileName=$8
+currentSourceScanFileName=$4
+gatheredCurrentSourceScanFileName=$5
+analogGainsFileName=$6
+digitalMeansFileName=$7
 
-processingFilesFolder=$9
+processingFilesFolder=$8
 
 
-python ${processingFilesFolder}batchProcessing/gatherMokalphaData.py ${mokalphaDataFileName} ${gatheredMokalphaFileName}
+python ${processingFilesFolder}batchProcessing/gatherXRayTubeData.py ${xRayTubeDataFileName} ${gatheredXRayTubeDataFileName}
 
-python ${processingFilesFolder}batchProcessing/batchProcessMokalpha.py ${gatheredMokalphaFileName} ${photonSpacingFileName}
+python ${processingFilesFolder}batchProcessing/batchProcessXRayTubeData.py ${gatheredXRayTubeDataFileName} ${photonSpacingFileName}
 
-python ${processingFilesFolder}batchProcessing/gatherPulsedCapacitorData.py ${pulsedCapacitorDataFolder} ${pulsedCapacitorModuleNumber} ${gatheredPulsedCapacitorDataSaveFileName}
+python ${processingFilesFolder}batchProcessing/gatherPulsedCapacitorData.py ${currentSourceScanFileName} ${gatheredCurrentSourceScanFileName}
 
-python ${processingFilesFolder}batchProcessing/batchProcessPulsedCapacitor.py ${gatheredPulsedCapacitorDataSaveFileName} ${analogGainsSaveFileName} ${digitalMeansSaveFileName}
+#python ${processingFilesFolder}batchProcessing/batchProcessPulsedCapacitor.py ${gatheredPulsedCapacitorDataSaveFileName} ${analogGainsSaveFileName} ${digitalMeansSaveFileName}
+python ${processingFilesFolder}batchProcessing/batchProcessCurrentSourceScan.py ${gatheredCurrentSourceScanFileName} ${analogGainsFileName} ${digitalMeansFileName}
