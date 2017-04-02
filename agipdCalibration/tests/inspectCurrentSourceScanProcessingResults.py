@@ -21,9 +21,9 @@ digitalThresholds = dataFile_digitalMeans["digitalThresholds"][...]  # shape=(2,
 digitalStdDeviations = dataFile_digitalMeans["digitalStdDeviations"][...]  # shape=(352, 3, 128, 512)
 digitalSpacingsSafetyFactors = dataFile_digitalMeans["digitalSpacingsSafetyFactors"][...]  # shape=(352, 3, 128, 512)
 
-# dataToPlot = [analogGains[0,...],analogGains[1,...],analogGains[2,...]]
+dataToPlot = [analogGains[0,...],analogGains[1,...],analogGains[2,...]]
 # dataToPlot = [digitalMeans[:, 0,...],digitalMeans[:, 1,...],digitalMeans[:, 2,...]]
-dataToPlot = [digitalStdDeviations[:, 0, ...], digitalStdDeviations[:, 1, ...], digitalStdDeviations[:, 2, ...]]
+# dataToPlot = [digitalStdDeviations[:, 0, ...], digitalStdDeviations[:, 1, ...], digitalStdDeviations[:, 2, ...]]
 for i in np.arange(len(dataToPlot)):
     data = dataToPlot[i]
     data[data == float('inf')] = 0

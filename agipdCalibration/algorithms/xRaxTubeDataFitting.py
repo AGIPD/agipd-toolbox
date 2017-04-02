@@ -50,7 +50,7 @@ def getPhotonHistogramLowpassCorrected(analog, localityRadius, lowpassSamplePoin
     return np.histogram(correctedData, binEdges)
 
 
-def getOnePhotonAdcCountsMoKAlpha(analog, applyLowpass=True, localityRadius=801, lwopassSamplePointsCount=1000):
+def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=801, lwopassSamplePointsCount=1000):
     if applyLowpass:
         (photonHistoramValues, photonHistogramBins) = getPhotonHistogramLowpassCorrected(analog, localityRadius, lwopassSamplePointsCount)
     else:

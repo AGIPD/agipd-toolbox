@@ -161,7 +161,7 @@ if __name__ == '__main__':
         digitalStdDeviations[:, 1, ...] + digitalStdDeviations[:, 0, ...])
     dset_digitalSpacingsSafetyFactors[:, 2, ...] = (digitalMeans[:, 2, ...] - digitalMeans[:, 1, ...]) / (
         digitalStdDeviations[:, 2, ...] + digitalStdDeviations[:, 1, ...])
-    dset_digitalSpacingsSafetyFactors[:, 1, ...] = np.maximum(dset_digitalSpacingsSafetyFactors[:, 0, ...], dset_digitalSpacingsSafetyFactors[:, 2, ...])
+    dset_digitalSpacingsSafetyFactors[:, 1, ...] = np.minimum(dset_digitalSpacingsSafetyFactors[:, 0, ...], dset_digitalSpacingsSafetyFactors[:, 2, ...])
 
     print('digital spacings safety factors computed and saved')
 

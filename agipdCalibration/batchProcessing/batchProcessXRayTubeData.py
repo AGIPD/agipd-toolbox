@@ -3,14 +3,14 @@ import h5py
 import sys
 import time
 
-from agipdCalibration.algorithms.moKAlphaFitting import *
+from agipdCalibration.algorithms.xRaxTubeDataFitting import *
 
 
 def computePhotonSpacingOnePixel(analog, linearIndex, perMillInterval):
     localityRadius = 800
     samplePointsCount = 1000
 
-    (photonSpacing, quality) = getOnePhotonAdcCountsMoKAlpha(analog, localityRadius, samplePointsCount)
+    (photonSpacing, quality) = getOnePhotonAdcCountsXRayTubeData(analog, localityRadius, samplePointsCount)
 
     # if np.mod(linearIndex, perMillInterval) == 0:
     #     print(0.1 * linearIndex / perMillInterval, '%')
@@ -23,7 +23,7 @@ if __name__ == '__main__':
     # saveFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/python_saved_workspace/photonSpacing_m3_test.h5'
     fileName = sys.argv[1]
     saveFileName = sys.argv[2]
-    print('\n\n\nstart batchProcessMokalpha')
+    print('\n\n\nstart batchProcessXRayTubeData')
     print('fileName = ', fileName)
     print('saveFileName = ', saveFileName)
 
@@ -72,4 +72,4 @@ if __name__ == '__main__':
     saveFile.flush()
     saveFile.close()
 
-    print('batchProcessMokalpha took time:  ', time.time() - totalTime, '\n\n')
+    print('batchProcessXRayTubeData took time:  ', time.time() - totalTime, '\n\n')

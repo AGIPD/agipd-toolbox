@@ -1,7 +1,9 @@
 import numpy as np
 from scipy.signal import convolve
+from scipy.signal import medfilt
 
-#import matplotlib.pyplot as plt
+
+# import matplotlib.pyplot as plt
 
 
 def fit2DynamicScanSlopes(analog, digital):
@@ -152,7 +154,7 @@ def fit3DynamicScanSlopes(analog, digital):
     try:
         ###### simplified k-means
         digitalMeanValues = get3DigitalMeans(digital, refinementStepsCount=3, minDigitalSpacing=600)
-        #print(digitalMeanValues)
+        # print(digitalMeanValues)
     except ValueError:
         fitLineParameters = []
         fitLineParameters.append(np.array([0, 0]))
@@ -182,11 +184,15 @@ def fit3DynamicScanSlopes(analog, digital):
         cutoffRank = int(np.floor(stdDevOutlierCutoffPart * dataCount))
         digitalStdDevs.append(np.std(np.sort(digital[gainIndices[i]])[cutoffRank:-(cutoffRank + 1)]))
 
-    #print(shrinkedGainIndices)
+    # print(shrinkedGainIndices)
+
+    maxSpikeWidth = 2
+    minSpkieHeight = 400
+    analog = removeSpikes(analog, maxSpikeWidth, minSpkieHeight)
 
     fitLineParameters = []
     for i in np.arange(0, len(gainIndices)):
-        if len(shrinkedGainIndices[i]) == 0 or  shrinkedGainIndices[i][-1] - shrinkedGainIndices[i][0] < 5:  # not enough data for estimation
+        if len(shrinkedGainIndices[i]) == 0 or shrinkedGainIndices[i][-1] - shrinkedGainIndices[i][0] < 5:  # not enough data for estimation
             fitLineParameters.append(np.array([0, 0]))
         else:
             fitLineParameters.append(np.polyfit(shrinkedGainIndices[i].astype('float32'), analog[shrinkedGainIndices[i]], 1))
@@ -216,14 +222,14 @@ def get3DigitalMeans(digital, refinementStepsCount=3, minDigitalSpacing=600):
     if digitalHistogramEdges.size == 0 or digitalHistogramEdges[-1] - digitalHistogramEdges[0] < 2 * minDigitalSpacing:
         raise ValueError
     (digitalHistogram, _) = np.histogram(digital, digitalHistogramEdges)
-    #plt.plot(digitalHistogramEdges[0:-1], digitalHistogram)
+    # plt.plot(digitalHistogramEdges[0:-1], digitalHistogram)
 
     digitalHistogramSmooth = convolve(digitalHistogram, np.ones((3,)), mode='same')
     minDigitalSpacing = minDigitalSpacing - 2 * binWidth
-    #plt.plot(digitalHistogramEdges[0:-1], digitalHistogramSmooth)
+    # plt.plot(digitalHistogramEdges[0:-1], digitalHistogramSmooth)
 
     mostFrequentValues = digitalHistogramEdges[np.argsort(digitalHistogramSmooth)[::-1]][0:np.count_nonzero(digitalHistogramSmooth)]
-    #print(mostFrequentValues)
+    # print(mostFrequentValues)
     means = np.array([mostFrequentValues[0], mostFrequentValues[-1], mostFrequentValues[-2]])
     secondMeanFound = False
     for i in np.arange(1, mostFrequentValues.size):
@@ -258,3 +264,12 @@ def get3DigitalMeans(digital, refinementStepsCount=3, minDigitalSpacing=600):
         raise ValueError
 
     return means
+
+
+def removeSpikes(data, maxSpikeWidth, minSpkieHeight):
+    medianFiltered = medfilt(data, 2 * maxSpikeWidth + 1)
+
+    spikeBoolIndices = abs(medianFiltered - data) >= minSpkieHeight
+    data[spikeBoolIndices] = medianFiltered[spikeBoolIndices]
+
+    return data

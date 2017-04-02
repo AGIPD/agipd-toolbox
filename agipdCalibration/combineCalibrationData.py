@@ -1,16 +1,25 @@
 import h5py
 import numpy as np
+import sys
 
 import matplotlib.pyplot as plt
 import pyqtgraph as pg
 
-moduleNumber = 4
-analogGainsFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/analogGains_m' + str(moduleNumber) + '.h5'
-digitalMeansFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/digitalMeans_m' + str(moduleNumber) + '.h5'
-darkOffsetFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/lysozymeData_m' + str(moduleNumber) + '_darkcal_inSitu.h5'
-photonSpacingFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/photonSpacing_m' + str(moduleNumber) + '_inSitu.h5'
-photonSpacingCellNumber = 175
-keV_perPhoton = 1
+# moduleNumber = 4
+# analogGainsFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/analogGains_m' + str(moduleNumber) + '.h5'
+# digitalMeansFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/digitalMeans_m' + str(moduleNumber) + '.h5'
+# darkOffsetFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/lysozymeData_m' + str(moduleNumber) + '_darkcal_inSitu.h5'
+# photonSpacingFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/photonSpacing_m' + str(moduleNumber) + '_inSitu.h5'
+# photonSpacingCellNumber = 175
+# keV_perPhoton = 1
+
+analogGainsFileName = sys.argv[1]
+digitalMeansFileName =sys.argv[2]
+darkOffsetFileName = sys.argv[3]
+photonSpacingFileName = sys.argv[4]
+photonSpacingCellNumber = int(float(sys.argv[5]))
+keV_perPhoton = float(sys.argv[6])
+
 
 saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/combinedCalibrationConstants_m' + str(moduleNumber) + '.h5'
 

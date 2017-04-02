@@ -4,8 +4,6 @@ from multiprocessing import Pool
 
 import h5py
 
-from agipdCalibration.lysozymeWorkarounds.darkCalWorkaroundInSitu import *
-
 
 def computeDarkCalsOnePixel(analog, linearIndex):
     darkCalsOnePixel = np.zeros(352)

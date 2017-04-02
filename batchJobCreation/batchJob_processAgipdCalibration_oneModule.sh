@@ -14,8 +14,18 @@ gatheredCurrentSourceScanFileName=$5
 analogGainsFileName=$6
 digitalMeansFileName=$7
 
-processingFilesFolder=$8
+darkDataFileName=$8
+gatheredDarkDataFileName=$9
+darkOffsetFileName=${10}
 
+photonSpacingCellNumber=${11}
+keV_perPhoton=${12}
+
+processingFilesFolder=${13}
+
+python ${processingFilesFolder}batchProcessing/gatherDarkData.py ${darkDataFileName} ${gatheredDarkDataFileName}
+
+python ${processingFilesFolder}batchProcessing/batchProcessDarkCal.py ${gatheredDarkDataFileName} ${darkOffsetFileName}
 
 python ${processingFilesFolder}batchProcessing/gatherXRayTubeData.py ${xRayTubeDataFileName} ${gatheredXRayTubeDataFileName}
 
@@ -23,5 +33,10 @@ python ${processingFilesFolder}batchProcessing/batchProcessXRayTubeData.py ${gat
 
 python ${processingFilesFolder}batchProcessing/gatherPulsedCapacitorData.py ${currentSourceScanFileName} ${gatheredCurrentSourceScanFileName}
 
-#python ${processingFilesFolder}batchProcessing/batchProcessPulsedCapacitor.py ${gatheredPulsedCapacitorDataSaveFileName} ${analogGainsSaveFileName} ${digitalMeansSaveFileName}
 python ${processingFilesFolder}batchProcessing/batchProcessCurrentSourceScan.py ${gatheredCurrentSourceScanFileName} ${analogGainsFileName} ${digitalMeansFileName}
+
+python ${processingFilesFolder}combineCalibrationData.py ${analogGainsFileName} ${digitalMeansFileName} ${darkOffsetFileName} ${photonSpacingFileName} ${photonSpacingCellNumber} ${keV_perPhoton}
+
+
+
+

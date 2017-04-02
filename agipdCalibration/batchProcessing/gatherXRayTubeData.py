@@ -12,7 +12,7 @@ fileName = sys.argv[1]
 dataPathInFile = '/entry/instrument/detector/data'
 saveFileName = sys.argv[2]
 
-print('\n\n\nstart gatherMokalphaData')
+print('\n\n\nstart gatherXRayTubeData')
 print('fileName = ', fileName)
 print('dataPathInFile = ', dataPathInFile)
 print('saveFileName = ', saveFileName)
@@ -43,4 +43,4 @@ print('saving done')
 saveFile.flush()
 saveFile.close()
 
-print('gatherMokalphaDatatook time:  ', time.time() - totalTime, '\n\n')
+print('gatherXRayTubeData took time:  ', time.time() - totalTime, '\n\n')
