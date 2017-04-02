@@ -1,11 +1,12 @@
 import numpy as np
 
-#todo: currently using same dark offset for all gain stages. This is wrong, but no algoritms that provide different dark offsets exist at the time of writing this message, so the dark offset of the high gain is used for all gain stages
-def equalizeRawData_oneBurst(analog, digital, analogGains_keV, digitalThresholds, darkOffset):
+
+def equalizeRawData_oneBurst(analog, digital, analogGains_keV, digitalThresholds, darkOffsets):
     gainStage = computeGainStage(digital, digitalThresholds)
 
     # following code mimics "analogCorrected = (analog - darkOffset) * analogGains_keV[gainStage]"
-    analogCorrected = (analog - darkOffset) * np.choose(gainStage, (analogGains_keV[0, ...], analogGains_keV[1, ...], analogGains_keV[2, ...]))
+    analogCorrected = (analog - np.choose(gainStage, (darkOffsets[0, ...], darkOffsets[1, ...], darkOffsets[2, ...]))) \
+                      * np.choose(gainStage, (analogGains_keV[0, ...], analogGains_keV[1, ...], analogGains_keV[2, ...]))
 
     return analogCorrected, gainStage
 

@@ -17,11 +17,13 @@ darkOffsetFileName=${11}
 photonSpacingCellNumber=${12}
 keV_perPhoton=${13}
 
-workspaceFolder=${14}
+combinedCalibrationConstantsFileName=${14}
 
-moduleNumber=${15}
+workspaceFolder=${15}
 
-batchJobCreationFolder=${16}
+moduleNumber=${16}
+
+batchJobCreationFolder=${17}
 
 sbatch --job-name=processAgipdCalibration_module${moduleNumber} \
 		--output=${workspaceFolder}batchJobProcessAgipdCalibration_m${moduleNumber}.output \
@@ -39,6 +41,7 @@ sbatch --job-name=processAgipdCalibration_module${moduleNumber} \
         ${darkOffsetFileName} \
         ${photonSpacingCellNumber} \
         ${keV_perPhoton} \
+        ${combinedCalibrationConstantsFileName} \
 		${processingFilesFolder} 
 		
 

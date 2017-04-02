@@ -25,6 +25,8 @@ do
     analogGainsFileName=${workspaceFolder}analogGains_m${moduleNumber}.h5
     digitalMeansFileName=${workspaceFolder}digitalMeans_m${moduleNumber}.h5
 
+    combinedCalibrationConstantsFileName=combinedCalibrationConstants_m${moduleNumber}.h5
+
     ./processAgipdCalibration_oneModule.sh ${xRayTubeDataFileName} \
                                                 ${gatheredXRayTubeDataFileName} \
                                                 ${photonSpacingFileName} \
@@ -38,6 +40,7 @@ do
                                                 ${darkOffsetFileName} \
                                                 ${photonSpacingCellNumber} \
                                                 ${keV_perPhoton} \
+                                                ${combinedCalibrationConstantsFileName} \
                                                 ${workspaceFolder} \
                                                 ${moduleNumber} \
                                                 ${batchJobCreationFolder}

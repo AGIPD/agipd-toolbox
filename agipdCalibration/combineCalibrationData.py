@@ -12,6 +12,7 @@ import pyqtgraph as pg
 # photonSpacingFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/photonSpacing_m' + str(moduleNumber) + '_inSitu.h5'
 # photonSpacingCellNumber = 175
 # keV_perPhoton = 1
+# saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/combinedCalibrationConstants_m' + str(moduleNumber) + '.h5'
 
 analogGainsFileName = sys.argv[1]
 digitalMeansFileName =sys.argv[2]
@@ -19,11 +20,11 @@ darkOffsetFileName = sys.argv[3]
 photonSpacingFileName = sys.argv[4]
 photonSpacingCellNumber = int(float(sys.argv[5]))
 keV_perPhoton = float(sys.argv[6])
+saveFileName = float(sys.argv[7])
 
-
-saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/combinedCalibrationConstants_m' + str(moduleNumber) + '.h5'
 
 analogGains = h5py.File(analogGainsFileName, 'r', libver='latest')['/analogGains'][...]
+anlogLineOffsets = h5py.File(analogGainsFileName, 'r', libver='latest')['/anlogLineOffsets'][...]
 digitalThresholds = h5py.File(digitalMeansFileName, 'r', libver='latest')['/digitalThresholds'][...]
 darkOffset = h5py.File(darkOffsetFileName, 'r', libver='latest')['/darkOffset'][...]
 photonSpacing = h5py.File(photonSpacingFileName, 'r', libver='latest')['/photonSpacing'][...]
@@ -31,7 +32,7 @@ photonSpacing = h5py.File(photonSpacingFileName, 'r', libver='latest')['/photonS
 saveFile = h5py.File(saveFileName, "w", libver='latest')
 dset_analogGains_keV = saveFile.create_dataset("analogGains_keV", shape=(3, 352, 128, 512), dtype='float32')
 dset_digitalThresholds = saveFile.create_dataset("digitalThresholds", shape=(2, 352, 128, 512), dtype='int16')
-dset_darkOffset = saveFile.create_dataset("darkOffset", shape=(352, 128, 512), dtype='int16')
+dset_darkOffsets = saveFile.create_dataset("darkOffsets", shape=(3, 352, 128, 512), dtype='int16')
 
 analogGains_keV = np.zeros(analogGains.shape, dtype='float32')
 photonSpacingAllCells = photonSpacing.astype('float32') / analogGains[0, photonSpacingCellNumber, ...] * analogGains[0, :, ...]
@@ -42,6 +43,8 @@ analogGains_keV[~np.isfinite(analogGains_keV)] = -1  # just for easier plotting,
 
 dset_analogGains_keV[...] = analogGains_keV
 dset_digitalThresholds[...] = digitalThresholds
-dset_darkOffset[...] = darkOffset
+dset_darkOffsets[0, ...] = darkOffset
+dset_darkOffsets[1, ...] = np.round(anlogLineOffsets[1,...]).astype('int16')
+dset_darkOffsets[2, ...] = np.round(anlogLineOffsets[2,...]).astype('int16')
 
 saveFile.close()

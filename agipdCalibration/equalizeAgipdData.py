@@ -24,7 +24,7 @@ maskFile.close()
 combinedCalibrationConstantsFile = h5py.File(combinedCalibrationConstantsFileName, 'r', libver='latest')
 analogGains_keV = combinedCalibrationConstantsFile['/analogGains_keV']
 digitalThresholds = combinedCalibrationConstantsFile['/digitalThresholds']
-darkOffset = combinedCalibrationConstantsFile['/darkOffset']
+darkOffsets = combinedCalibrationConstantsFile['/darkOffsets']
 
 saveFile = h5py.File(saveFileName, "w", libver='latest')
 dset_analogCorrected = saveFile.create_dataset("analogCorrected", shape=dset_analog.shape, chunks=(1, 352, 128, 512), dtype='float32')
@@ -34,7 +34,7 @@ for i in np.arange(dset_analog.shape[0]):
     analog = dataFile['/analog'][i, ...].astype('float32')
     digital = dataFile['/digital'][i, ...]
 
-    (analogCorrected, gainStage) = equalizeRawData_oneBurst(analog, digital, analogGains_keV, digitalThresholds, darkOffset)
+    (analogCorrected, gainStage) = equalizeRawData_oneBurst(analog, digital, analogGains_keV, digitalThresholds, darkOffsets)
 
     analogCorrected[badCellMask] = 0
     gainStage[badCellMask] = -1

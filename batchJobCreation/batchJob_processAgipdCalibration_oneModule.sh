@@ -21,7 +21,9 @@ darkOffsetFileName=${10}
 photonSpacingCellNumber=${11}
 keV_perPhoton=${12}
 
-processingFilesFolder=${13}
+combinedCalibrationConstantsFileName=${13}
+
+processingFilesFolder=${14}
 
 python ${processingFilesFolder}batchProcessing/gatherDarkData.py ${darkDataFileName} ${gatheredDarkDataFileName}
 
@@ -35,7 +37,7 @@ python ${processingFilesFolder}batchProcessing/gatherPulsedCapacitorData.py ${cu
 
 python ${processingFilesFolder}batchProcessing/batchProcessCurrentSourceScan.py ${gatheredCurrentSourceScanFileName} ${analogGainsFileName} ${digitalMeansFileName}
 
-python ${processingFilesFolder}combineCalibrationData.py ${analogGainsFileName} ${digitalMeansFileName} ${darkOffsetFileName} ${photonSpacingFileName} ${photonSpacingCellNumber} ${keV_perPhoton}
+python ${processingFilesFolder}combineCalibrationData.py ${analogGainsFileName} ${digitalMeansFileName} ${darkOffsetFileName} ${photonSpacingFileName} ${photonSpacingCellNumber} ${keV_perPhoton} ${combinedCalibrationConstantsFileName}
 
 
 
