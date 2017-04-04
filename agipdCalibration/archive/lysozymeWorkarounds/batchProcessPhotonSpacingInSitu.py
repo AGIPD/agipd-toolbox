@@ -1,9 +1,9 @@
-from multiprocessing import Pool
-import h5py
-import sys
 import time
+from multiprocessing import Pool
 
-from agipdCalibration.algorithms.photonSpacingWorkaroundInSitu import *
+import h5py
+
+from agipdCalibration.archive.photonSpacingWorkaroundInSitu import *
 
 
 def computePhotonSpacingOnePixel_inSitu(analog, linearIndex, perMillInterval):

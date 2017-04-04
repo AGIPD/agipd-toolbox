@@ -39,20 +39,20 @@ if __name__ == '__main__':
     saveFile_analogGains = h5py.File(saveFileName_analogGains, "w", libver='latest')
     dset_analogGains = saveFile_analogGains.create_dataset("analogGains", shape=(3, 352, 128, 512), dtype='float32')
     dset_analogLineOffsets = saveFile_analogGains.create_dataset("anlogLineOffsets", shape=(3, 352, 128, 512), dtype='float32')
-    dset_analogFitError = saveFile_analogGains.create_dataset("analogFitError", shape=(3, 352, 128, 512), dtype='float32')
+    dset_analogFitStdDevs = saveFile_analogGains.create_dataset("analogFitStdDevs", shape=(3, 352, 128, 512), dtype='float32')
 
     saveFile_digitalMeans = h5py.File(saveFileName_digitalMeans, "w", libver='latest')
     dset_digitalMeans = saveFile_digitalMeans.create_dataset("digitalMeans", shape=(352, 3, 128, 512), dtype='uint16')
     dset_digitalThresholds = saveFile_digitalMeans.create_dataset("digitalThresholds", shape=(2, 352, 128, 512), dtype='uint16')
     dset_digitalStdDeviations = saveFile_digitalMeans.create_dataset("digitalStdDeviations", shape=(352, 3, 128, 512), dtype='float32')
-    dset_digitalSpacingsSafetyFactors = saveFile_digitalMeans.create_dataset("digitalSpacingsSafetyFactors", shape=(352, 3, 128, 512), dtype='float32')
+    dset_digitalSpacingsSafetyFactors = saveFile_digitalMeans.create_dataset("digitalSpacingsSafetyFactors", shape=(352, 2, 128, 512), dtype='float32')
 
     p = Pool(workerCount)
     dataFile = h5py.File(dataFileName, 'r', libver='latest')
     columnsToLoadPerIteration = 64
     rowsToLoadPerIteration = 64
-    for column in np.arange(512 / columnsToLoadPerIteration): #np.arange(1):
-        for row in np.arange(128 / rowsToLoadPerIteration): #np.arange(1):
+    for column in np.arange(512 / columnsToLoadPerIteration):  # np.arange(1):
+        for row in np.arange(128 / rowsToLoadPerIteration):  # np.arange(1):
             consideredPixelsY = (int(row * rowsToLoadPerIteration), int((row + 1) * rowsToLoadPerIteration))
             consideredPixelsX = (int(column * columnsToLoadPerIteration), int((column + 1) * columnsToLoadPerIteration))
 
@@ -112,7 +112,7 @@ if __name__ == '__main__':
 
             for i in np.arange(linearIndices.size):
                 idx = (matrixIndices[0][i], matrixIndices[1][i], matrixIndices[2][i])
-                (((highGain[idx], offset_highGain[idx]), (mediumGain[idx], offset_mediumGain[idx]),(lowGain[idx], offset_lowGain[idx])),
+                (((highGain[idx], offset_highGain[idx]), (mediumGain[idx], offset_mediumGain[idx]), (lowGain[idx], offset_lowGain[idx])),
                  (digitalMeans_highGain[idx], digitalMeans_mediumGain[idx], digitalMeans_lowGain[idx]),
                  (fitError_highGain[idx], fitError_mediumGain[idx], fitError_lowGain[idx]),
                  (digitalStdDev_highGain[idx], digitalStdDev_mediumGain[idx], digitalStdDev_lowGain[idx])
@@ -128,7 +128,7 @@ if __name__ == '__main__':
 
             print('gains and offsets saved')
 
-            dset_analogFitError[idx] = np.stack((fitError_highGain, fitError_mediumGain, fitError_lowGain), axis=0)
+            dset_analogFitStdDevs[idx] = np.stack((fitError_highGain, fitError_mediumGain, fitError_lowGain), axis=0)
 
             print('analog fit errors saved')
 
@@ -159,9 +159,8 @@ if __name__ == '__main__':
     digitalStdDeviations = dset_digitalStdDeviations[...]
     dset_digitalSpacingsSafetyFactors[:, 0, ...] = (digitalMeans[:, 1, ...] - digitalMeans[:, 0, ...]) / (
         digitalStdDeviations[:, 1, ...] + digitalStdDeviations[:, 0, ...])
-    dset_digitalSpacingsSafetyFactors[:, 2, ...] = (digitalMeans[:, 2, ...] - digitalMeans[:, 1, ...]) / (
+    dset_digitalSpacingsSafetyFactors[:, 1, ...] = (digitalMeans[:, 2, ...] - digitalMeans[:, 1, ...]) / (
         digitalStdDeviations[:, 2, ...] + digitalStdDeviations[:, 1, ...])
-    dset_digitalSpacingsSafetyFactors[:, 1, ...] = np.minimum(dset_digitalSpacingsSafetyFactors[:, 0, ...], dset_digitalSpacingsSafetyFactors[:, 2, ...])
 
     print('digital spacings safety factors computed and saved')
 

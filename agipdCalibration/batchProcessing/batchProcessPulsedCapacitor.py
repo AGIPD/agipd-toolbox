@@ -39,7 +39,7 @@ if __name__ == '__main__':
     saveFile_analogGains = h5py.File(saveFileName_analogGains, "w", libver='latest')
     dset_analogGains = saveFile_analogGains.create_dataset("analogGains", shape=(3, 352, 128, 512), dtype='float32')
     dset_analogLineOffsets = saveFile_analogGains.create_dataset("anlogLineOffsets", shape=(3, 352, 128, 512), dtype='float32')
-    dset_analogFitError = saveFile_analogGains.create_dataset("analogFitError", shape=(3, 352, 128, 512), dtype='float32')
+    dset_analogFitStdDevs = saveFile_analogGains.create_dataset("analogFitStdDevs", shape=(3, 352, 128, 512), dtype='float32')
 
     saveFile_digitalMeans = h5py.File(saveFileName_digitalMeans, "w", libver='latest')
     dset_digitalMeans = saveFile_digitalMeans.create_dataset("digitalMeans", shape=(352, 3, 128, 512), dtype='uint16')
@@ -123,7 +123,7 @@ if __name__ == '__main__':
 
             print('gains and offsets saved')
 
-            dset_analogFitError[idx] = np.stack((fitError_highGain, fitError_mediumGain), axis=0)
+            dset_analogFitStdDevs[idx] = np.stack((fitError_highGain, fitError_mediumGain), axis=0)
 
             print('analog fit errors saved')
 

@@ -42,9 +42,9 @@ def fit2DynamicScanSlopes(analog, digital):
         fitLineParameters.append(np.array([0, 0]))
         fitLineParameters.append(np.array([0, 0]))
         digitalMeanValues = np.array([0, 0])
-        analogFitError = np.array([float('inf'), float('inf')])
+        analogFitStdDevs = np.array([float('inf'), float('inf')])
         (digitalStdDev_highGain, digitalStdDev_mediumGain) = np.array([float('inf'), float('inf')])
-        return (fitLineParameters, digitalMeanValues, analogFitError, (digitalStdDev_highGain, digitalStdDev_mediumGain))
+        return fitLineParameters, digitalMeanValues, analogFitStdDevs, (digitalStdDev_highGain, digitalStdDev_mediumGain)
 
     threshold = np.mean(digitalMeanValues)
 
@@ -76,12 +76,12 @@ def fit2DynamicScanSlopes(analog, digital):
             fitLineParameters.append(np.polyfit(np.arange(shrinkedGainIntervalsInData[i][0], shrinkedGainIntervalsInData[i][1], dtype=np.float32),
                                                 analog[np.arange(shrinkedGainIntervalsInData[i][0], shrinkedGainIntervalsInData[i][1], dtype=np.int)], 1))
 
-    analogFitError = []
+    analogFitStdDevs = []
     for i in np.arange(len(fitLineParameters)):
         # print analog[shrinkedGainIntervalsInData[i][0]:shrinkedGainIntervalsInData[i][1]] - np.polyval(fitLineParameters[i], np.arange(shrinkedGainIntervalsInData[i][0], shrinkedGainIntervalsInData[i][1]))
-        analogFitError.append(np.mean(np.abs(analog[shrinkedGainIntervalsInData[i][0]:shrinkedGainIntervalsInData[i][1]]
-                                             - np.polyval(fitLineParameters[i],
-                                                          np.arange(shrinkedGainIntervalsInData[i][0], shrinkedGainIntervalsInData[i][1])))))
+        analogFitStdDevs.append(np.mean(np.abs(analog[shrinkedGainIntervalsInData[i][0]:shrinkedGainIntervalsInData[i][1]]
+                                               - np.polyval(fitLineParameters[i],
+                                                            np.arange(shrinkedGainIntervalsInData[i][0], shrinkedGainIntervalsInData[i][1])))))
 
     # plt.plot(analog)
     # plt.hold(True)
@@ -89,9 +89,9 @@ def fit2DynamicScanSlopes(analog, digital):
     #     plt.plot(gainIndices[i], np.polyval(fitLineParameters[i], gainIndices[i]), linewidth=1, color='g')
     #     plt.plot(np.arange(shrinkedGainIntervalsInData[i][0], shrinkedGainIntervalsInData[i][1]),
     #              np.polyval(fitLineParameters[i], np.arange(shrinkedGainIntervalsInData[i][0], shrinkedGainIntervalsInData[i][1])), linewidth=2, color='r')
-    # print analogFitError
+    # print(analogFitStdDevs)
 
-    return (fitLineParameters, digitalMeanValues, analogFitError, (digitalStdDev_highGain, digitalStdDev_mediumGain))
+    return fitLineParameters, digitalMeanValues, analogFitStdDevs, (digitalStdDev_highGain, digitalStdDev_mediumGain)
 
 
 # simplified k-means
@@ -161,9 +161,9 @@ def fit3DynamicScanSlopes(analog, digital):
         fitLineParameters.append(np.array([0, 0]))
         fitLineParameters.append(np.array([0, 0]))
         digitalMeanValues = np.array([0, 0, 0])
-        analogFitError = np.array([float('inf'), float('inf'), float('inf')])
+        analogFitStdDevs = np.array([float('inf'), float('inf'), float('inf')])
         (digitalStdDev_highGain, digitalStdDev_mediumGain, digitalStdDev_lowGain) = np.array([float('inf'), float('inf'), float('inf')])
-        return (fitLineParameters, digitalMeanValues, analogFitError, (digitalStdDev_highGain, digitalStdDev_mediumGain, digitalStdDev_lowGain))
+        return fitLineParameters, digitalMeanValues, analogFitStdDevs, (digitalStdDev_highGain, digitalStdDev_mediumGain, digitalStdDev_lowGain)
 
     thresholds = (np.mean(digitalMeanValues[0:2]), np.mean(digitalMeanValues[1:3]))
 
@@ -197,22 +197,23 @@ def fit3DynamicScanSlopes(analog, digital):
         else:
             fitLineParameters.append(np.polyfit(shrinkedGainIndices[i].astype('float32'), analog[shrinkedGainIndices[i]], 1))
 
-    analogFitError = []
+    analogFitStdDevs = []
     for i in np.arange(len(fitLineParameters)):
-        # print analog[shrinkedGainIntervalsInData[i][0]:shrinkedGainIntervalsInData[i][1]] - np.polyval(fitLineParameters[i], np.arange(shrinkedGainIntervalsInData[i][0], shrinkedGainIntervalsInData[i][1]))
         if len(shrinkedGainIndices[i]) != 0:
-            analogFitError.append(np.mean(np.abs(analog[shrinkedGainIndices[i]] - np.polyval(fitLineParameters[i], shrinkedGainIndices[i]))))
+            analogFitStdDevs.append(np.std(analog[shrinkedGainIndices[i]] - np.polyval(fitLineParameters[i], shrinkedGainIndices[i])))
         else:
-            analogFitError.append(float('inf'))
+            analogFitStdDevs.append(float('inf'))
+
+    # plt.hist(np.abs(analog[shrinkedGainIndices[i]] - np.polyval(fitLineParameters[i], shrinkedGainIndices[i])))
 
     # plt.plot(analog)
     # plt.hold(True)
     # for i in np.arange(len(fitLineParameters)):
-    #     plt.plot(gainIndices[i], np.polyval(fitLineParameters[i], gainIndices[i]), linewidth=1, color='g')
+    #     plt.plot(gainIndices[i], np.polyval(fitLineParameters[i], gainIndices[i]), linewidth=2, color='g')
     #     plt.plot(shrinkedGainIndices[i], np.polyval(fitLineParameters[i], shrinkedGainIndices[i]), linewidth=2, color='r')
-    # print(analogFitError)
+    # print(analogFitStdDevs)
 
-    return (fitLineParameters, digitalMeanValues, analogFitError, (digitalStdDevs[0], digitalStdDevs[1], digitalStdDevs[2]))
+    return fitLineParameters, digitalMeanValues, analogFitStdDevs, (digitalStdDevs[0], digitalStdDevs[1], digitalStdDevs[2])
 
 
 # simplified k-means

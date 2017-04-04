@@ -14,7 +14,7 @@ dataFile_digitalMeans = h5py.File(dataFileName_digitalMeans, 'r', libver='latest
 
 analogGains = dataFile_analogGains["analogGains"][...]  # shape=(3, 352, 128, 512)
 analogLineOffsets = dataFile_analogGains["anlogLineOffsets"][...]  # shape=(3, 352, 128, 512)
-analogFitError = dataFile_analogGains["analogFitError"][...]  # shape=(3, 352, 128, 512)
+analogFitStdDevs = dataFile_analogGains["analogFitStdDevs"][...]  # shape=(3, 352, 128, 512)
 
 digitalMeans = dataFile_digitalMeans["digitalMeans"][...]  # shape=(352, 3, 128, 512)
 digitalThresholds = dataFile_digitalMeans["digitalThresholds"][...]  # shape=(2, 352, 128, 512)

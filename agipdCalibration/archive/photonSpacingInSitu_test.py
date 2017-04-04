@@ -1,11 +1,8 @@
-from multiprocessing import Pool
-import h5py
-import sys
 import time
-import numpy as np
-import matplotlib.pyplot as plt
 
-from agipdCalibration.algorithms.photonSpacingWorkaroundInSitu import *
+import h5py
+
+from agipdCalibration.archive.photonSpacingWorkaroundInSitu import *
 
 dataFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/lysozymeData_m3.h5'
 

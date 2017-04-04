@@ -7,11 +7,16 @@ from agipdCalibration.algorithms.rawDataEqualization import equalizeRawData_oneB
 import matplotlib.pyplot as plt
 import pyqtgraph as pg
 
-moduleNumber = sys.argv[1]
-dataFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/lysozymeData_m' + moduleNumber + '_correctionChunked.h5'
-combinedCalibrationConstantsFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/combinedCalibrationConstants_m' + moduleNumber + '.h5'
-maskFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/mask_m' + moduleNumber + '.h5'
-saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/lysozymeData_m' + moduleNumber + '_equalized.h5'
+# moduleNumber = sys.argv[1]
+# dataFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/lysozymeData_m' + moduleNumber + '_correctionChunked.h5'
+# combinedCalibrationConstantsFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/combinedCalibrationConstants_m' + moduleNumber + '.h5'
+# maskFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/mask_m' + moduleNumber + '.h5'
+# saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/lysozymeData_m' + moduleNumber + '_equalized.h5'
+
+dataFileName = sys.argv[1]
+combinedCalibrationConstantsFileName = sys.argv[2]
+maskFileName = sys.argv[3]
+saveFileName = sys.argv[4]
 
 dataFile = h5py.File(dataFileName, 'r', libver='latest')
 dset_analog = dataFile['/analog']

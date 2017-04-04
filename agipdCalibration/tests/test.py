@@ -24,5 +24,5 @@ rawData.shape = (dataCount, 352, 2, 128, 512)
 analog = rawData[:, :, 0, :, :]
 digital = rawData[:, :, 1, :, :]
 
-#(fitLineParameters, digitalMeanValues, analogFitError, (digitalStdDev_highGain, digitalStdDev_mediumGain)) = fit2DynamicScanSlopes(analog[:, 0, 1, 0], digital[:, 0, 1, 0])
+#(fitLineParameters, digitalMeanValues, analogFitStdDevs, (digitalStdDev_highGain, digitalStdDev_mediumGain)) = fit2DynamicScanSlopes(analog[:, 35, 50, 40], digital[:, 35, 50, 40])
 
