@@ -1,4 +1,4 @@
-from agipdCalibration.algorithms.xRaxTubeDataFitting import *
+from agipdCalibration.algorithms.xRayTubeDataFitting import *
 
 def getOnePhotonAdcCountsInSitu(analog):
     upperCutoffPart = 0.01

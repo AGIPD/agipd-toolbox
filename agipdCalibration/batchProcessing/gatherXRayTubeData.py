@@ -3,10 +3,10 @@ import numpy as np
 import sys
 import time
 
-# fileName = '/gpfs/cfel/fsds/labs/calibration/current/1Mpix_calib/wing2/xray/m2_xray_00001.nxs'
+# fileName = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/m1_M314_XRAY_FLUOR_00000.nxs'
 # dataPathInFile = '/entry/instrument/detector/data'
 #
-# saveFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/python_saved_workspace/mokalphaData_m1_00001.nxs'
+# saveFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/python_saved_workspace/mokalphaData.h5'
 
 fileName = sys.argv[1]
 dataPathInFile = '/entry/instrument/detector/data'

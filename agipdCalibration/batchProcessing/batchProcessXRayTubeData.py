@@ -3,7 +3,7 @@ import h5py
 import sys
 import time
 
-from agipdCalibration.algorithms.xRaxTubeDataFitting import *
+from agipdCalibration.algorithms.xRayTubeDataFitting import *
 
 
 def computePhotonSpacingOnePixel(analog, linearIndex, perMillInterval):
@@ -19,8 +19,8 @@ def computePhotonSpacingOnePixel(analog, linearIndex, perMillInterval):
 
 
 if __name__ == '__main__':
-    # fileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/python_saved_workspace/mokalphaData_m3_00001.h5'
-    # saveFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/python_saved_workspace/photonSpacing_m3_test.h5'
+    # fileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/python_saved_workspace/mokalphaData.h5'
+    # saveFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/python_saved_workspace/photonSpacing.h5'
     fileName = sys.argv[1]
     saveFileName = sys.argv[2]
     print('\n\n\nstart batchProcessXRayTubeData')

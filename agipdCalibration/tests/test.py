@@ -4,25 +4,27 @@ import time
 import glob
 import sys
 from agipdCalibration.algorithms.rangeScansFitting import *
+from agipdCalibration.algorithms.xRayTubeDataFitting import *
 
 import matplotlib.pyplot as plt
 import pyqtgraph as pg
 
-dataFileName = '/gpfs/cfel/fsds/labs/processed/m1_m233_drscsvr160_i80_00002.nxs'
-dataPathInFile = '/entry/instrument/detector/data'
+# dataFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/python_saved_workspace/photonSpacing.h5'
+#
+# f = h5py.File(dataFileName, 'r', libver='latest')
+# photonSpacing = f['photonSpacing'][...]
+#
+# pg.image(photonSpacing.transpose())
+
+dataFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/python_saved_workspace/mokalphaData.h5'
 
 f = h5py.File(dataFileName, 'r', libver='latest')
-dataCount = int(f[dataPathInFile].shape[0] / 2 / 352)
+analog = f['analog'][...]
 
-t = time.time()
-print('start loading')
-rawData = f[dataPathInFile][..., 0:128, 0:512]
-print('took time:  ' + str(time.time() - t))
+getOnePhotonAdcCountsXRayTubeData(analog[:,8,125], applyLowpass=True, localityRadius=801, lwopassSamplePointsCount=1000)
 
-rawData.shape = (dataCount, 352, 2, 128, 512)
+plt.plot(analog[:,8,125],'.')
+plt.show()
 
-analog = rawData[:, :, 0, :, :]
-digital = rawData[:, :, 1, :, :]
-
-#(fitLineParameters, digitalMeanValues, analogFitStdDevs, (digitalStdDev_highGain, digitalStdDev_mediumGain)) = fit2DynamicScanSlopes(analog[:, 35, 50, 40], digital[:, 35, 50, 40])
+i = 1
 
