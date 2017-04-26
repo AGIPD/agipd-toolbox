@@ -12,6 +12,11 @@ dataFileName = sys.argv[1]
 dataPathInFile = '/entry/instrument/detector/data'
 saveFileName = sys.argv[2]
 
+print('\n\n\nstart gatherCurrentSourceScanData')
+print('dataFileName = ', dataFileName)
+print('saveFileName = ', saveFileName)
+print('')
+
 f = h5py.File(dataFileName, 'r', libver='latest')
 dataCount = int(f[dataPathInFile].shape[0] / 2 / 352)
 

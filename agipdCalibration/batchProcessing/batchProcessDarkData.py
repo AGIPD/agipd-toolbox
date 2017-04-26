@@ -8,7 +8,7 @@ import time
 fileName = sys.argv[1]
 saveFileName = sys.argv[2]
 
-print('\n\n\nstart batchProcessDarkCal')
+print('\n\n\nstart batchProcessDarkData')
 print('fileName = ', fileName)
 print('saveFileName = ', saveFileName)
 print('')
@@ -44,4 +44,4 @@ print('saving done')
 
 saveFile.close()
 
-print('batchProcessDarkCal took time:  ', time.time() - totalTime, '\n\n')
+print('batchProcessDarkData took time:  ', time.time() - totalTime, '\n\n')

@@ -15,13 +15,22 @@ import pyqtgraph as pg
 # saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/combinedCalibrationConstants_m' + str(moduleNumber) + '.h5'
 
 analogGainsFileName = sys.argv[1]
-digitalMeansFileName =sys.argv[2]
+digitalMeansFileName = sys.argv[2]
 darkOffsetFileName = sys.argv[3]
 photonSpacingFileName = sys.argv[4]
 photonSpacingCellNumber = int(float(sys.argv[5]))
 keV_perPhoton = float(sys.argv[6])
-saveFileName = float(sys.argv[7])
+saveFileName = sys.argv[7]
 
+print('\n\n\nstart gatherCurrentSourceScanData')
+print('analogGainsFileName = ', analogGainsFileName)
+print('digitalMeansFileName = ', digitalMeansFileName)
+print('darkOffsetFileName = ', darkOffsetFileName)
+print('photonSpacingFileName = ', photonSpacingFileName)
+print('photonSpacingCellNumber = ', photonSpacingCellNumber)
+print('keV_perPhoton = ', keV_perPhoton)
+print('saveFileName = ', saveFileName)
+print('')
 
 analogGains = h5py.File(analogGainsFileName, 'r', libver='latest')['/analogGains'][...]
 anlogLineOffsets = h5py.File(analogGainsFileName, 'r', libver='latest')['/anlogLineOffsets'][...]

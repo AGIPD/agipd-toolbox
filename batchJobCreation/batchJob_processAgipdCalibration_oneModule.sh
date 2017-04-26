@@ -27,7 +27,7 @@ processingFilesFolder=${14}
 
 python ${processingFilesFolder}batchProcessing/gatherDarkData.py ${darkDataFileName} ${gatheredDarkDataFileName}
 
-python ${processingFilesFolder}batchProcessing/batchProcessDarkCal.py ${gatheredDarkDataFileName} ${darkOffsetFileName}
+python ${processingFilesFolder}batchProcessing/batchProcessDarkData.py ${gatheredDarkDataFileName} ${darkOffsetFileName}
 
 python ${processingFilesFolder}batchProcessing/gatherXRayTubeData.py ${xRayTubeDataFileName} ${gatheredXRayTubeDataFileName}
 

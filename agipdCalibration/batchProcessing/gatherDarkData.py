@@ -38,8 +38,6 @@ dset_digital[...] = digital
 saveFile.close()
 print('saving done')
 
-f.close()
-
 print('gatherDarkData took time:  ', time.time() - totalTime, '\n\n')
 
 
