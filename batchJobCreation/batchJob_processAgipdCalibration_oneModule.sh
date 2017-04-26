@@ -33,7 +33,7 @@ python ${processingFilesFolder}batchProcessing/gatherXRayTubeData.py ${xRayTubeD
 
 python ${processingFilesFolder}batchProcessing/batchProcessXRayTubeData.py ${gatheredXRayTubeDataFileName} ${photonSpacingFileName}
 
-python ${processingFilesFolder}batchProcessing/gatherPulsedCapacitorData.py ${currentSourceScanFileName} ${gatheredCurrentSourceScanFileName}
+python ${processingFilesFolder}batchProcessing/gatherCurrentSourceScanData.py ${currentSourceScanFileName} ${gatheredCurrentSourceScanFileName}
 
 python ${processingFilesFolder}batchProcessing/batchProcessCurrentSourceScan.py ${gatheredCurrentSourceScanFileName} ${analogGainsFileName} ${digitalMeansFileName}
 
