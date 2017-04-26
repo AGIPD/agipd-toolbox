@@ -27,7 +27,7 @@ do
 
     combinedCalibrationConstantsFileName=combinedCalibrationConstants_m${moduleNumber}.h5
 
-    ./processAgipdCalibration_oneModule.sh ${xRayTubeDataFileName} \
+    ${batchJobCreationFolder}processAgipdCalibration_oneModule.sh ${xRayTubeDataFileName} \
                                                 ${gatheredXRayTubeDataFileName} \
                                                 ${photonSpacingFileName} \
                                                 ${currentSourceScanFileName} \
