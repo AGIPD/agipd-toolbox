@@ -26,7 +26,7 @@ if __name__ == '__main__':
     saveFileName_analogGains = sys.argv[2]
     saveFileName_digitalMeans = sys.argv[3]
 
-    print('\n\n\nstart batchProcessPulsedCapacitor')
+    print('\n\n\nstart batchProcessCurrentSourceScan')
     print('dataFileName = ', dataFileName)
     print('saveFileName_analogGains = ', saveFileName_analogGains)
     print('saveFileName_digitalMeans = ', saveFileName_digitalMeans)
