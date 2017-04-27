@@ -22,7 +22,7 @@ photonSpacingCellNumber = int(float(sys.argv[5]))
 keV_perPhoton = float(sys.argv[6])
 saveFileName = sys.argv[7]
 
-print('\n\n\nstart gatherCurrentSourceScanData')
+print('\n\n\nstart combineCalibrationData')
 print('analogGainsFileName = ', analogGainsFileName)
 print('digitalMeansFileName = ', digitalMeansFileName)
 print('darkOffsetFileName = ', darkOffsetFileName)
