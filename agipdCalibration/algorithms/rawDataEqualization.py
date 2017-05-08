@@ -1,6 +1,6 @@
 import numpy as np
 
-
+# following code mimics "analogCorrected = (analog - darkOffset) * analogGains_keV[gainStage]"
 def equalizeRawData_oneBurst(analog, digital, analogGains_keV, digitalThresholds, darkOffsets):
     gainStage = computeGainStage(digital, digitalThresholds)
 
