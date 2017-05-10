@@ -124,33 +124,6 @@ def get2DigitalMeans(digital, refinementStepsCount=3, minDigitalSpacing=400):
 
 
 def fit3DynamicScanSlopes(analog, digital):
-    ##### find_peaks_cwt
-    # digitalHistogramEdges = np.arange(np.min(digital), np.max(digital))
-    # (digitalHistogram, _) = np.histogram(digital, digitalHistogramEdges)
-    #
-    # plt.plot(digitalHistogramEdges[0:-1], digitalHistogram)
-    #
-    # smoothWindowRange = (4, 50)  # expect peak widths to be in the range of 4-50 ADC counts
-    # smoothWindowStep = 8
-    # peakLocations = np.array(
-    #     find_peaks_cwt(digitalHistogram, np.arange(smoothWindowRange[0], smoothWindowRange[1], smoothWindowStep)))
-    #
-    # peakValues = digitalHistogram[peakLocations]
-    # if peakValues.size < 2:
-    #     return ([], float("inf"))
-    # valueSortedPeakLocations = peakLocations[np.argsort(peakValues)[::-1]]
-    # digitalMeanValues = digitalHistogramEdges[valueSortedPeakLocations[0:2].astype(int)][::-1]
-    #####
-
-    ##### k-means
-    # digitalMeanValues = np.array(
-    #     KMeans(n_clusters=2, max_iter=5, init=np.array([[4000], [7000]]), precompute_distances=True, tol=1e-6, n_jobs=1, copy_x=False)
-    #         .fit(digital.reshape(-1, 1)).cluster_centers_).astype('uint16')
-    # digitalMeanValues.sort()
-    # print(digitalMeanValues)
-    #####
-
-
     try:
         ###### simplified k-means
         digitalMeanValues = get3DigitalMeans(digital, refinementStepsCount=3, minDigitalSpacing=600)
@@ -172,7 +145,7 @@ def fit3DynamicScanSlopes(analog, digital):
                    np.array(np.nonzero(thresholds[1] < digital)[0])]
 
     stdDevOutlierCutoffPart = 0.02
-    linearFitDataShrinkFactor = 0.3
+    linearFitDataShrinkFactor = 0.15
     shrinkedGainIndices = []
     digitalStdDevs = []
     for i in np.arange(0, len(gainIndices)):
