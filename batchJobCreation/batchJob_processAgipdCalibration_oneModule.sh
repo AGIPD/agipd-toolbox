@@ -9,21 +9,24 @@ xRayTubeDataFileName=$1
 gatheredXRayTubeDataFileName=$2
 photonSpacingFileName=$3
 
-currentSourceScanFileName=$4
-gatheredCurrentSourceScanFileName=$5
-analogGainsFileName=$6
-digitalMeansFileName=$7
+currentSourceScanFileName_column1and5=$4
+currentSourceScanFileName_column2and6=$5
+currentSourceScanFileName_column3and7=$6
+currentSourceScanFileName_column4and8=$7
+gatheredCurrentSourceScanFileName=$8
+analogGainsFileName=$9
+digitalMeansFileName=${10}
 
-darkDataFileName=$8
-gatheredDarkDataFileName=$9
-darkOffsetFileName=${10}
+darkDataFileName=${11}
+gatheredDarkDataFileName=${12}
+darkOffsetFileName=${13}
 
-photonSpacingCellNumber=${11}
-keV_perPhoton=${12}
+photonSpacingCellNumber=${14}
+keV_perPhoton=${15}
 
-combinedCalibrationConstantsFileName=${13}
+combinedCalibrationConstantsFileName=${16}
 
-processingFilesFolder=${14}
+processingFilesFolder=${17}
 
 python ${processingFilesFolder}batchProcessing/gatherDarkData.py ${darkDataFileName} ${gatheredDarkDataFileName}
 

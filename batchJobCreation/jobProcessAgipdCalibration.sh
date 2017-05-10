@@ -20,7 +20,10 @@ do
     gatheredXRayTubeDataFileName=${workspaceFolder}xRayTubeData_m${moduleNumber}.h5
     photonSpacingFileName=${workspaceFolder}photonSpacing_m${moduleNumber}.h5
 
-    currentSourceScanFileName=/gpfs/cfel/fsds/labs/processed/m${moduleNumber}_m233_drscsvr160_i80_00002.nxs
+    currentSourceScanFileName_column1and5=/gpfs/cfel/fsds/labs/processed/calibration_1.1/drscs_step/m${moduleNumber}_cdslow_col1and5_00000.nxs
+    currentSourceScanFileName_column2and6=/gpfs/cfel/fsds/labs/processed/calibration_1.1/drscs_step/m${moduleNumber}_cdslow_col2and6_00000.nxs
+    currentSourceScanFileName_column3and7=/gpfs/cfel/fsds/labs/processed/calibration_1.1/drscs_step/m${moduleNumber}_cdslow_col3and7_00000.nxs
+    currentSourceScanFileName_column4and8=/gpfs/cfel/fsds/labs/processed/calibration_1.1/drscs_step/m${moduleNumber}_cdslow_col4and8_00000.nxs
     gatheredCurrentSourceScanFileName=${workspaceFolder}currentSourceScanData_m${moduleNumber}_chunked.h5
     analogGainsFileName=${workspaceFolder}analogGains_m${moduleNumber}.h5
     digitalMeansFileName=${workspaceFolder}digitalMeans_m${moduleNumber}.h5
@@ -30,7 +33,10 @@ do
     ${batchJobCreationFolder}processAgipdCalibration_oneModule.sh ${xRayTubeDataFileName} \
                                                 ${gatheredXRayTubeDataFileName} \
                                                 ${photonSpacingFileName} \
-                                                ${currentSourceScanFileName} \
+                                                ${currentSourceScanFileName_column1and5} \
+                                                ${currentSourceScanFileName_column2and6} \
+                                                ${currentSourceScanFileName_column3and7} \
+                                                ${currentSourceScanFileName_column4and8} \
                                                 ${gatheredCurrentSourceScanFileName} \
                                                 ${analogGainsFileName} \
                                                 ${digitalMeansFileName} \

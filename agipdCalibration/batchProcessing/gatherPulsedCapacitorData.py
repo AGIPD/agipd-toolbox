@@ -37,14 +37,6 @@ for row in np.arange(8):
     fileNamePattern = folderName + 'row' + str(row + 1) + '/m' + loadModule + '*'
     fileName = glob.glob(fileNamePattern)[0]
 
-    # workaround for corrupt file
-    if fileName == '/gpfs/cfel/fsds/labs/calibration/current/1Mpix_calib/wing2/drspc/row7/m3_drspc_00006.nxs':
-        # print('workaround!!!!!!! Skipping file ', fileName)
-        # continue
-        print('workaround!!!!!!! Instead of taking coorupt ', fileName, ' the file ')
-        fileName = '/gpfs/cfel/fsds/labs/calibration/current/wing2/drspc/m3_drspc7e_00000.nxs'
-        print(fileName, ' will be taken!')
-
     columnsToLoadPerIteration = 512
 
     f = h5py.File(fileName, 'r', libver='latest')

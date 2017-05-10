@@ -16,14 +16,18 @@ import pyqtgraph as pg
 #
 # pg.image(photonSpacing.transpose())
 
-dataFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/python_saved_workspace/mokalphaData.h5'
+dataFileName = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/drscs_step/combined.h5'
+# dataFileName = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/drscs_step/m1_cdslow_col1and5_00000.nxs'
+# dataPathInFile = '/entry/instrument/detector/data'
 
 f = h5py.File(dataFileName, 'r', libver='latest')
 analog = f['analog'][...]
+# rawData = f[dataPathInFile][..., 0:128, 0:512]
+# rawData.shape = (-1, 352, 2, 128, 512)
+# analog = rawData[:, :, 0, :, :]
 
-getOnePhotonAdcCountsXRayTubeData(analog[:,8,125], applyLowpass=True, localityRadius=801, lwopassSamplePointsCount=1000)
 
-plt.plot(analog[:,8,125],'.')
+plt.plot(analog[:, 10, 8, 0],'.')
 plt.show()
 
 i = 1

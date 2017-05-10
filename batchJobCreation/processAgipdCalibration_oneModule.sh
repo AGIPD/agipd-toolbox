@@ -4,26 +4,29 @@ xRayTubeDataFileName=$1
 gatheredXRayTubeDataFileName=$2
 photonSpacingFileName=$3
 
-currentSourceScanFileName=$4
-gatheredCurrentSourceScanFileName=$5
-analogGainsFileName=$6
-digitalMeansFileName=$7
-processingFilesFolder=$8
+currentSourceScanFileName_column1and5=$4
+currentSourceScanFileName_column2and6=$5
+currentSourceScanFileName_column3and7=$6
+currentSourceScanFileName_column4and8=$7
+gatheredCurrentSourceScanFileName=$8
+analogGainsFileName=$9
+digitalMeansFileName=${10}
+processingFilesFolder=${11}
 
-darkDataFileName=$9
-gatheredDarkDataFileName=${10}
-darkOffsetFileName=${11}
+darkDataFileName=${12}
+gatheredDarkDataFileName=${13}
+darkOffsetFileName=${14}
 
-photonSpacingCellNumber=${12}
-keV_perPhoton=${13}
+photonSpacingCellNumber=${15}
+keV_perPhoton=${16}
 
-combinedCalibrationConstantsFileName=${14}
+combinedCalibrationConstantsFileName=${17}
 
-workspaceFolder=${15}
+workspaceFolder=${18}
 
-moduleNumber=${16}
+moduleNumber=${19}
 
-batchJobCreationFolder=${17}
+batchJobCreationFolder=${20}
 
 sbatch --job-name=processAgipdCalibration_module${moduleNumber} \
 		--output=${workspaceFolder}batchJobProcessAgipdCalibration_m${moduleNumber}.output \
@@ -32,7 +35,10 @@ sbatch --job-name=processAgipdCalibration_module${moduleNumber} \
 		${xRayTubeDataFileName} \
 		${gatheredXRayTubeDataFileName} \
 		${photonSpacingFileName} \
-		${currentSourceScanFileName} \
+		${currentSourceScanFileName_column1and5} \
+        ${currentSourceScanFileName_column2and6} \
+        ${currentSourceScanFileName_column3and7} \
+        ${currentSourceScanFileName_column4and8} \
 		${gatheredCurrentSourceScanFileName} \
 		${analogGainsFileName} \
 		${digitalMeansFileName} \
