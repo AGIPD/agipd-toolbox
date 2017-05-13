@@ -2,38 +2,10 @@ import numpy as np
 from scipy.signal import convolve
 from scipy.signal import medfilt
 
-
 # import matplotlib.pyplot as plt
 
 
 def fit2DynamicScanSlopes(analog, digital):
-    ##### find_peaks_cwt
-    # digitalHistogramEdges = np.arange(np.min(digital), np.max(digital))
-    # (digitalHistogram, _) = np.histogram(digital, digitalHistogramEdges)
-    #
-    # plt.plot(digitalHistogramEdges[0:-1], digitalHistogram)
-    #
-    # smoothWindowRange = (4, 50)  # expect peak widths to be in the range of 4-50 ADC counts
-    # smoothWindowStep = 8
-    # peakLocations = np.array(
-    #     find_peaks_cwt(digitalHistogram, np.arange(smoothWindowRange[0], smoothWindowRange[1], smoothWindowStep)))
-    #
-    # peakValues = digitalHistogram[peakLocations]
-    # if peakValues.size < 2:
-    #     return ([], float("inf"))
-    # valueSortedPeakLocations = peakLocations[np.argsort(peakValues)[::-1]]
-    # digitalMeanValues = digitalHistogramEdges[valueSortedPeakLocations[0:2].astype(int)][::-1]
-    #####
-
-    ##### k-means
-    # digitalMeanValues = np.array(
-    #     KMeans(n_clusters=2, max_iter=5, init=np.array([[4000], [7000]]), precompute_distances=True, tol=1e-6, n_jobs=1, copy_x=False)
-    #         .fit(digital.reshape(-1, 1)).cluster_centers_).astype('uint16')
-    # digitalMeanValues.sort()
-    # print(digitalMeanValues)
-    #####
-
-
     try:
         ###### simplified k-means
         digitalMeanValues = get2DigitalMeans(digital, refinementStepsCount=3, minDigitalSpacing=300)
@@ -126,7 +98,7 @@ def get2DigitalMeans(digital, refinementStepsCount=3, minDigitalSpacing=400):
 def fit3DynamicScanSlopes(analog, digital):
     try:
         ###### simplified k-means
-        digitalMeanValues = get3DigitalMeans(digital, refinementStepsCount=3, minDigitalSpacing=600)
+        digitalMeanValues = get3DigitalMeans(digital, refinementStepsCount=3, minDigitalSpacing=800)
         # print(digitalMeanValues)
     except ValueError:
         fitLineParameters = []
@@ -155,6 +127,7 @@ def fit3DynamicScanSlopes(analog, digital):
         shrinkedGainIndices.append(gainIndices[i][cutoffRank:-cutoffRank])
 
         cutoffRank = int(np.floor(stdDevOutlierCutoffPart * dataCount))
+
         digitalStdDevs.append(np.std(np.sort(digital[gainIndices[i]])[cutoffRank:-(cutoffRank + 1)]))
 
     # print(shrinkedGainIndices)
@@ -185,56 +158,61 @@ def fit3DynamicScanSlopes(analog, digital):
     #     plt.plot(gainIndices[i], np.polyval(fitLineParameters[i], gainIndices[i]), linewidth=2, color='g')
     #     plt.plot(shrinkedGainIndices[i], np.polyval(fitLineParameters[i], shrinkedGainIndices[i]), linewidth=2, color='r')
     # print(analogFitStdDevs)
-
     return fitLineParameters, digitalMeanValues, analogFitStdDevs, (digitalStdDevs[0], digitalStdDevs[1], digitalStdDevs[2])
 
 
 # simplified k-means
 def get3DigitalMeans(digital, refinementStepsCount=3, minDigitalSpacing=600):
-    binWidth = 100
-    digitalHistogramEdges = np.arange(np.min(digital), np.max(digital) + binWidth, binWidth, dtype='int16')
-    if digitalHistogramEdges.size == 0 or digitalHistogramEdges[-1] - digitalHistogramEdges[0] < 2 * minDigitalSpacing:
-        raise ValueError
-    (digitalHistogram, _) = np.histogram(digital, digitalHistogramEdges)
-    # plt.plot(digitalHistogramEdges[0:-1], digitalHistogram)
+    # binWidth = 100
+    # digitalHistogramEdges = np.arange(np.min(digital), np.max(digital) + binWidth, binWidth, dtype='int16')
+    # if digitalHistogramEdges.size == 0 or digitalHistogramEdges[-1] - digitalHistogramEdges[0] < 2 * minDigitalSpacing:
+    #     raise ValueError
+    # (digitalHistogram, _) = np.histogram(digital, digitalHistogramEdges)
+    # # plt.plot(digitalHistogramEdges[0:-1], digitalHistogram)
+    #
+    # digitalHistogramSmooth = convolve(digitalHistogram, np.ones((3,)), mode='same')
+    # minDigitalSpacing = minDigitalSpacing - 2 * binWidth
+    # # plt.plot(digitalHistogramEdges[0:-1], digitalHistogramSmooth)
+    #
+    # mostFrequentValues = digitalHistogramEdges[np.argsort(digitalHistogramSmooth)[::-1]][0:np.count_nonzero(digitalHistogramSmooth)]
+    # # print(mostFrequentValues)
+    # means = np.array([mostFrequentValues[0], mostFrequentValues[-1], mostFrequentValues[-2]])
+    # secondMeanFound = False
+    # for i in np.arange(1, mostFrequentValues.size):
+    #     if abs(means[0] - mostFrequentValues[i]) >= minDigitalSpacing:
+    #         means[1] = mostFrequentValues[i]
+    #         secondMeanIndex = i
+    #         secondMeanFound = True
+    #         break
+    #
+    # if not secondMeanFound or secondMeanIndex == mostFrequentValues.size - 1:
+    #     raise ValueError
+    #
+    # thirdMeanFound = False
+    # for i in np.arange(secondMeanIndex + 1, mostFrequentValues.size):
+    #     if abs(means[0] - mostFrequentValues[i]) >= minDigitalSpacing and abs(means[1] - mostFrequentValues[i]) >= minDigitalSpacing:
+    #         means[2] = mostFrequentValues[i]
+    #         thirdMeanFound = True
+    #         break
+    #
+    # if not thirdMeanFound:
+    #     raise ValueError
+    #
+    # means.sort()
 
-    digitalHistogramSmooth = convolve(digitalHistogram, np.ones((3,)), mode='same')
-    minDigitalSpacing = minDigitalSpacing - 2 * binWidth
-    # plt.plot(digitalHistogramEdges[0:-1], digitalHistogramSmooth)
+    min = np.median(digital[1:6])
+    max = np.median(digital[-6:-1])
+    means = np.array((min, (min + max) / 2, max))
 
-    mostFrequentValues = digitalHistogramEdges[np.argsort(digitalHistogramSmooth)[::-1]][0:np.count_nonzero(digitalHistogramSmooth)]
-    # print(mostFrequentValues)
-    means = np.array([mostFrequentValues[0], mostFrequentValues[-1], mostFrequentValues[-2]])
-    secondMeanFound = False
-    for i in np.arange(1, mostFrequentValues.size):
-        if abs(means[0] - mostFrequentValues[i]) >= minDigitalSpacing:
-            means[1] = mostFrequentValues[i]
-            secondMeanIndex = i
-            secondMeanFound = True
-            break
-
-    if not secondMeanFound or secondMeanIndex == mostFrequentValues.size - 1:
-        raise ValueError
-
-    thirdMeanFound = False
-    for i in np.arange(secondMeanIndex + 1, mostFrequentValues.size):
-        if abs(means[0] - mostFrequentValues[i]) >= minDigitalSpacing and abs(means[1] - mostFrequentValues[i]) >= minDigitalSpacing:
-            means[2] = mostFrequentValues[i]
-            thirdMeanFound = True
-            break
-
-    if not thirdMeanFound:
-        raise ValueError
-
-    means.sort()
+    digital_perforated = np.hstack((digital[1:20], digital[21::5]))
 
     for _ in np.arange(refinementStepsCount):
         thresholds = ((means[0] + means[1]) / 2, (means[1] + means[2]) / 2)
-        means[0] = np.mean(digital[digital < thresholds[0]])
-        means[1] = np.mean(digital[(thresholds[0] < digital) & (digital < thresholds[1])])
-        means[2] = np.mean(digital[thresholds[1] < digital])
+        means[0] = np.mean(digital_perforated[digital_perforated < thresholds[0]])
+        means[1] = np.mean(digital_perforated[(thresholds[0] < digital_perforated) & (digital_perforated < thresholds[1])])
+        means[2] = np.mean(digital_perforated[thresholds[1] < digital_perforated])
 
-    if means[1] - means[0] < minDigitalSpacing or means[2] - means[1] < minDigitalSpacing:
+    if means[1] - means[0] < minDigitalSpacing or means[2] - means[1] < minDigitalSpacing or np.isnan(means).any():
         raise ValueError
 
     return means

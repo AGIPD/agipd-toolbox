@@ -19,10 +19,10 @@ def computePhotonSpacingOnePixel(analog, linearIndex, perMillInterval):
 
 
 if __name__ == '__main__':
-    # fileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/python_saved_workspace/mokalphaData.h5'
-    # saveFileName = '/gpfs/cfel/cxi/scratch/user/gevorkov/python_saved_workspace/photonSpacing.h5'
-    fileName = sys.argv[1]
-    saveFileName = sys.argv[2]
+    fileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/xRay200.h5'
+    saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/photonSpacing200.h5'
+    # fileName = sys.argv[1]
+    # saveFileName = sys.argv[2]
     print('\n\n\nstart batchProcessXRayTubeData')
     print('fileName = ', fileName)
     print('saveFileName = ', saveFileName)
@@ -39,6 +39,8 @@ if __name__ == '__main__':
     print('loading done')
     f.close()
 
+    analog = analog[1:,...] #first value is always wrong
+
     print('creating linear index')
     linearIndices = np.arange(128 * 512)
     (matrixIndexY, matrixIndexX) = np.unravel_index(linearIndices, (128, 512))
@@ -47,6 +49,14 @@ if __name__ == '__main__':
     perMillInterval = int(np.round(linearIndices.size / 1000))
     for i in np.arange(linearIndices.size):
         pixelList.append((analog[:, matrixIndexY[i], matrixIndexX[i]], i, perMillInterval))
+
+    # computePhotonSpacingOnePixel(*pixelList[0])
+    computePhotonSpacingOnePixel(analog[:, 5, 20], 1, 1)
+
+    # for i in np.arange(linearIndices.size):
+    #     print(i)
+    #     computePhotonSpacingOnePixel(*pixelList[i])
+
 
     print('start parallel computation')
     p = Pool()
@@ -58,10 +68,6 @@ if __name__ == '__main__':
     quality = np.zeros((128, 512))
     for i in np.arange(linearIndices.size):
         (photonSpacing[matrixIndexY[i], matrixIndexX[i]], quality[matrixIndexY[i], matrixIndexX[i]]) = parallelResult[i]
-
-    # for i in np.arange(linearIndices.size):
-    #     computePhotonSpacingOnePixel(*pixelList[i])
-
     print('saving')
 
     dset_photonSpacing[...] = photonSpacing

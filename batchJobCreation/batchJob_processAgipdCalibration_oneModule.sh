@@ -4,6 +4,8 @@
 #SBATCH --time=48:00:00                 
 #SBATCH --nodes=1
 #SBATCH --cores-per-socket=16
+#SBATCH --threads-per-core=2
+#SBATCH --sockets-per-node=2
 
 xRayTubeDataFileName=$1
 gatheredXRayTubeDataFileName=$2
