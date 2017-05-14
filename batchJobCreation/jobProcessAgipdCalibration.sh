@@ -12,7 +12,7 @@ moduleNumbersToProcess=(1)
 
 for moduleNumber in ${moduleNumbersToProcess[*]}
 do
-    darkDataFileName=/gpfs/cfel/fsds/labs/processed/calibration_1.1/M310_full_calibration/02_xray_dark/m${moduleNumber}_dark_memcell175_00000.nxs
+    darkDataFileName=/gpfs/cfel/fsds/labs/processed/calibration_1.1/M310_full_calibration/03_conventional_dark/m${moduleNumber}_dark_00000.nxs
     gatheredDarkDataFileName=${workspaceFolder}darkData_m${moduleNumber}.h5
     darkOffsetFileName=${workspaceFolder}darkOffset_m${moduleNumber}.h5
 

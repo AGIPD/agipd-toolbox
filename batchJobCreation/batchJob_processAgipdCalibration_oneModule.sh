@@ -7,6 +7,9 @@
 #SBATCH --threads-per-core=2
 #SBATCH --sockets-per-node=2
 
+source /gpfs/cfel/cxi/common/cfelsoft-rh7/setup.sh
+module load cfel-anaconda/py3-4.3.0
+
 xRayTubeDataFileName=$1
 gatheredXRayTubeDataFileName=$2
 photonSpacingFileName=$3

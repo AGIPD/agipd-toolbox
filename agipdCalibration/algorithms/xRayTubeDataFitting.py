@@ -82,6 +82,7 @@ def indexes_peakutilsManuallyAdjusted(y, thres=0.3, min_dist=1):
     -------
     ndarray
         Array containing the indexes of the peaks that were detected
+        
     '''
     if isinstance(y, np.ndarray) and np.issubdtype(y.dtype, np.unsignedinteger):
         raise ValueError("y must be signed")
@@ -91,7 +92,7 @@ def indexes_peakutilsManuallyAdjusted(y, thres=0.3, min_dist=1):
 
     # find the peaks by using the first order difference
     dy = np.diff(y)
-    peaks = np.where((np.hstack([dy, 0.]) <= 0.)
+    peaks = np.where((np.hstack([dy, 0.]) <= 0.)    #Addition by yaroslav.gevorkov@desy.de: instead of <, here <=
                      & (np.hstack([0., dy]) >= 0.)
                      & (y > thres))[0]
 
