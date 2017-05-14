@@ -68,7 +68,7 @@ if __name__ == '__main__':
     quality = np.zeros((128, 512))
     for i in np.arange(linearIndices.size):
         (photonSpacing[matrixIndexY[i], matrixIndexX[i]], quality[matrixIndexY[i], matrixIndexX[i]]) = parallelResult[i]
-    print('saving')
+    print('start saving results at', saveFileName)
 
     dset_photonSpacing[...] = photonSpacing
     dset_quality[...] = quality

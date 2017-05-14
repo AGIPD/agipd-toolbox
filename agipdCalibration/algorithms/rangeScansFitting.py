@@ -131,7 +131,7 @@ def fit3DynamicScanSlopes(analog, digital):
 
     maxSpikeWidth = 2
     minSpkieHeight = 400
-    analog = removeSpikes(analog, maxSpikeWidth, minSpkieHeight)
+    analog = removeSpikes(analog, maxSpikeWidth, minSpkieHeight)    # requested by Aschkan. Really needed?
 
     fitLineParameters = []
     for i in np.arange(0, len(gainIndices)):
