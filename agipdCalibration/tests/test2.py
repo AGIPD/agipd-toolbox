@@ -19,7 +19,7 @@ from agipdCalibration.algorithms.rangeScansFitting import *
 dataFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/currentSource_chunked.h5'
 dataFile = h5py.File(dataFileName, 'r', libver='latest')
 
-consideredPixelsY = (64, 128)
+consideredPixelsY = (0, 64)
 consideredPixelsX = (64, 128)
 
 print('loading data, rows ', consideredPixelsY[0], '-', consideredPixelsY[1], ' columns ', + consideredPixelsX[0], '-', consideredPixelsX[1],
@@ -30,8 +30,8 @@ digital = dataFile['/digital'][:, :, consideredPixelsY[0]:consideredPixelsY[1], 
 print('took time:  ', time.time() - t)
 dataFile.close()
 
-analog_local = analog[:, 170, 15, 3]
-digital_local = digital[:, 170, 15, 3]
+analog_local = analog[:, 170, 0, 0]
+digital_local = digital[:, 170, 0, 0]
 
 fitSlopesResult = fit3DynamicScanSlopes(analog_local, digital_local)
 

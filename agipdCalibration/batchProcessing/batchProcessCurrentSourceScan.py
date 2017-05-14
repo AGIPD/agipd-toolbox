@@ -17,14 +17,14 @@ def computeCurrentSourceCalibrationOneMemoryCell(analog, digital, linearIndex, p
 
 
 if __name__ == '__main__':
-    workspacePath = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/'
-    dataFileName = workspacePath + 'currentSource_chunked.h5'
-    saveFileName_analogGains = workspacePath + 'analogGains_currentSource.h5'
-    saveFileName_digitalMeans = workspacePath + 'digitalMeans_currentSource.h5'
+    # workspacePath = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/'
+    # dataFileName = workspacePath + 'currentSource_chunked.h5'
+    # saveFileName_analogGains = workspacePath + 'analogGains_currentSource.h5'
+    # saveFileName_digitalMeans = workspacePath + 'digitalMeans_currentSource.h5'
 
-    # dataFileName = sys.argv[1]
-    # saveFileName_analogGains = sys.argv[2]
-    # saveFileName_digitalMeans = sys.argv[3]
+    dataFileName = sys.argv[1]
+    saveFileName_analogGains = sys.argv[2]
+    saveFileName_digitalMeans = sys.argv[3]
 
     print('\n\n\nstart batchProcessCurrentSourceScan')
     print('dataFileName = ', dataFileName)

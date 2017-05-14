@@ -5,7 +5,7 @@ workspaceFolder=/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_full/
 batchJobCreationFolder=${AGIPDCALIBRATION_INSTALLATION_DIR}batchJobCreation/
 processingFilesFolder=${AGIPDCALIBRATION_INSTALLATION_DIR}agipdCalibration/
 
-keV_perPhoton=1
+keV_perPhoton=8.04
 photonSpacingCellNumber=175
 
 moduleNumbersToProcess=(1)

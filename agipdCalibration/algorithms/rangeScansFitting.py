@@ -116,7 +116,6 @@ def fit3DynamicScanSlopes(analog, digital):
                    np.array(np.nonzero((thresholds[0] < digital) & (digital < thresholds[1]))[0]),
                    np.array(np.nonzero(thresholds[1] < digital)[0])]
 
-    stdDevOutlierCutoffPart = 0.02
     linearFitDataShrinkFactor = 0.15
     shrinkedGainIndices = []
     digitalStdDevs = []
@@ -126,9 +125,7 @@ def fit3DynamicScanSlopes(analog, digital):
         cutoffRank = int(np.floor(linearFitDataShrinkFactor * dataCount))
         shrinkedGainIndices.append(gainIndices[i][cutoffRank:-cutoffRank])
 
-        cutoffRank = int(np.floor(stdDevOutlierCutoffPart * dataCount))
-
-        digitalStdDevs.append(np.std(np.sort(digital[gainIndices[i]])[cutoffRank:-(cutoffRank + 1)]))
+        digitalStdDevs.append(np.std(digital[gainIndices[i]]))
 
     # print(shrinkedGainIndices)
 
