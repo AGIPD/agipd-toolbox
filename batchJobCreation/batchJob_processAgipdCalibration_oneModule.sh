@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#SBATCH --partition=cfel
+#SBATCH --partition=all
 #SBATCH --time=48:00:00                 
 #SBATCH --nodes=1
 #SBATCH --cores-per-socket=16
