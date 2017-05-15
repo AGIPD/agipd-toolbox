@@ -28,7 +28,7 @@ do
     analogGainsFileName=${workspaceFolder}analogGains_m${moduleNumber}.h5
     digitalMeansFileName=${workspaceFolder}digitalMeans_m${moduleNumber}.h5
 
-    combinedCalibrationConstantsFileName=combinedCalibrationConstants_m${moduleNumber}.h5
+    combinedCalibrationConstantsFileName=${workspaceFolder}combinedCalibrationConstants_m${moduleNumber}.h5
 
     ${batchJobCreationFolder}processAgipdCalibration_oneModule.sh ${xRayTubeDataFileName} \
                                                 ${gatheredXRayTubeDataFileName} \
