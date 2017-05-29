@@ -30,8 +30,8 @@ digital = dataFile['/digital'][:, :, consideredPixelsY[0]:consideredPixelsY[1], 
 print('took time:  ', time.time() - t)
 dataFile.close()
 
-analog_local = analog[:, 170, 0, 0]
-digital_local = digital[:, 170, 0, 0]
+analog_local = analog[:, 170, 15, 25]
+digital_local = digital[:, 170, 15, 25]
 
 fitSlopesResult = fit3DynamicScanSlopes(analog_local, digital_local)
 

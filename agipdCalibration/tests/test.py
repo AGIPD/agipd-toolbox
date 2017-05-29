@@ -22,12 +22,14 @@ import pyqtgraph as pg
 # pg.image(photonSpacing200.transpose())
 # pg.image((photonSpacing80-photonSpacing200).transpose())
 
-dataFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/photonSpacing175.h5'
+# dataFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_full/photonSpacing_m1.h5'
+dataFileName = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/photonSpacing_m1_new.h5'
 f = h5py.File(dataFileName, 'r', libver='latest')
 photonSpacing175 = f['photonSpacing'][...]
 
 pg.image(photonSpacing175.transpose())
-
+plt.imshow(photonSpacing175, vmin=30, vmax=130)
+plt.show()
 
 
 

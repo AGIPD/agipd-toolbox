@@ -5,9 +5,9 @@ from agipdCalibration.tests.h5py_display import h5disp
 import matplotlib.pyplot as plt
 import pyqtgraph as pg
 
-workspacePath = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/'
-dataFileName_analogGains = workspacePath + 'analogGains_currentSource.h5'
-dataFileName_digitalMeans = workspacePath + 'digitalMeans_currentSource.h5'
+workspacePath = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_full/'
+dataFileName_analogGains = workspacePath + 'analogGains_m1.h5'
+dataFileName_digitalMeans = workspacePath + 'digitalMeans_m1.h5'
 
 dataFile_analogGains = h5py.File(dataFileName_analogGains, 'r', libver='latest')
 dataFile_digitalMeans = h5py.File(dataFileName_digitalMeans, 'r', libver='latest')

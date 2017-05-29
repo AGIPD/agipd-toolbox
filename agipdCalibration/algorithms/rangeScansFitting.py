@@ -2,6 +2,7 @@ import numpy as np
 from scipy.signal import convolve
 from scipy.signal import medfilt
 
+
 # import matplotlib.pyplot as plt
 
 
@@ -131,30 +132,33 @@ def fit3DynamicScanSlopes(analog, digital):
 
     maxSpikeWidth = 2
     minSpkieHeight = 400
-    analog = removeSpikes(analog, maxSpikeWidth, minSpkieHeight)    # requested by Aschkan. Really needed?
+    # analog = removeSpikes(analog, maxSpikeWidth, minSpkieHeight)    # requested by Aschkan. Really needed?
+
+    equalizedXAxis = np.hstack((np.arange(3, 203), np.arange(203, 8203, 10))).astype('float32')
 
     fitLineParameters = []
+    analogFitStdDevs = []
     for i in np.arange(0, len(gainIndices)):
         if len(shrinkedGainIndices[i]) == 0 or shrinkedGainIndices[i][-1] - shrinkedGainIndices[i][0] < 5:  # not enough data for estimation
             fitLineParameters.append(np.array([0, 0]))
-        else:
-            fitLineParameters.append(np.polyfit(shrinkedGainIndices[i].astype('float32'), analog[shrinkedGainIndices[i]], 1))
-
-    analogFitStdDevs = []
-    for i in np.arange(len(fitLineParameters)):
-        if len(shrinkedGainIndices[i]) != 0:
-            analogFitStdDevs.append(np.std(analog[shrinkedGainIndices[i]] - np.polyval(fitLineParameters[i], shrinkedGainIndices[i])))
-        else:
             analogFitStdDevs.append(float('inf'))
+        else:
+            x = equalizedXAxis[shrinkedGainIndices[i]]
+            y = analog[shrinkedGainIndices[i]]
+            fitLineParameters.append(np.polyfit(x, y, 1))
+            analogFitStdDevs.append(np.std(analog[shrinkedGainIndices[i]] - np.polyval(fitLineParameters[i], shrinkedGainIndices[i])))
 
     # plt.hist(np.abs(analog[shrinkedGainIndices[i]] - np.polyval(fitLineParameters[i], shrinkedGainIndices[i])))
 
-    # plt.plot(analog)
-    # plt.hold(True)
-    # for i in np.arange(len(fitLineParameters)):
-    #     plt.plot(gainIndices[i], np.polyval(fitLineParameters[i], gainIndices[i]), linewidth=2, color='g')
-    #     plt.plot(shrinkedGainIndices[i], np.polyval(fitLineParameters[i], shrinkedGainIndices[i]), linewidth=2, color='r')
-    # print(analogFitStdDevs)
+    import matplotlib.pyplot as plt
+    plt.plot(equalizedXAxis, analog)
+    plt.hold(True)
+    for i in np.arange(len(fitLineParameters)):
+        x = equalizedXAxis[shrinkedGainIndices[i]]
+        x_full = equalizedXAxis[gainIndices[i]]
+        plt.plot(x_full, np.polyval(fitLineParameters[i], x_full), linewidth=2, color='g')
+        plt.plot(x, np.polyval(fitLineParameters[i], x), linewidth=2, color='r')
+    print(analogFitStdDevs)
     return fitLineParameters, digitalMeanValues, analogFitStdDevs, (digitalStdDevs[0], digitalStdDevs[1], digitalStdDevs[2])
 
 

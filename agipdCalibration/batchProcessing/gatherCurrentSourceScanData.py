@@ -3,10 +3,10 @@ import time
 import sys
 import numpy as np
 
-# dataFileName_column1and5 = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/drscs_step/m1_cdslow_col1and5_00000.nxs'
-# dataFileName_column2and6 = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/drscs_step/m1_cdslow_col2and6_00000.nxs'
-# dataFileName_column3and7 = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/drscs_step/m1_cdslow_col3and7_00000.nxs'
-# dataFileName_column4and8 = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/drscs_step/m1_cdslow_col4and8_00000.nxs'
+# dataFileName_column1and5 = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/m1_scaled15_00000.nxs'
+# dataFileName_column2and6 = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/m1_scaled26_00000.nxs'
+# dataFileName_column3and7 = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/m1_scaled37_00000.nxs'
+# dataFileName_column4and8 = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/m1_scaled48_00000.nxs'
 # dataPathInFile = '/entry/instrument/detector/data'
 # saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/currentSource_chunked.h5'
 

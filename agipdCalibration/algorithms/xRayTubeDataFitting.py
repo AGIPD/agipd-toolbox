@@ -60,6 +60,7 @@ def manual_gaussian_fit(x, y):
 
     return params[1]
 
+
 def indexes_peakutilsManuallyAdjusted(y, thres=0.3, min_dist=1):
     '''Peak detection routine.
 
@@ -92,7 +93,7 @@ def indexes_peakutilsManuallyAdjusted(y, thres=0.3, min_dist=1):
 
     # find the peaks by using the first order difference
     dy = np.diff(y)
-    peaks = np.where((np.hstack([dy, 0.]) <= 0.)    #Addition by yaroslav.gevorkov@desy.de: instead of <, here <=
+    peaks = np.where((np.hstack([dy, 0.]) <= 0.)  # Addition by yaroslav.gevorkov@desy.de: instead of <, here <=
                      & (np.hstack([0., dy]) >= 0.)
                      & (y > thres))[0]
 
@@ -111,6 +112,7 @@ def indexes_peakutilsManuallyAdjusted(y, thres=0.3, min_dist=1):
 
     return peaks
 
+
 def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=801, lwopassSamplePointsCount=1000):
     if applyLowpass:
         (photonHistoramValues, photonHistogramBins) = getPhotonHistogramLowpassCorrected(analog, localityRadius, lwopassSamplePointsCount)
@@ -128,20 +130,26 @@ def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=
     # plt.plot(photonHistogramBins[0:-1],photonHistoramValues)
     # plt.show()
 
+    minPeakDistance = 25
     x = np.arange(len(photonHistoramValues))
-    y = photonHistogramValuesSmooth #photonHistoramValues
-    roughPeakLocations = indexes_peakutilsManuallyAdjusted(y, thres=0.05, min_dist=50)
+    y = photonHistogramValuesSmooth  # photonHistoramValues
+    roughPeakLocations = indexes_peakutilsManuallyAdjusted(y, thres=0.05, min_dist=minPeakDistance)
 
     peakWidth = 21
     try:
-        peakLocations = peakutils.interpolate(x, y, ind=roughPeakLocations, width=peakWidth, func=manual_gaussian_fit)
+        interpolatedPeakLocations = peakutils.interpolate(x, y, ind=roughPeakLocations, width=peakWidth, func=manual_gaussian_fit)
     except:
         return (0, 0)
-    if peakLocations.size < 2:
+    if interpolatedPeakLocations.size < 2:
         return (0, 0)
 
-    peakLocations = np.clip(peakLocations, 0, len(photonHistoramValues) - 1)
+    peakLocations = np.clip(interpolatedPeakLocations, 0, len(photonHistoramValues) - 1)
 
+    maxPeakRelocation = 15
+    peakLocations = peakLocations[np.abs(peakLocations - roughPeakLocations) <= maxPeakRelocation]
+
+    if peakLocations.size < 2:
+        return (0, 0)
 
     peakIndices = np.round(peakLocations).astype(int)
 
