@@ -6,7 +6,7 @@ import time
 # fileName = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/m1_M314_XRAY_FLUOR_00000.nxs'
 # dataPathInFile = '/entry/instrument/detector/data'
 #
-# saveFileName = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/mokalphaData_m1_new.h5'
+# saveFileName = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/mokalphaData_m1_new_v2.h5'
 
 fileName = sys.argv[1]
 dataPathInFile = '/entry/instrument/detector/data'

@@ -3,17 +3,17 @@ import time
 import sys
 import numpy as np
 
-# dataFileName_column1and5 = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/m1_scaled15_00000.nxs'
-# dataFileName_column2and6 = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/m1_scaled26_00000.nxs'
-# dataFileName_column3and7 = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/m1_scaled37_00000.nxs'
-# dataFileName_column4and8 = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/m1_scaled48_00000.nxs'
+# dataFileNameRoot_column1and5 = '/gpfs/cfel/fsds/labs/calibration/current/m1_drscs_with_scaling_RT_15_00000_part0000'
+# dataFileNameRoot_column2and6 = '/gpfs/cfel/fsds/labs/calibration/current/m1_drscs_with_scaling_RT_26_00001_part0000'
+# dataFileNameRoot_column3and7 = '/gpfs/cfel/fsds/labs/calibration/current/m1_drscs_with_scaling_RT_37_00002_part0000'
+# dataFileNameRoot_column4and8 = '/gpfs/cfel/fsds/labs/calibration/current/m1_drscs_with_scaling_RT_48_00003_part0000'
 # dataPathInFile = '/entry/instrument/detector/data'
 # saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/currentSource_chunked.h5'
 
-dataFileName_column1and5 = sys.argv[1]
-dataFileName_column2and6 = sys.argv[2]
-dataFileName_column3and7 = sys.argv[3]
-dataFileName_column4and8 = sys.argv[4]
+dataFileNameRoot_column1and5 = sys.argv[1]
+dataFileNameRoot_column2and6 = sys.argv[2]
+dataFileNameRoot_column3and7 = sys.argv[3]
+dataFileNameRoot_column4and8 = sys.argv[4]
 dataPathInFile = '/entry/instrument/detector/data'
 saveFileName = sys.argv[5]
 
@@ -21,10 +21,11 @@ print('\n\n\nstart gatherCurrentSourceScanData')
 print('saveFileName = ', saveFileName)
 print('')
 
-fileNames = (dataFileName_column1and5, dataFileName_column2and6, dataFileName_column3and7, dataFileName_column4and8)
+fileNamesRoots = (dataFileNameRoot_column1and5, dataFileNameRoot_column2and6, dataFileNameRoot_column3and7, dataFileNameRoot_column4and8)
 
-f = h5py.File(fileNames[0], 'r', libver='latest')
-dataCount = int(f[dataPathInFile].shape[0] / 2 / 352)
+f = h5py.File(fileNamesRoots[0] + '0.nxs', 'r', libver='latest')
+dataCountPerFile = int(f[dataPathInFile].shape[0] / 2 / 352)
+dataCount = dataCountPerFile * 10
 f.close()
 
 saveFile = h5py.File(saveFileName, "w", libver='latest')
@@ -37,24 +38,26 @@ analog = np.zeros((dataCount, 352, 128, 512), dtype='int16')
 digital = np.zeros((dataCount, 352, 128, 512), dtype='int16')
 
 for i in np.arange(4):
-    t = time.time()
-    print('start loading', fileNames[i])
-    f = h5py.File(fileNames[i], 'r', libver='latest')
-    rawData = f[dataPathInFile][..., 0:128, 0:512]
-    print('took time:  ' + str(time.time() - t))
+    for j in np.arange(10):
+        t = time.time()
+        fileName = fileNamesRoots[i] + str(j) + '.nxs'
+        print('start loading', fileName)
+        f = h5py.File(fileName, 'r', libver='latest')
+        rawData = f[dataPathInFile][..., 0:128, 0:512]
+        print('took time:  ' + str(time.time() - t))
 
-    t = time.time()
-    print('start reshaping')
-    rawData.shape = (dataCount, 352, 2, 128, 512)
-    tmp = rawData[:, :, 0, :, :]
-    analog[..., 0:64, np.arange(3 - i, 512, 4)] = tmp[..., 0:64, np.arange(3 - i, 512, 4)]
-    analog[..., 64:, np.arange(i, 512, 4)] = tmp[..., 64:, np.arange(i, 512, 4)]
-    tmp = rawData[:, :, 1, :, :]
-    digital[..., 0:64, np.arange(3 - i, 512, 4)] = tmp[..., 0:64, np.arange(3 - i, 512, 4)]
-    digital[..., 64:, np.arange(i, 512, 4)] = tmp[..., 64:, np.arange(i, 512, 4)]
-    print('took time:  ' + str(time.time() - t))
+        t = time.time()
+        print('start reshaping')
+        rawData.shape = (dataCountPerFile, 352, 2, 128, 512)
+        tmp = rawData[:, :, 0, :, :]
+        analog[j * dataCountPerFile:(j + 1) * dataCountPerFile, :, 0:64, np.arange(3 - i, 512, 4)] = tmp[..., 0:64, np.arange(3 - i, 512, 4)]
+        analog[j * dataCountPerFile:(j + 1) * dataCountPerFile, :, 64:, np.arange(i, 512, 4)] = tmp[..., 64:, np.arange(i, 512, 4)]
+        tmp = rawData[:, :, 1, :, :]
+        digital[j * dataCountPerFile:(j + 1) * dataCountPerFile, :, 0:64, np.arange(3 - i, 512, 4)] = tmp[..., 0:64, np.arange(3 - i, 512, 4)]
+        digital[j * dataCountPerFile:(j + 1) * dataCountPerFile, :, 64:, np.arange(i, 512, 4)] = tmp[..., 64:, np.arange(i, 512, 4)]
+        print('took time:  ' + str(time.time() - t))
 
-    f.close()
+        f.close()
 
 t = time.time()
 print('')

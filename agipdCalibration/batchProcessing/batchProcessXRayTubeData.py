@@ -19,8 +19,8 @@ def computePhotonSpacingOnePixel(analog, linearIndex, perMillInterval):
 
 
 if __name__ == '__main__':
-    # fileName = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/mokalphaData_m1_new.h5'
-    # saveFileName ='/gpfs/cfel/fsds/labs/processed/calibration_1.1/photonSpacing_m1_new.h5'
+    # fileName = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/mokalphaData_m1_new_v2.h5'
+    # saveFileName ='/gpfs/cfel/fsds/labs/processed/calibration_1.1/photonSpacing_m1_new_v2.h5'
     # fileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/xRay200.h5'
     # saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/photonSpacing200.h5'
     fileName = sys.argv[1]
