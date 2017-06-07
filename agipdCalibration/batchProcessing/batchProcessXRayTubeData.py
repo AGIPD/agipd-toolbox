@@ -10,21 +10,21 @@ def computePhotonSpacingOnePixel(analog, linearIndex, perMillInterval):
     localityRadius = 800
     samplePointsCount = 1000
 
-    (photonSpacing, quality) = getOnePhotonAdcCountsXRayTubeData(analog, localityRadius, samplePointsCount)
+    (photonSpacing, quality, peakStdDevs) = getOnePhotonAdcCountsXRayTubeData(analog, localityRadius, samplePointsCount)
 
     # if np.mod(linearIndex, perMillInterval) == 0:
     #     print(0.1 * linearIndex / perMillInterval, '%')
 
-    return (photonSpacing, quality)
+    return (photonSpacing, quality, peakStdDevs)
 
 
 if __name__ == '__main__':
-    # fileName = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/mokalphaData_m1_new_v2.h5'
-    # saveFileName ='/gpfs/cfel/fsds/labs/processed/calibration_1.1/photonSpacing_m1_new_v2.h5'
+    fileName = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/mokalphaData_m1_new_v2.h5'
+    saveFileName ='/gpfs/cfel/fsds/labs/processed/calibration_1.1/photonSpacing_m1_new_v2.h5'
     # fileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/xRay200.h5'
     # saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/photonSpacing200.h5'
-    fileName = sys.argv[1]
-    saveFileName = sys.argv[2]
+    # fileName = sys.argv[1]
+    # saveFileName = sys.argv[2]
     print('\n\n\nstart batchProcessXRayTubeData')
     print('fileName = ', fileName)
     print('saveFileName = ', saveFileName)
@@ -32,6 +32,7 @@ if __name__ == '__main__':
     saveFile = h5py.File(saveFileName, "w", libver='latest')
     dset_photonSpacing = saveFile.create_dataset("photonSpacing", shape=(128, 512), dtype='int16')
     dset_quality = saveFile.create_dataset("quality", shape=(128, 512), dtype='int16')
+    dset_peakStdDevs = saveFile.create_dataset("peakStdDevs", shape=(128, 512, 2), dtype='int16')
 
     totalTime = time.time()
 
@@ -41,7 +42,7 @@ if __name__ == '__main__':
     print('loading done')
     f.close()
 
-    analog = analog[1:,...] #first value is always wrong
+    analog = analog[1:, ...]  # first value is always wrong
 
     print('creating linear index')
     linearIndices = np.arange(128 * 512)
@@ -68,12 +69,15 @@ if __name__ == '__main__':
 
     photonSpacing = np.zeros((128, 512))
     quality = np.zeros((128, 512))
+    peakStdDevs = np.zeros((128, 512, 2))
     for i in np.arange(linearIndices.size):
-        (photonSpacing[matrixIndexY[i], matrixIndexX[i]], quality[matrixIndexY[i], matrixIndexX[i]]) = parallelResult[i]
+        (photonSpacing[matrixIndexY[i], matrixIndexX[i]], quality[matrixIndexY[i], matrixIndexX[i]], peakStdDevs[matrixIndexY[i], matrixIndexX[i], :]) = \
+        parallelResult[i]
     print('start saving results at', saveFileName)
 
     dset_photonSpacing[...] = photonSpacing
     dset_quality[...] = quality
+    dset_peakStdDevs[...] = peakStdDevs
 
     print('saved')
 

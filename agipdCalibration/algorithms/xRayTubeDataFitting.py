@@ -56,9 +56,9 @@ def manual_gaussian_fit(x, y):
     try:
         params, pcov = curve_fit(peakutils.peak.gaussian, x, y, initial)
     except:
-        return 0
+        return (0, 0)
 
-    return params[1]
+    return (params[1], params[2])
 
 
 def indexes_peakutilsManuallyAdjusted(y, thres=0.3, min_dist=1):
@@ -137,19 +137,25 @@ def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=
 
     peakWidth = 21
     try:
-        interpolatedPeakLocations = peakutils.interpolate(x, y, ind=roughPeakLocations, width=peakWidth, func=manual_gaussian_fit)
+        interpolatedPeakParameters = peakutils.interpolate(x, y, ind=roughPeakLocations, width=peakWidth, func=manual_gaussian_fit)
     except:
-        return (0, 0)
-    if interpolatedPeakLocations.size < 2:
-        return (0, 0)
+        return (0, 0, (0,0))
+    if interpolatedPeakParameters.size < 2:
+        return (0, 0, (0,0))
+
+    (interpolatedPeakLocations, peakStdDev) = zip(*interpolatedPeakParameters)
 
     peakLocations = np.clip(interpolatedPeakLocations, 0, len(photonHistoramValues) - 1)
+    peakStdDev = np.array(peakStdDev)
+
 
     maxPeakRelocation = 15
-    peakLocations = peakLocations[np.abs(peakLocations - roughPeakLocations) <= maxPeakRelocation]
+    validIndices = np.abs(peakLocations - roughPeakLocations) <= maxPeakRelocation
+    peakLocations = peakLocations[validIndices]
+    peakStdDev = peakStdDev[validIndices]
 
     if peakLocations.size < 2:
-        return (0, 0)
+        return (0, 0, (0,0))
 
     peakIndices = np.round(peakLocations).astype(int)
 
@@ -159,12 +165,16 @@ def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=
     sizeSortedPeakIndices = peakIndices[sizeSortIndices]
     sizeSortPeakSizes = peakSizes[sizeSortIndices]
 
+    peakSizeSortedPeakStdDev = peakStdDev[sizeSortIndices]
+
     onePhotonAdcCounts = np.abs(sizeSortedPeakLocations[1] - sizeSortedPeakLocations[0])
 
     if onePhotonAdcCounts <= 10:
-        return (0, 0)
+        return (0, 0, (0,0))
 
     indicesBetweenPeaks = np.sort(sizeSortedPeakIndices[0:2])
     valleyDepthBetweenPeaks = sizeSortPeakSizes[1] - np.min(photonHistogramValuesSmooth[indicesBetweenPeaks[0]:indicesBetweenPeaks[1]])
 
-    return (onePhotonAdcCounts, valleyDepthBetweenPeaks)
+    photonPeaksStdDev = peakSizeSortedPeakStdDev[0:2]
+
+    return (onePhotonAdcCounts, valleyDepthBetweenPeaks, photonPeaksStdDev)
