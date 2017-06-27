@@ -112,6 +112,38 @@ def indexes_peakutilsManuallyAdjusted(y, thres=0.3, min_dist=1):
 
     return peaks
 
+def interpolate_peakutilsManuallyAdjusted(x, y, ind, width, func):
+    '''Tries to enhance the resolution of the peak detection by using
+    Gaussian fitting, centroid computation or an arbitrary function on the
+    neighborhood of each previously detected peak index.
+
+    Parameters
+    ----------
+    x : ndarray
+        Data on the x dimension.
+    y : ndarray
+        Data on the y dimension.
+    ind : ndarray
+        Indexes of the previously detected peaks. If None, indexes() will be
+        called with the default parameters.
+    width : int
+        Number of points (before and after) each peak index to pass to *func*
+        in order to encrease the resolution in *x*.
+    func : function(x,y)
+        Function that will be called to detect an unique peak in the x,y data.
+
+    Returns
+    -------
+    ndarray :
+        Array with the adjusted peak positions (in *x*)
+    '''
+
+    out = []
+    for slice_ in (slice(max((0,i - width)), min((x.size, i + width))) for i in ind):
+        fit = func(x[slice_], y[slice_])
+        out.append(fit)
+
+    return np.array(out)
 
 def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=801, lwopassSamplePointsCount=1000):
     if applyLowpass:
@@ -137,7 +169,7 @@ def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=
 
     peakWidth = 21
     try:
-        interpolatedPeakParameters = peakutils.interpolate(x, y, ind=roughPeakLocations, width=peakWidth, func=manual_gaussian_fit)
+        interpolatedPeakParameters = interpolate_peakutilsManuallyAdjusted(x, y, ind=roughPeakLocations, width=peakWidth, func=manual_gaussian_fit)
     except:
         return (0, 0, (0,0))
     if interpolatedPeakParameters.size < 2:
