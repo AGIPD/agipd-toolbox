@@ -46,7 +46,7 @@ class GatherData():
         self.check_file_number()
 
         print('\n\nstart gatherCurrentSourceScanData')
-        print('saveFileName = ', self.saveFileName)
+        print('saveFileName =', self.saveFileName)
         print('')
 
         self.run()
@@ -136,6 +136,10 @@ class GatherData():
 
         try:
             for i in np.arange(len(self.files)):
+                index_upper_row = np.arange(3 - i, 512, 4)
+                # the asics of the lower row are upside down
+                index_lower_row = np.arange(i, 512, 4)
+
                 for j in np.arange(self.number_of_files):
                     t = time.time()
                     fileName = self.files[i][j]
@@ -151,10 +155,6 @@ class GatherData():
 
                     dc_start = j * charges_per_file
                     dc_stop = (j + 1) * charges_per_file
-
-                    index_upper_row = np.arange(3 - i, 512, 4)
-                    # the asics of the lower row are upside down
-                    index_lower_row = np.arange(i, 512, 4)
 
                     print('Reshaping analog data')
                     tmp = rawData[:, :, 0, :, :]
