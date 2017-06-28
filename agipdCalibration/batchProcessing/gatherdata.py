@@ -7,10 +7,6 @@ import numpy as np
 import glob
 import os
 
-# dataFileNameRoot_column1and5 = '/gpfs/cfel/fsds/labs/calibration/current/m1_drscs_with_scaling_RT_15_00000_part0000'
-# dataFileNameRoot_column2and6 = '/gpfs/cfel/fsds/labs/calibration/current/m1_drscs_with_scaling_RT_26_00001_part0000'
-# dataFileNameRoot_column3and7 = '/gpfs/cfel/fsds/labs/calibration/current/m1_drscs_with_scaling_RT_37_00002_part0000'
-# dataFileNameRoot_column4and8 = '/gpfs/cfel/fsds/labs/calibration/current/m1_drscs_with_scaling_RT_48_00003_part0000'
 
 class GatherData():
     def __init__(self, rel_file_path, file_base_name, output_file_name, col_spec, max_part):
@@ -58,7 +54,7 @@ class GatherData():
         len_col48 = len(self.files[3])
 
         if any(len(file_list) != len_col15 for file_list in self.files):
-            print("Numer of files does not match")
+            print("Number of files does not match")
             print("file for col15", len_col15)
             print("file for col26", len_col26)
             print("file for col37", len_col37)
@@ -181,22 +177,3 @@ class GatherData():
             if f is not None:
                 f.close()
             saveFile.close()
-
-
-if __name__ == "__main__":
-    rel_file_path = "311-312-301-300-310-234/temperature_m20C/drscs/itestc150"
-
-    file_base_name = "M234_m8_drscs_itestc150"
-    #file_base_name = "M301_m3_drscs_itestc150"
-
-    # [[<column>, <file index>],...]
-    # e.g. for a file name of the form M234_m8_drscs_itestc150_col15_00001_part00000.nxs
-    # the entry would be                                         [15,   1]
-    column_specs = [[15, 1], [26, 2], [37, 3], [48, 4]]
-
-    #max_part = False
-    max_part = 10
-
-    output_file_name = "/gpfs/cfel/fsds/labs/processed/kuhnm/{}_chunked.h5".format(file_base_name)
-
-    GatherData(rel_file_path, file_base_name, output_file_name, column_specs, max_part)
