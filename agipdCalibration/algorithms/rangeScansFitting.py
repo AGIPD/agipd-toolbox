@@ -186,14 +186,7 @@ def fit3DynamicScanSlopes(analog, digital):
         digitalMeanValues = get3DigitalMeans_diffFilter_lowGainExtrapolated(digital)
         # print(digitalMeanValues)
     except ValueError:
-        fitLineParameters = []
-        fitLineParameters.append(np.array([0, 0]))
-        fitLineParameters.append(np.array([0, 0]))
-        fitLineParameters.append(np.array([0, 0]))
-        digitalMeanValues = np.array([0, 0, 0])
-        analogFitStdDevs = np.array([float('inf'), float('inf'), float('inf')])
-        (digitalStdDev_highGain, digitalStdDev_mediumGain, digitalStdDev_lowGain) = np.array([float('inf'), float('inf'), float('inf')])
-        return fitLineParameters, digitalMeanValues, analogFitStdDevs, (digitalStdDev_highGain, digitalStdDev_mediumGain, digitalStdDev_lowGain)
+         return fitLineParameters, digitalMeanValues, analogFitStdDevs, (digitalStdDev_highGain, digitalStdDev_mediumGain, digitalStdDev_lowGain)
 
     thresholds = (np.mean(digitalMeanValues[0:2]), np.mean(digitalMeanValues[1:3]))
 
@@ -202,13 +195,13 @@ def fit3DynamicScanSlopes(analog, digital):
                    np.array(np.nonzero(thresholds[1] < digital)[0])]
 
     if gainIndices[0].size < 5 or gainIndices[1].size < 30 or gainIndices[2].size < 30:
-        return fitLineParameters, analogFitStdDevs
+        return fitLineParameters, digitalMeanValues, analogFitStdDevs, (digitalStdDev_highGain, digitalStdDev_mediumGain, digitalStdDev_lowGain)
 
     analogSaturationValue = np.median(analog[gainIndices[1][-6:-1]])
     gainIndices[2] = gainIndices[2][analog[gainIndices[2]] < analogSaturationValue]
 
     if gainIndices[2].size < 30:
-        return fitLineParameters, analogFitStdDevs
+        return fitLineParameters, digitalMeanValues, analogFitStdDevs, (digitalStdDev_highGain, digitalStdDev_mediumGain, digitalStdDev_lowGain)
 
     equalizedXAxis = np.hstack((np.arange(3, 203), np.arange(203, 200 + (analog.size - 200) * 10, 10))).astype('float32')
 
