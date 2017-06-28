@@ -19,12 +19,15 @@ class GatherData():
         self.column_specs = col_spec
 
         self.file_name_prefix = []
-
-        for c, i in self.column_specs:
-            # The method zfill() pads string on the left with zeros to fill width.
-            self.file_name_prefix.append("{}_col{}_{}".format(file_path,
-                                                              c,
-                                                              str(i).zfill(5)))
+        if type(self.column_specs[0]) == list:
+            for c, i in self.column_specs:
+                # The method zfill() pads string on the left with zeros to fill width.
+                self.file_name_prefix.append("{}_col{}_{}".format(file_path,
+                                                                  c,
+                                                                  str(i).zfill(5)))
+        else:
+            for c in self.column_specs:
+                self.file_name_prefix.append("{}_col{}".format(file_path, c))
 
         print("\nUsed prefixes")
         self.files = []
@@ -34,6 +37,8 @@ class GatherData():
 
         for file_list in self.files:
             file_list.sort()
+
+        self.check_for_single_index()
 
         if max_part:
             for i in range(len(self.files)):
@@ -46,6 +51,23 @@ class GatherData():
         print('')
 
         self.run()
+
+    def check_for_single_index(self):
+        indices = []
+
+        for i in range(len(self.files)):
+            indices.append([])
+            for f in self.files[i]:
+                index = f.split("_")[-2]
+                if index not in indices[i]:
+                    indices[i].append(index)
+
+        for index_list in indices:
+            if len(index_list) != 1:
+                print("More than one index found: {}".format(index_list))
+
+        print (indices)
+
 
     def check_file_number(self):
         len_col15 = len(self.files[0])

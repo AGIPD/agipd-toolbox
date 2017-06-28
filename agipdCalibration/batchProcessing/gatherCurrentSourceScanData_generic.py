@@ -32,13 +32,12 @@ def get_arguments():
     parser.add_argument("--column_spec",
                         type=int,
                         nargs='+',
-                        required=True,
                         help="which index files to use for which column, e.g.9, 10, 11, 12")
 
     args = parser.parse_args()
 
-    if len(args.column_spec) != 4:
-        print("The have to be columns 4 defined")
+    if args.column_spec and len(args.column_spec) != 4:
+        print("There have to be 4 columns defined")
         sys.exit(1)
 
     return args
@@ -57,22 +56,22 @@ if __name__ == "__main__":
 
     args = get_arguments()
 
-    #module = "M310_m7"
-    #temperature = "temperature_m20C"
-    #current = "itestc20"
     input_base_path = args.input_path
     module = args.module
     temperature = args.temperature
     current = args.current
 
-    # [[<column>, <file index>],...]
-    # e.g. for a file name of the form M234_m8_drscs_itestc150_col15_00001_part00000.nxs
-    # the entry would be                                         [15,   1]
-    #column_specs = [[15, 9], [26, 10], [37, 11], [48, 12]]
-    column_specs = [[15, args.column_spec[0]],
-                    [26, args.column_spec[1]],
-                    [37, args.column_spec[2]],
-                    [48, args.column_spec[3]]]
+    if args.column_spec:
+        # [[<column>, <file index>],...]
+        # e.g. for a file name of the form M234_m8_drscs_itestc150_col15_00001_part00000.nxs
+        # the entry would be                                         [15,   1]
+        #column_specs = [[15, 9], [26, 10], [37, 11], [48, 12]]
+        column_specs = [[15, args.column_spec[0]],
+                        [26, args.column_spec[1]],
+                        [37, args.column_spec[2]],
+                        [48, args.column_spec[3]]]
+    else:
+        column_specs = [15, 26, 37, 48]
 
     max_part = False
     #max_part = 10
