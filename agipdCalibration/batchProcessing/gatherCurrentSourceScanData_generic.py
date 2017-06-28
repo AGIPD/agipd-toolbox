@@ -36,6 +36,15 @@ def get_arguments():
 
     return args
 
+def create_dir(directory_name):
+    if not os.path.exists(directory_name):
+        try:
+            os.makedirs(directory_name)
+            print("Dir '{0}' does not exist. Create it.".format(d))
+        except IOError:
+            if os.path.isdir(directory_name):
+                pass
+
 
 if __name__ == "__main__":
 
@@ -82,6 +91,8 @@ if __name__ == "__main__":
     module_split = module.split("_")
     output_file_path = os.path.join(OUTPUT_BASE_PATH, module_split[0], temperature, "drscs", current)
     output_file = os.path.join(output_file_path, output_file_name)
+
+    create_dir(output_file_path)
 
     GatherData(rel_file_path, file_base_name, output_file, column_specs, max_part)
 
