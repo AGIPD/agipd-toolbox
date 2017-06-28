@@ -6,10 +6,17 @@ from gatherdata import GatherData
 import argparse
 import datetime
 
+OUTPUT_BASE_PATH = "/gpfs/cfel/fsds/labs/processed/calibration/processed/"
 
 def get_arguments():
+    global OUTPUT_BASE_PATH
+
     parser = argparse.ArgumentParser()
 
+    parser.add_argument("--input_path",
+                        type=str,
+                        required=True,
+                        help="Relative path under {} where the data can be found".format(OUTPUT_BASE_PATH))
     parser.add_argument("--module",
                         type=str,
                         required=True,
@@ -40,7 +47,7 @@ def create_dir(directory_name):
     if not os.path.exists(directory_name):
         try:
             os.makedirs(directory_name)
-            print("Dir '{0}' does not exist. Create it.".format(d))
+            print("Dir '{0}' does not exist. Create it.".format(directory_name))
         except IOError:
             if os.path.isdir(directory_name):
                 pass
@@ -48,14 +55,12 @@ def create_dir(directory_name):
 
 if __name__ == "__main__":
 
-    INPUT_BASE_PATH = "311-312-301-300-310-234"
-    OUTPUT_BASE_PATH = "/gpfs/cfel/fsds/labs/processed/calibration/processed/"
-
     args = get_arguments()
 
     #module = "M310_m7"
     #temperature = "temperature_m20C"
     #current = "itestc20"
+    input_base_path = args.input_path
     module = args.module
     temperature = args.temperature
     current = args.current
@@ -81,7 +86,7 @@ if __name__ == "__main__":
     print ("\nStarted at", str(datetime.datetime.now()))
 
     #rel_file_path = "311-312-301-300-310-234/temperature_m20C/drscs/itestc20"
-    rel_file_path = os.path.join(INPUT_BASE_PATH, temperature, "drscs", current)
+    rel_file_path = os.path.join(input_base_path, temperature, "drscs", current)
 
     file_base_name = "{}_drscs_{}".format(module, current)
     #file_base_name = "M301_m3_drscs_itestc150"
