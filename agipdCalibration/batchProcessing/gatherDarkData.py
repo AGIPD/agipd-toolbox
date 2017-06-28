@@ -25,7 +25,7 @@ print('loading done')
 
 analog = rawData[::2, ...]
 analog.shape = (-1, 352, 128, 512)
-digital = rawData[::2, ...]
+digital = rawData[1::2, ...]
 digital.shape = (-1, 352, 128, 512)
 
 saveFile = h5py.File(saveFileName, "w", libver='latest')

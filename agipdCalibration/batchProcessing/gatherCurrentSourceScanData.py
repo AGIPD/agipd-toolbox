@@ -7,6 +7,9 @@ import numpy as np
 # dataFileNameRoot_column2and6 = '/gpfs/cfel/fsds/labs/calibration/current/m1_drscs_with_scaling_RT_26_00001_part0000'
 # dataFileNameRoot_column3and7 = '/gpfs/cfel/fsds/labs/calibration/current/m1_drscs_with_scaling_RT_37_00002_part0000'
 # dataFileNameRoot_column4and8 = '/gpfs/cfel/fsds/labs/calibration/current/m1_drscs_with_scaling_RT_48_00003_part0000'
+# clampedGainMediumFileName = sys.argv[4]
+# clampedGainLowFileName = sys.argv[5]
+# darkDataFileName = sys.argv[6]
 # dataPathInFile = '/entry/instrument/detector/data'
 # saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/currentSource_chunked.h5'
 
@@ -14,8 +17,11 @@ dataFileNameRoot_column1and5 = sys.argv[1]
 dataFileNameRoot_column2and6 = sys.argv[2]
 dataFileNameRoot_column3and7 = sys.argv[3]
 dataFileNameRoot_column4and8 = sys.argv[4]
+clampedGainMediumFileName = sys.argv[4]
+clampedGainLowFileName = sys.argv[5]
+darkDataFileName = sys.argv[6]
 dataPathInFile = '/entry/instrument/detector/data'
-saveFileName = sys.argv[5]
+saveFileName = sys.argv[7]
 
 print('\n\n\nstart gatherCurrentSourceScanData')
 print('saveFileName = ', saveFileName)

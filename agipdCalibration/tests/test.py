@@ -23,7 +23,7 @@ import pyqtgraph as pg
 # pg.image((photonSpacing80-photonSpacing200).transpose())
 
 # dataFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_full/photonSpacing_m1.h5'
-dataFileName = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/photonSpacing_m1_new_v2.h5'
+dataFileName = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/aschkan_stash/302-303-314-305/temperature_40C/xray/photonSpacing_m3_Cu.h5'
 f = h5py.File(dataFileName, 'r', libver='latest')
 photonSpacing175 = f['photonSpacing'][...]
 

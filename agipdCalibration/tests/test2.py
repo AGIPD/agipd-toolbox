@@ -21,6 +21,8 @@ dataFile = h5py.File(dataFileName, 'r', libver='latest')
 
 consideredPixelsY = (0, 64)
 consideredPixelsX = (192, 192+64)
+consideredPixelsX = (128, 128+64)
+
 
 print('loading data, rows ', consideredPixelsY[0], '-', consideredPixelsY[1], ' columns ', + consideredPixelsX[0], '-', consideredPixelsX[1],
       'from', dataFileName)

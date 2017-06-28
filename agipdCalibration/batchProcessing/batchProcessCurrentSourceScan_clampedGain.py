@@ -7,8 +7,8 @@ import h5py
 from agipdCalibration.algorithms.rangeScansFitting import *
 
 
-def computeCurrentSourceCalibrationOneMemoryCell(analog, digital, linearIndex, perMillInterval):
-    fitSlopesResult = fit3DynamicScanSlopes(analog, digital)
+def computeCurrentSourceCalibrationOneMemoryCell(analog, digital, digitalMeanValues, linearIndex, perMillInterval):
+    fitSlopesResult = fit3DynamicScanSlopes_precomputedDigitalMeans(analog, digital, digitalMeanValues)
 
     # if np.mod(linearIndex, perMillInterval) == 0:
     #     print(0.1 * linearIndex / perMillInterval, '%')
@@ -18,16 +18,17 @@ def computeCurrentSourceCalibrationOneMemoryCell(analog, digital, linearIndex, p
 
 if __name__ == '__main__':
     # workspacePath = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/'
-    # dataFileName = workspacePath + 'currentSource_chunked.h5'
-    # saveFileName_analogGains = workspacePath + 'analogGains_currentSource_gainsFromCS.h5'
-    # saveFileName_digitalMeans = workspacePath + 'digitalMeans_currentSource_gainsFromCS.h5'
+    # currentSourceDataFileName = workspacePath + 'currentSource_chunked.h5'
+    # clampedDigitalMeansFileName = workspacePath + 'clampedDigitalMeans.h5'
+    # saveFileName_analogGains = workspacePath + 'analogGains_currentSource.h5'
+    # saveFileName_digitalMeans = workspacePath + 'digitalMeans_currentSource.h5'
 
     dataFileName = sys.argv[1]
     saveFileName_analogGains = sys.argv[2]
     saveFileName_digitalMeans = sys.argv[3]
 
     print('\n\n\nstart batchProcessCurrentSourceScan')
-    print('dataFileName = ', dataFileName)
+    print('dataFileName = ', currentSourceDataFileName)
     print('saveFileName_analogGains = ', saveFileName_analogGains)
     print('saveFileName_digitalMeans = ', saveFileName_digitalMeans)
     print(' ')
@@ -47,8 +48,12 @@ if __name__ == '__main__':
     dset_digitalStdDeviations = saveFile_digitalMeans.create_dataset("digitalStdDeviations", shape=(352, 3, 128, 512), dtype='float32')
     dset_digitalSpacingsSafetyFactors = saveFile_digitalMeans.create_dataset("digitalSpacingsSafetyFactors", shape=(352, 2, 128, 512), dtype='float32')
 
+    clampedDigitalMeansFile = h5py.File(clampedDigitalMeansFileName, 'r', libver='latest')
+    clampedDigitalMeans = clampedDigitalMeansFile['clampedDigitalMeans'][...]
+    clampedDigitalStandardDeviations = clampedDigitalMeansFile['clampedDigitalStandardDeviations'][...]
+
     p = Pool(workerCount)
-    dataFile = h5py.File(dataFileName, 'r', libver='latest')
+    currentSourceDataFile = h5py.File(currentSourceDataFileName, 'r', libver='latest')
     columnsToLoadPerIteration = 64
     rowsToLoadPerIteration = 64
     for column in np.arange(512 / columnsToLoadPerIteration):  # np.arange(1):
@@ -57,11 +62,28 @@ if __name__ == '__main__':
             consideredPixelsX = (int(column * columnsToLoadPerIteration), int((column + 1) * columnsToLoadPerIteration))
 
             print('loading data, rows ', consideredPixelsY[0], '-', consideredPixelsY[1], ' columns ', + consideredPixelsX[0], '-', consideredPixelsX[1],
-                  'from', dataFileName)
+                  'from', currentSourceDataFileName)
             t = time.time()
-            analog = dataFile['/analog'][:, :, consideredPixelsY[0]:consideredPixelsY[1], consideredPixelsX[0]:consideredPixelsX[1]]
-            digital = dataFile['/digital'][:, :, consideredPixelsY[0]:consideredPixelsY[1], consideredPixelsX[0]:consideredPixelsX[1]]
+            analog = currentSourceDataFile['/analog'][:, :, consideredPixelsY[0]:consideredPixelsY[1], consideredPixelsX[0]:consideredPixelsX[1]]
+            digital = currentSourceDataFile['/digital'][:, :, consideredPixelsY[0]:consideredPixelsY[1], consideredPixelsX[0]:consideredPixelsX[1]]
             print('took time:  ', time.time() - t)
+            digitalMeans_local = clampedDigitalMeans[:, :, consideredPixelsY[0]:consideredPixelsY[1], consideredPixelsX[0]:consideredPixelsX[1]]
+            digitalStandardDeviations_local = clampedDigitalStandardDeviations[:, :, consideredPixelsY[0]:consideredPixelsY[1],
+                                              consideredPixelsX[0]:consideredPixelsX[1]]
+
+            # #####################debug
+            # import matplotlib.pyplot as plt
+            # cell = 300
+            # y = 30
+            # x = 60
+            # plt.plot(digital[:, cell, y, x])
+            # plt.axhline(digitalMeans_local[0, cell, y, x])
+            # plt.axhline(digitalMeans_local[1, cell, y, x])
+            # plt.axhline(digitalMeans_local[2, cell, y, x])
+            # plt.axhline(np.mean((digitalMeans_local[0, cell, y, x], digitalMeans_local[1, cell, y, x])), color='r')
+            # plt.axhline(np.mean((digitalMeans_local[1, cell, y, x], digitalMeans_local[2, cell, y, x])), color='r')
+            # plt.show()
+            # ######################################
 
             print('creating linear index, rows ', consideredPixelsY[0], '-', consideredPixelsY[1], ' columns ', + consideredPixelsX[0], '-',
                   consideredPixelsX[1])
@@ -72,11 +94,13 @@ if __name__ == '__main__':
             perMillInterval = int(np.round(linearIndices.size / 1000))
             for i in np.arange(linearIndices.size):
                 idx = (slice(None), matrixIndices[0][i], matrixIndices[1][i], matrixIndices[2][i])
-                pixelList.append((analog[idx], digital[idx], i, perMillInterval))
+                pixelList.append((analog[idx], digital[idx], digitalMeans_local[idx], i, perMillInterval))
 
-            # for i in np.arange(5*64*64 + 25*64 * 35, linearIndices.size):
+            # ############debug
+            # for i in np.arange(15*64*64+25*64 + 25,linearIndices.size):
             #     print(i, (slice(None), matrixIndices[0][i], matrixIndices[1][i], matrixIndices[2][i]))
-            #     fitSlopesResult = computeCurrentSourceCalibrationOneMemoryCell(*(pixelList[i]))
+            #     computeCurrentSourceCalibrationOneMemoryCell(*(pixelList[i]))
+            # ##################
 
             print('start manual garbage collection')
             t = time.time()
@@ -102,20 +126,11 @@ if __name__ == '__main__':
             fitError_highGain = np.empty(resultSize, dtype='float32')
             fitError_mediumGain = np.empty(resultSize, dtype='float32')
             fitError_lowGain = np.empty(resultSize, dtype='float32')
-            digitalStdDev_highGain = np.empty(resultSize, dtype='float32')
-            digitalStdDev_mediumGain = np.empty(resultSize, dtype='float32')
-            digitalStdDev_lowGain = np.empty(resultSize, dtype='float32')
-
-            digitalMeans_highGain = np.empty(resultSize, dtype='uint16')
-            digitalMeans_mediumGain = np.empty(resultSize, dtype='uint16')
-            digitalMeans_lowGain = np.empty(resultSize, dtype='uint16')
 
             for i in np.arange(linearIndices.size):
                 idx = (matrixIndices[0][i], matrixIndices[1][i], matrixIndices[2][i])
                 (((highGain[idx], offset_highGain[idx]), (mediumGain[idx], offset_mediumGain[idx]), (lowGain[idx], offset_lowGain[idx])),
-                 (digitalMeans_highGain[idx], digitalMeans_mediumGain[idx], digitalMeans_lowGain[idx]),
-                 (fitError_highGain[idx], fitError_mediumGain[idx], fitError_lowGain[idx]),
-                 (digitalStdDev_highGain[idx], digitalStdDev_mediumGain[idx], digitalStdDev_lowGain[idx])
+                 (fitError_highGain[idx], fitError_mediumGain[idx], fitError_lowGain[idx])
                  ) = parallelResult[i]
 
             print('start saving, rows ', consideredPixelsY[0], '-', consideredPixelsY[1], ' columns ', + consideredPixelsX[0], '-', consideredPixelsX[1],
@@ -132,9 +147,9 @@ if __name__ == '__main__':
 
             print('analog fit errors saved')
 
-            idx = (slice(None), slice(0, 3), slice(consideredPixelsY[0], consideredPixelsY[1]), slice(consideredPixelsX[0], consideredPixelsX[1]))
-            dset_digitalMeans[idx] = np.stack((digitalMeans_highGain, digitalMeans_mediumGain, digitalMeans_lowGain), axis=1)
-            dset_digitalStdDeviations[idx] = np.stack((digitalStdDev_highGain, digitalStdDev_mediumGain, digitalStdDev_lowGain), axis=1)
+            idx = (slice(0, 352), slice(0, 3), slice(consideredPixelsY[0], consideredPixelsY[1]), slice(consideredPixelsX[0], consideredPixelsX[1]))
+            dset_digitalMeans[idx] = digitalMeans_local.transpose((1, 0, 2, 3))
+            dset_digitalStdDeviations[idx] = digitalStandardDeviations_local.transpose((1, 0, 2, 3))
 
             print('means and standard deviations saved')
 
@@ -164,12 +179,13 @@ if __name__ == '__main__':
 
     print('digital spacings safety factors computed and saved')
 
-    dataFile.close()
+    currentSourceDataFileName.close()
+    clampedDigitalMeansFileName.close()
     p.close()
     saveFile_analogGains.close()
     saveFile_digitalMeans.close()
 
-    print('\ndone with processing ', dataFileName)
+    print('\ndone with processing ', currentSourceDataFileName)
     print('generated output: ', saveFileName_analogGains)
     print('generated output: ', saveFileName_digitalMeans)
     print('batchProcessPulsedCapacitor took time:  ', time.time() - totalTime, '\n\n')
