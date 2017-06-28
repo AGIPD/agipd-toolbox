@@ -79,7 +79,8 @@ if __name__ == "__main__":
 
     output_file_name = "{}_chunked.h5".format(file_base_name)
     #output_file_path = "/gpfs/cfel/fsds/labs/processed/calibration/processed/M310/temperature_30C/drscs/itestc20"
-    output_file_path = os.path.join(OUTPUT_BASE_PATH, module, temperature, "drscs", current)
+    module_split = module.split("_")
+    output_file_path = os.path.join(OUTPUT_BASE_PATH, module_split[0], temperature, "drscs", current)
     output_file = os.path.join(output_file_path, output_file_name)
 
     GatherData(rel_file_path, file_base_name, output_file, column_specs, max_part)
