@@ -87,12 +87,13 @@ if __name__ == "__main__":
     #rel_file_path = "311-312-301-300-310-234/temperature_m20C/drscs/itestc20"
     rel_file_path = os.path.join(input_base_path, temperature, "drscs", current)
 
-    file_base_name = "{}_drscs_{}".format(module, current)
+    module_split = module.split("_")
+
+    file_base_name = "{}*_drscs_{}".format(module_split[0], current)
     #file_base_name = "M301_m3_drscs_itestc150"
 
-    output_file_name = "{}_chunked.h5".format(file_base_name)
+    output_file_name = "{}_drscs_{}_chunked.h5".format(module_split[0], current)
     #output_file_path = "/gpfs/cfel/fsds/labs/processed/calibration/processed/M310/temperature_30C/drscs/itestc20"
-    module_split = module.split("_")
     output_file_path = os.path.join(OUTPUT_BASE_PATH, module_split[0], temperature, "drscs", current)
     output_file = os.path.join(output_file_path, output_file_name)
 
