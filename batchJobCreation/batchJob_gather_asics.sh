@@ -89,4 +89,4 @@ wait $tmp
 
 ## wait ${!}	# won't work' cause only last bg process would be covered - what
                 # if last process ends earlier then previous ones -> script
-		# ends and shus sbatch
+                # ends and shus sbatch
