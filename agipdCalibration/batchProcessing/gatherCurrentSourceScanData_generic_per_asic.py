@@ -32,7 +32,7 @@ def get_arguments():
     parser.add_argument("--column_spec",
                         type=int,
                         nargs='+',
-                        help="which index files to use for which column, e.g.9, 10, 11, 12")
+                        help="which index files to use for which column, e.g. 9, 10, 11, 12")
     parser.add_argument("--asic",
                         type=int,
                         required=True,

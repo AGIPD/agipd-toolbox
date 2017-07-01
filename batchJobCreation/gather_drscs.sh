@@ -14,31 +14,40 @@ max_part=false
 #column_spec="22 23 24 25"
 column_spec=false
 
-nasics="1 2 3 4 5 6 7 8"
-#nasics="1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16"
+#asic_set1="1 2 3 4 5 6 7 8"
+asic_set2="9 10 11 12 13 14 15 16"
 
-sbatch_params="--partition=all \
-               --job-name=gather_drscs_${module}_asic${asic} \
-               --time=1:00:00 \
-               --nodes=1 \
-               --mail-type END \
-               --mail-user ${mail_address} \
-               --workdir=${work_dir} \
-               --output=gather_drscs_${module}_${asic}.out \
-               --error=gather_drscs_${module}_${asic}.err \
-               --job-name=gather_drscs_${module}_asic \
-               --output=gather_drscs_${module}_asic.out \
-               --error=gather_drscs_${module}_asic.err "
+call_sbatch()
+{
+    sbatch_params="--partition=all \
+                   --job-name=gather_drscs_${module}_asic${asic} \
+                   --time=00:30:00 \
+                   --nodes=1 \
+                   --mail-type END \
+                   --mail-user ${mail_address} \
+                   --workdir=${work_dir} \
+                   --output=gather_drscs_${module}_${asic}.out \
+                   --error=gather_drscs_${module}_${asic}.err \
+                   --job-name=gather_drscs_${module}_asic \
+                   --output=gather_drscs_${module}_asic-%j.out \
+                   --error=gather_drscs_${module}_asic-%j.err "
 
-script_params="--input_path ${input_path} \
-               --module ${module} \
-               --temperature ${temperature} \
-               --current ${current} \
-               --max_part ${max_part} \
-               --column_spec ${column_spec} \
-               ${nasics}"
-
-printf "Starting job for asics ${nasics}\n"
+    script_params="--input_path ${input_path} \
+                   --module ${module} \
+                   --temperature ${temperature} \
+                   --current ${current} \
+                   --max_part ${max_part} \
+                   --column_spec ${column_spec}"
 
     sbatch ${sbatch_params} \
-           ${batch_job_dir}/batchJob_gather_asics.sh ${script_params}
+           ${batch_job_dir}/batchJob_gather_asics.sh ${script_params}\
+                                                     $*
+}
+
+#nasics=${asic_set1}
+#printf "Starting job for asics ${nasics}\n"
+#call_sbatch ${nasics}
+
+nasics=${asic_set2}
+printf "Starting job for asics ${nasics}\n"
+call_sbatch ${nasics}

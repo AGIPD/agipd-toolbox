@@ -215,8 +215,6 @@ class GatherData():
 
         try:
             for i in np.arange(n_cols):
-                print("i", i)
-                print("self.asic", self.asic)
                 #TODO: find a generic solution for this
                 if self.a_col_start == 0:
                     row_index_source = np.arange(self.a_row_start + (n_cols - 1) - i,
