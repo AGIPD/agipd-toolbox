@@ -22,6 +22,10 @@ if __name__ == '__main__':
     # saveFileName_analogGains = workspacePath + 'analogGains_currentSource_gainsFromCS.h5'
     # saveFileName_digitalMeans = workspacePath + 'digitalMeans_currentSource_gainsFromCS.h5'
 
+    # dataFileName = "/gpfs/cfel/fsds/labs/processed/calibration/processed/M305/temperature_40C/drscs/itestc80/M305_drscs_itestc80_chunked.h5"
+    # saveFileName_analogGains = "/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/analogGains_M305_drscs_itestc80.h5"
+    # saveFileName_digitalMeans = "/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/digitalMeans_M305_drscs_itestc80.h5"
+
     dataFileName = sys.argv[1]
     saveFileName_analogGains = sys.argv[2]
     saveFileName_digitalMeans = sys.argv[3]
@@ -68,13 +72,13 @@ if __name__ == '__main__':
             linearIndices = np.arange(352 * columnsToLoadPerIteration * rowsToLoadPerIteration)
             matrixIndices = np.unravel_index(linearIndices, (352, columnsToLoadPerIteration, rowsToLoadPerIteration))
 
-            pixelList = []
+            cellList = []
             perMillInterval = int(np.round(linearIndices.size / 1000))
             for i in np.arange(linearIndices.size):
                 idx = (slice(None), matrixIndices[0][i], matrixIndices[1][i], matrixIndices[2][i])
-                pixelList.append((analog[idx], digital[idx], i, perMillInterval))
+                cellList.append((analog[idx], digital[idx], i, perMillInterval))
 
-            # for i in np.arange(5*64*64 + 25*64 * 35, linearIndices.size):
+            # for i in np.arange(0, linearIndices.size):  #np.arange(5*64*64 + 25*64 * 35, linearIndices.size):
             #     print(i, (slice(None), matrixIndices[0][i], matrixIndices[1][i], matrixIndices[2][i]))
             #     fitSlopesResult = computeCurrentSourceCalibrationOneMemoryCell(*(pixelList[i]))
 
@@ -86,7 +90,7 @@ if __name__ == '__main__':
             print('start parallel computations, rows ', consideredPixelsY[0], '-', consideredPixelsY[1], ' columns ', + consideredPixelsX[0], '-',
                   consideredPixelsX[1])
             t = time.time()
-            parallelResult = p.starmap(computeCurrentSourceCalibrationOneMemoryCell, pixelList, chunksize=352 * 4)
+            parallelResult = p.starmap(computeCurrentSourceCalibrationOneMemoryCell, cellList, chunksize=352 * 4)
             print('took time:  ', time.time() - t)
 
             print('all calculation done, rows ', consideredPixelsY[0], '-', consideredPixelsY[1], ' columns ', + consideredPixelsX[0], '-',
