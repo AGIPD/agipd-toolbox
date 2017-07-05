@@ -6,6 +6,7 @@ import sys
 import numpy as np
 import glob
 import os
+from string import Template
 
 
 class GatherData():
@@ -73,14 +74,14 @@ class GatherData():
         self.charges = None
         self.get_charges()
 
-        self.shape = (self.asic_size, self.asic_size,
-                      self.n_mem_cells, self.charges)
-#        self.shape = (self.charges, self.n_mem_cells,
-#                      self.asic_size, self.asic_size)
-        self.chunksize = (self.asic_size, self.asic_size,
-                          self.n_mem_cells, self.charges)
-#        self.chunksize = (self.charges, self.n_mem_cells,
-#                          self.asic_size, self.asic_size)
+#        self.shape = (self.asic_size, self.asic_size,
+#                      self.n_mem_cells, self.charges)
+        self.shape = (self.charges, self.n_mem_cells,
+                      self.asic_size, self.asic_size)
+#        self.chunksize = (self.asic_size, self.asic_size,
+#                          self.n_mem_cells, self.charges)
+        self.chunksize = (self.charges, self.n_mem_cells,
+                          self.asic_size, self.asic_size)
 
         self.a_col_start = None
         self.a_col_stop = None
