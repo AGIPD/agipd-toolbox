@@ -17,11 +17,11 @@ dataFileNameRoot_column1and5 = sys.argv[1]
 dataFileNameRoot_column2and6 = sys.argv[2]
 dataFileNameRoot_column3and7 = sys.argv[3]
 dataFileNameRoot_column4and8 = sys.argv[4]
-clampedGainMediumFileName = sys.argv[4]
-clampedGainLowFileName = sys.argv[5]
-darkDataFileName = sys.argv[6]
+#clampedGainMediumFileName = sys.argv[4]
+#clampedGainLowFileName = sys.argv[5]
+#darkDataFileName = sys.argv[6]
 dataPathInFile = '/entry/instrument/detector/data'
-saveFileName = sys.argv[7]
+saveFileName = sys.argv[5]
 
 print('\n\n\nstart gatherCurrentSourceScanData')
 print('saveFileName = ', saveFileName)
