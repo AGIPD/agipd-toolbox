@@ -24,7 +24,7 @@ class GatherData():
         # [[<column>, <file index>],...]
         self.column_specs = col_spec
 
-        self.n_mem_cells = 352
+        self.mem_cells = 352
         self.module_h = 128  # in pixels
         self.module_l = 512  # in pixels
         self.asic_size = 64  # in pixels
@@ -42,6 +42,11 @@ class GatherData():
         self.mapped_asic = self.calculate_mapped_asic()
         print ("mapped_asic={}".format(self.mapped_asic))
 
+        self.a_col_start = None
+        self.a_col_stop = None
+        self.a_row_start = None
+        self.a_row_stop = None
+        self.determine_asic_border()
 
         self.file_name_prefix = []
         if type(self.column_specs[0]) == list:
@@ -51,9 +56,6 @@ class GatherData():
                 # The method zfill() pads string on the left with zeros to fill width.
                 self.file_name_prefix.append("{}_{}".format(file_prefix,
                                                             str(i).zfill(5)))
-#                self.file_name_prefix.append("{}_col{}_{}".format(file_path,
-#                                                                  c,
-#                                                                  str(i).zfill(5)))
         else:
             for c in self.column_specs:
                 self.file_name_prefix.append(
@@ -74,31 +76,32 @@ class GatherData():
         self.charges = None
         self.get_charges()
 
-#        self.shape = (self.asic_size, self.asic_size,
-#                      self.n_mem_cells, self.charges)
-        self.shape = (self.charges, self.n_mem_cells,
-                      self.asic_size, self.asic_size)
-#        self.chunksize = (self.asic_size, self.asic_size,
-#                          self.n_mem_cells, self.charges)
-        self.chunksize = (self.charges, self.n_mem_cells,
-                          self.asic_size, self.asic_size)
-
-        self.a_col_start = None
-        self.a_col_stop = None
-        self.a_row_start = None
-        self.a_row_stop = None
-        self.determine_asic_border()
-
-        self.raw_data_shape = (self.charges_per_file, self.n_mem_cells, 2,
+        self.raw_data_shape = (self.charges_per_file, self.mem_cells, 2,
                                self.module_h, self.module_l)
 
-        print("\n\nStart gathering")
-        print("save_file =", self.save_file)
-        print("")
+        # pixel data from raw is written into an intermediate format before
+        # it is transposed into the target shape
+        self.intermediate_shape = (self.charges, self.mem_cells,
+                                   self.asic_size, self.asic_size)
 
+        self.target_shape = (self.asic_size, self.asic_size,
+                             self.mem_cells, self.charges)
+        self.chunksize = self.target_shape
+
+        # (self.charges, self.mem_cells, self.asic_size, self.asic_size)
+        # is transposed to
+        # (self.asic_size, self.asic_size, self.mem_cells, self.charges)
+        self.transpose_order = (2,3,1,0)
+
+        self.analog = None
+        self.digital = None
+
+        print("\nStart gathering")
+        print("save_file = {}\n".format(self.save_file))
         t = time.time()
-        self.run()
-        print("Total run time: ", time.time()-t)
+        self.get_data()
+        self.write_data()
+        print("Total run time: {}".format(time.time() - t))
 
     def calculate_mapped_asic(self):
         for row_i in xrange(len(self.asic_mapping)):
@@ -109,9 +112,9 @@ class GatherData():
                 pass
 
     def check_output_file_exist(self):
-        print("save_file =", self.save_file)
+        print("save_file = {}".format(self.save_file))
         if os.path.exists(self.save_file):
-            print("Output file already exists\n")
+            print("Output file already exists")
             sys.exit(1)
         else:
             print("Output file: ok")
@@ -133,10 +136,10 @@ class GatherData():
         try:
             source_file = h5py.File(self.files[0][0], 'r', libver='latest')
             #TODO: check that shape for charges_per_file is the same for all files
-            self.charges_per_file = int(source_file[self.data_path_in_file].shape[0] / 2 / self.n_mem_cells)
+            self.charges_per_file = int(source_file[self.data_path_in_file].shape[0] / 2 / self.mem_cells)
             self.charges = self.charges_per_file * self.number_of_files
         except:
-            print("error when determining charge numbers")
+            print("Error when determining charge numbers")
             raise
         finally:
             source_file.close()
@@ -189,22 +192,21 @@ class GatherData():
 
         col_progress = self.mapped_asic / self.asics_per_module[1]
         row_progress = self.mapped_asic % self.asics_per_module[1]
-        print("col_progress:", col_progress)
-        print("row_progress:", row_progress)
+        print("col_progress: {}".format(col_progress))
+        print("row_progress: {}".format(row_progress))
 
         self.a_col_start = col_progress * self.asic_size
         self.a_col_stop = (col_progress + 1) * self.asic_size
         self.a_row_start = row_progress * self.asic_size
         self.a_row_stop = (row_progress + 1) * self.asic_size
 
-        print("asic_size", self.asic_size)
-        print("a_col_start:", self.a_col_start)
-        print("a_col_stop:", self.a_col_stop)
-        print("a_row_start:", self.a_row_start)
-        print("a_row_stop:", self.a_row_stop)
+        print("asic_size {}".format(self.asic_size))
+        print("a_col_start: {}".format(self.a_col_start))
+        print("a_col_stop: {}".format(self.a_col_stop))
+        print("a_row_start: {}".format(self.a_row_start))
+        print("a_row_stop: {}".format(self.a_row_stop))
 
-    def run(self):
-
+    def get_data(self):
         # shape of input data: <total image number (analog and digital)>,
         #                      <module height>,
         #                      <module length>
@@ -217,9 +219,9 @@ class GatherData():
         #               |____________|
         #                module_length
 
+        # serparate data sets for analog and digital
         # shape of reshaped data: <number of mem cells>,
         #                         <images_per_mcell>,
-        #                         <distinction between analog and digital>,
         #                         <asic_height>,
         #                         <asic_length>
         # for each memory cell
@@ -232,37 +234,24 @@ class GatherData():
         #                module_length
 
         # i.e. totalframes, module_h, module_l
-        #          -> charges_per_file, n_mem_cells, 2, asic_h, asic_l
-        # e.g.totalframes, 128, 512 -> charges_per_file, 352, 2, 64, 64
-
-        save_file = h5py.File(self.save_file, "w", libver='latest')
-        print("Create analog data set")
-        dset_analog = save_file.create_dataset("analog",
-                                               shape=self.shape,
-                                               chunks=self.chunksize,
-                                               compression=None, dtype='int16')
-        print("Create digital data set")
-        dset_digital = save_file.create_dataset("digital",
-                                               shape=self.shape,
-                                               chunks=self.chunksize,
-                                               compression=None, dtype='int16')
+        #          -> charges_per_file, mem_cells, asic_h, asic_l
+        # e.g.totalframes, 128, 512 -> charges_per_file, 352, 64, 64
 
         print("Initiate analog data")
         t = time.time()
-        analog = np.zeros(self.shape, dtype='int16')
-        print("took time:", str(time.time() - t))
+        self.analog = np.zeros(self.intermediate_shape, dtype='int16')
+        print("took time: {}".format(time.time() - t))
 
         print("Initiate digital data")
         t = time.time()
         # Creating the array with np.zero is faster than copying the array from analog
-        digital = np.zeros(self.shape, dtype='int16')
-        print("took time:", str(time.time() - t))
+        self.digital = np.zeros(self.intermediate_shape, dtype='int16')
+        print("took time: {}".format(time.time() - t))
 
         n_cols = len(self.files)
+        print("n_cols {}".format(n_cols))
+
         f = None
-
-        print("n_cols", n_cols)
-
         try:
             for i in np.arange(n_cols):
                 #TODO: find a generic solution for this
@@ -282,54 +271,69 @@ class GatherData():
                     row_index_target = np.arange(i, self.asic_size, n_cols)
                     #index_lower_row = np.arange(i, 512, 4)
 
-                print("row_index_source", row_index_source)
-                print("row_index_target", row_index_target)
+                print("row_index_source {}".format(row_index_source))
+                print("row_index_target {}".format(row_index_target))
 
                 for j in np.arange(self.number_of_files):
 
-                    print("Start loading", self.files[i][j])
+                    print("Start loading {}".format(self.files[i][j]))
                     t = time.time()
                     f = h5py.File(self.files[i][j], 'r', libver='latest')
                     raw_data = f[self.data_path_in_file][..., 0:self.module_h, 0:self.module_l]
-                    print("took time:", str(time.time() - t))
+                    print("took time: {}".format(time.time() - t))
 
                     print("Start reshaping")
                     reshaping_t_start = time.time()
                     raw_data.shape = self.raw_data_shape
-                    #raw_data.shape = (self.charges_per_file, 352, 2, 128, 512)
 
                     dc_start = j * self.charges_per_file
                     dc_stop = (j + 1) * self.charges_per_file
 
-                    print("Reshaping analog data")
-                    t = time.time()
                     tmp = raw_data[:, :, 0, :, :]
-                    analog[dc_start:dc_stop, :, :,
-                           row_index_target] = tmp[..., self.a_col_start:self.a_col_stop,
-                                                        row_index_source]
-                    print("Reshaping of analog data took time:", str(time.time() - t))
-
-                    print("Reshaping digital data")
-                    t = time.time()
+                    self.analog[dc_start:dc_stop, :, :,
+                                row_index_target] = tmp[..., self.a_col_start:self.a_col_stop,
+                                                             row_index_source]
                     tmp = raw_data[:, :, 1, :, :]
-                    digital[dc_start:dc_stop, :, :,
-                            row_index_target] = tmp[..., self.a_col_start:self.a_col_stop,
-                                                         row_index_source]
-                    print("Reshaping of digital data took time:", str(time.time() - t))
+                    self.digital[dc_start:dc_stop, :, :,
+                                 row_index_target] = tmp[..., self.a_col_start:self.a_col_stop,
+                                                              row_index_source]
 
-                    print("Reshaping of data took time:", str(time.time() - reshaping_t_start))
+                    print("Reshaping of data took time: {}".format(time.time() - reshaping_t_start))
                     f.close()
                     f = None
 
-            t = time.time()
-            print("\nStart saving")
-            dset_analog[...] = analog
-            dset_digital[...] = digital
-            save_file.flush()
-            print("took time:", str(time.time() - t))
         finally:
             if f is not None:
                 f.close()
+                f = None
+
+    def write_data(self):
+        save_file = h5py.File(self.save_file, "w", libver='latest')
+        print("Create analog data set")
+        dset_analog = save_file.create_dataset("analog",
+                                               shape=self.target_shape,
+                                               chunks=self.chunksize,
+                                               compression=None, dtype='int16')
+        print("Create digital data set")
+        dset_digital = save_file.create_dataset("digital",
+                                               shape=self.target_shape,
+                                               chunks=self.chunksize,
+                                               compression=None, dtype='int16')
+
+        try:
+            t = time.time()
+            print("\nStart transposing")
+            analog_transposed = self.analog.transpose(self.transpose_order)
+            digital_transposed = self.digital.transpose(self.transpose_order)
+            print("took time: {}".format(time.time() - t))
+
+            t = time.time()
+            print("\nStart saving")
+            dset_analog[...] = analog_transposed
+            dset_digital[...] = digital_transposed
+            save_file.flush()
+            print("took time: {}".format(time.time() - t))
+        finally:
             save_file.close()
 
 
