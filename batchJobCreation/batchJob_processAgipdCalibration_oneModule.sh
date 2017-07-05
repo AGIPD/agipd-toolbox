@@ -6,6 +6,8 @@
 #SBATCH --cores-per-socket=16
 #SBATCH --threads-per-core=2
 #SBATCH --sockets-per-node=2
+#SBATCH --mail-type=END
+#SBATCH --mail-user=jennifer.poehlsen@desy.de
 
 source /etc/profile.d/modules.sh
 source /gpfs/cfel/cxi/common/cfelsoft-rh7/setup.sh

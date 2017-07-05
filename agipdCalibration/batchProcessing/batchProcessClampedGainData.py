@@ -6,8 +6,9 @@ import time
 import matplotlib.pyplot as plt
 import pyqtgraph as pg
 
-fileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/clampedGainData.h5'
-saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/clampedDigitalMeans.h5'
+filePath = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/jenny_stash/GainBitCorrection/'
+fileName = filePath + 'M314_clampedGainData.h5'
+saveFileName = filePath + 'M314_clampedDigitalMeans.h5'
 # fileName = sys.argv[1]
 # saveFileName = sys.argv[2]
 
@@ -56,16 +57,16 @@ print('start loading', '/lowGainData', 'from', saveFileName)
 data = f['lowGainData'][()]
 print('loading done')
 
-# print('start computing means and standard deviations')
-# meansLow = np.mean(data, axis=0)
-# standardDeviationsLow = np.empty((352, 128, 512))
-# for cell in np.arange(352):
-#     standardDeviationsLow[cell, ...] = np.std(data[:, cell, :, :].astype('float'), axis=0)
-# print('done computing means and standard deviations')
-print('start workaround for low means and standard deviations')
-meansLow = meansHigh + 2*(meansMedium - meansHigh)
-standardDeviationsLow = standardDeviationsMedium
-print('done workaround for low means and standard deviations')
+print('start computing means and standard deviations')
+meansLow = np.mean(data, axis=0)
+standardDeviationsLow = np.empty((352, 128, 512))
+for cell in np.arange(352):
+    standardDeviationsLow[cell, ...] = np.std(data[:, cell, :, :].astype('float'), axis=0)
+print('done computing means and standard deviations')
+#print('start workaround for low means and standard deviations')
+#meansLow = meansHigh + 2*(meansMedium - meansHigh)
+#standardDeviationsLow = standardDeviationsMedium
+#print('done workaround for low means and standard deviations')
 
 dset_clampedDigitalMeans[2, ...] = meansLow
 dset_clampedDigitalStandardDeviations[2, ...] = standardDeviationsLow
