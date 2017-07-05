@@ -10,8 +10,11 @@ import os
 
 class GatherData():
     def __init__(self, asic, rel_file_path, file_base_name, output_file_name, col_spec, max_part):
+
         base_path = "/gpfs/cfel/fsds/labs/calibration/current/"
+        filename_template = Template("${prefix}_col${column}")
         self.data_path_in_file = "/entry/instrument/detector/data"
+
         file_path = os.path.join(base_path, rel_file_path, file_base_name)
 
         self.save_file = output_file_name
@@ -32,13 +35,18 @@ class GatherData():
         self.file_name_prefix = []
         if type(self.column_specs[0]) == list:
             for c, i in self.column_specs:
+                file_prefix = filename_template.substitute(prefix=file_path, column=c)
+
                 # The method zfill() pads string on the left with zeros to fill width.
-                self.file_name_prefix.append("{}_col{}_{}".format(file_path,
-                                                                  c,
-                                                                  str(i).zfill(5)))
+                self.file_name_prefix.append("{}_{}".format(file_prefix,
+                                                            str(i).zfill(5)))
+#                self.file_name_prefix.append("{}_col{}_{}".format(file_path,
+#                                                                  c,
+#                                                                  str(i).zfill(5)))
         else:
             for c in self.column_specs:
-                self.file_name_prefix.append("{}_col{}".format(file_path, c))
+                self.file_name_prefix.append(
+                    filename_template.substitute(prefix=file_path, column=c))
 
         print("\nUsed prefixes")
         self.files = []
