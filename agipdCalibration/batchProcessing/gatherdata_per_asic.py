@@ -14,11 +14,13 @@ class GatherData():
 
         base_path = "/gpfs/cfel/fsds/labs/calibration/current/"
         filename_template = Template("${prefix}_col${column}")
-        self.data_path_in_file = "/entry/instrument/detector/data"
+        self.data_path = "/entry/instrument/detector/data"
+        self.digital_data_path = "/entry/instrument/detector/data_digital"
         self.collection_path = "/entry/instrument/detector/collection"
         self.seq_number_path = "/entry/instrument/detector/sequence_number"
         self.total_lost_frames_path = "{}/total_loss_frames".format(self.collection_path)
         self.error_code_path = "{}/error_code".format(self.collection_path)
+        self.frame_number_path = "{}/frame_numbers".format(self.collection_path)
 
         file_path = os.path.join(base_path, rel_file_path, file_base_name)
 
@@ -76,13 +78,26 @@ class GatherData():
 
         self.check_file_number()
 
+
+        self.metadata = {}
+        self.metadata_tmp = {}
+        self.metadata_derived = {}
+        # the metadata for which derived data is calculated
+        # the sequence number is implied in this
+        self.special_keys = ["error_code", "total_loss_frames"]
+
+        self.source_seq_number = None
+        self.seq_number = None
+        self.expected_total_images = 0
+        self.expected_nimages_per_file = 0
+        self.treated_lost_frames = 0
+
+        self.target_index = None
+        self.source_index = None
+
         self.charges_per_file = None
         self.charges = None
         self.get_charges()
-
-        self.seq_number = None
-        self.expected_nimages_per_file = 0
-        self.treated_lost_frames = 0
 
         self.raw_data_shape = (self.charges_per_file, self.mem_cells, 2,
                                self.module_h, self.module_l)
@@ -178,15 +193,19 @@ class GatherData():
             print("{} file parts found".format(self.number_of_files))
 
     def get_charges(self):
+
+        source_file = None
         try:
             source_file = h5py.File(self.files[0][0], "r", libver="latest")
 
             # TODO: verify that the shape is always right and not dependant on frame loss
-            source_shape = source_file[self.data_path_in_file].shape
+            source_shape = source_file[self.data_path].shape
 
+            self.expected_total_images = source_file[self.frame_number_path][0]
 
             # if there is frame loss this is recognizable by a missing entry in seq_number
             self.seq_number = source_file[self.seq_number_path][()]
+            print("len seq_number: {}".format(len(self.seq_number)))
 
             # total_lost_frames are totally missing frames as well as
             # frames where only a package was lost
@@ -195,26 +214,51 @@ class GatherData():
             # frames where a package is lost occure in error_code with
             # an nonzero entry whereas complety lost frames do not have
             # an entry in error code at all
-            frames_with_pkg_loss = source_file[self.error_code_path][()].nonzero()
+            error_code = source_file[self.error_code_path][()]
+            frames_with_pkg_loss = error_code.nonzero()
+            number_of_frames_with_pkg_loss = len(np.hstack(frames_with_pkg_loss))
+            print("Frames with packet loss: {}".format(number_of_frames_with_pkg_loss))
         except:
             print("Error when getting shape")
             raise
         finally:
-            source_file.close()
+            if source_file is not None:
+                source_file.close()
 
         if source_shape[1] != self.module_h and source_shape[2] != self.module_l:
             print("Shape of file {} does not match requirements".format(fname))
             print("source_shape = {}".format(source_shape))
             sys.exit(1)
 
+        # due to a "bug" in Tango the total_lost_frames can only be found in the next file
+        # TODO once Tango has fixed this, adjust it here as well
+        source_file = None
+        try:
+            source_file = h5py.File(self.files[0][1], "r", libver="latest")
+            # total_lost_frames are totally missing frames as well as
+            # frames where only a package was lost
+            total_lost_frames = source_file[self.total_lost_frames_path][0]
+        except:
+            print("Error when getting shape")
+            raise
+        finally:
+            if source_file is not None:
+                source_file.close()
+
         self.expected_nimages_per_file = (len(self.seq_number)
                                           # for the very first file
                                           # total_lost_frames was not yet aggregated
                                           + total_lost_frames
-                                          - len(np.hstack(frames_with_pkg_loss)))
+                                          - number_of_frames_with_pkg_loss)
 
         self.charges_per_file = int(self.expected_nimages_per_file / 2 / self.mem_cells)
         self.charges = self.charges_per_file * self.number_of_files
+
+        print("expected_total_images={}".format(self.expected_total_images))
+        print("expected_nimages_per_file={}".format(self.expected_nimages_per_file))
+        print("charges_per_file={}".format(self.charges_per_file))
+        print("charges={}".format(self.charges))
+
 
     def determine_asic_border(self):
         #       ____ ____ ____ ____ ____ ____ ____ ____
@@ -242,19 +286,83 @@ class GatherData():
         print("a_row_stop: {}".format(self.a_col_stop))
 
     def init_metadata(self):
-        collection = {}
-
         #self.save_file.create_group(self.collection_path)
         try:
             source_file = h5py.File(self.files[0][0], "r", libver="latest")
 
+            ### normal metadata ###
+            # metadata which is not handled individually is gathered
+            # in a matrix of the shape
+            # (<number of patterns>, <number of file parts>, <original metadata shape>)
             for k in source_file[self.collection_path].keys():
-                collection[k] = {
-                    "path": "{}/{}".format(self.collection_path, k),
-                    "shape": dset.shape,
-                    "dtype": dset.dtype,
-                    "value": None
-                }
+                dset_path = "{}/{}".format(self.collection_path, k)
+
+                if k not in self.special_keys:
+                    dset = source_file[dset_path]
+                    shape = (len(self.files), self.number_of_files) + dset.shape
+
+                    self.metadata[k] = {
+                        "path": dset_path,
+                        "value": np.zeros(shape, dset.dtype)
+                    }
+
+            ### special metadata ###
+            # for special metadata it makes no sense to just gather it
+            # for this data derived values are stored
+
+            dset_path = "{}/gathered_files".format(self.collection_path)
+            self.metadata_derived["gathered_files"] = {
+                "path": dset_path,
+                "value": self.files
+            }
+
+            # aggregated over all parts but distinguished between file types
+            dset_path = "{}/total_loss_frames".format(self.collection_path)
+            dset_dtype = source_file[dset_path].dtype
+            self.metadata_derived["total_loss_frames"] = {
+                "path": dset_path,
+                "value": np.zeros(len(self.column_specs), dset_dtype)
+            }
+
+            # lists can have different length
+            dset_path = "{}/error_code".format(self.collection_path)
+            self.metadata_derived["error_code"] = {
+                "path": dset_path,
+                "value": [[[] for _ in t] for t in self.files]
+            }
+
+            # lists can have different length
+            self.metadata_derived["sequence_number"] = {
+                "path": self.seq_number_path,
+                "value": [[[] for _ in t] for t in self.files]
+            }
+
+            dset_path = "{}/frame_loss_analog".format(self.collection_path)
+            self.metadata_derived["frame_loss_analog"] = {
+                "path": dset_path,
+                "value": [[] for _ in self.files]
+            }
+
+            dset_path = "{}/frame_loss_digital".format(self.collection_path)
+            self.metadata_derived["frame_loss_digital"] = {
+                "path": dset_path,
+                "value": [[] for _ in self.files]
+            }
+
+            # meaning:
+            # -1: frame loss
+            #  0: frame ok
+            #  1: frame damaged
+            shape = (
+                # one entry for every file type
+                (len(self.column_specs),
+                # merged file parts without frame loss
+                self.expected_total_images))
+            print("setting frame_loss_details to shape: {}".format(shape))
+            # initiate with -1
+            self.metadata_tmp["frame_loss_details"] = -1 * np.ones(shape, "int32")
+
+
         except:
             print("Error when initiating metadata")
             raise
@@ -305,6 +413,8 @@ class GatherData():
         self.digital = np.zeros(self.intermediate_shape, dtype="int16")
         print("took time: {}".format(time.time() - t))
 
+        self.init_metadata()
+
         n_cols = len(self.files)
         print("n_cols {}".format(n_cols))
 
@@ -331,30 +441,40 @@ class GatherData():
                 print("col_index_source {}".format(col_index_source))
                 print("col_index_target {}".format(col_index_target))
 
+                self.source_seq_number = [0]
                 for j in np.arange(self.number_of_files):
                     print("\nStarting file {}".format(self.files[i][j]))
                     source_file = h5py.File(self.files[i][j], "r", libver="latest")
 
-                    print("Start sequence number loading")
+                    print("Getting metadata")
                     t = time.time()
+                    self.get_metadata(source_file, i, j)
+                    print("took time: {}".format(time.time() - t))
+
                     # if there is frame loss this is recognizable by a missing entry in seq_number
                     # seq_number should be loaded before duing operations on
                     # it due to performance benefits
-                    source_seq_number = source_file[self.seq_number_path][()]
-                    self.seq_number = (source_seq_number
+                    seq_number_last_entry_previous_file = self.source_seq_number[-1]
+                    self.source_seq_number = self.metadata_derived["sequence_number"]["value"][i][j]
+                    print("seq_number_last_entry_previous_file={}".format(seq_number_last_entry_previous_file))
+                    print("seq_number before modifying: {}".format(self.source_seq_number))
+                    self.seq_number = (self.source_seq_number
                                        # seq_number starts counting with 1
                                        - 1
                                        # the seq_number refers to the whole run not one file
-                                       - j * self.expected_nimages_per_file)
-                    print("took time: {}".format(time.time() - t))
+                                       - seq_number_last_entry_previous_file)
+                                       #- j * self.expected_nimages_per_file)
                     print("seq_number: {}".format(self.seq_number))
 
                     source_shape, expected_shape = self.determine_expected_shape(source_file)
                     print("expected_shape={}".format(expected_shape))
 
+                    self.get_frame_loss_indices()
+                    self.get_tmp_metadata(source_file, i, j)
+
                     print("Start data loading")
                     t = time.time()
-                    loaded_raw_data = source_file[self.data_path_in_file][()]
+                    loaded_raw_data = source_file[self.data_path][()]
                     print("took time: {}".format(time.time() - t))
 
                     if source_shape == expected_shape:
@@ -367,7 +487,7 @@ class GatherData():
 
                         print("Start getting data blocks")
                         t = time.time()
-                        self.fillup_frame_loss(raw_data, loaded_raw_data)
+                        self.fillup_frame_loss(raw_data, loaded_raw_data, self.target_index)
                         print("took time: {}".format(time.time() - t))
 
                     print("Start reshaping")
@@ -400,7 +520,7 @@ class GatherData():
 
     def determine_expected_shape(self, source_file):
         # TODO: verify that the shape is always right and not dependant on frame loss
-        source_shape = source_file[self.data_path_in_file].shape
+        source_shape = source_file[self.data_path].shape
         print("source_shape reading from the file {}".format(source_shape))
 
         if source_shape[1] != self.module_h and source_shape[2] != self.module_l:
@@ -408,65 +528,55 @@ class GatherData():
             print("source_shape = {}".format(source_shape))
             sys.exit(1)
 
-        # total_lost_frames are totally missing frames as well as
-        # frames where only a package was lost
-        total_lost_frames = source_file[self.total_lost_frames_path][0]
-
-        # total_lost_frames does not refer to the current file but the total run
-        new_lost_frames = total_lost_frames - self.treated_lost_frames
-
-        # frames where a package is lost occure in error_code with
-        # an nonzero entry whereas complety lost frames do not have
-        # an entry in error code at all
-        error_code = source_file[self.error_code_path][()]
-        frames_with_pkg_loss = error_code.nonzero()
-        number_of_frames_with_pkg_loss = len(np.hstack(frames_with_pkg_loss))
-        print("Frames with packet loss: {}".format(number_of_frames_with_pkg_loss))
-
-        print("len seq_number: {}".format(len(self.seq_number)))
-        print("new_lost_frames: {}".format(new_lost_frames))
-
-        self.expected_nimages_per_file = (len(self.seq_number)
-                                          + new_lost_frames
-                                          - number_of_frames_with_pkg_loss)
-
-        self.treated_lost_frames = total_lost_frames
-        print("treated_lost_frames = {}".format(self.treated_lost_frames))
-
         expected_shape = (self.expected_nimages_per_file, source_shape[1], source_shape[2])
 
         return source_shape, expected_shape
 
-    def fillup_frame_loss(self, raw_data, loaded_raw_data):
+    def get_frame_loss_indices(self):
         # The borders (regarding the expected_shape) of
         # continuous blocks of data written into the target
         # (in between these blocks there will be zeros)
-        target_index = [[0, 0]]
+        self.target_index = [[0, 0]]
+        # original sequence number starts with 1
+        self.target_index_full_size = [[self.source_seq_number[0] - 1, 0]]
         # The borders (regarding the source_shape) of
         # continuous blocks of data read from the source
         # (no elements in between these blocks)
-        source_index = []
+        self.source_index = []
         stop = 0
         for i in np.arange(len(self.seq_number)):
 
             # a gap in the numbering occured
             if stop - self.seq_number[i] < -1:
+
                 # the number before the gab gives the end of
                 # the continuous block of data
-                target_index[-1][1] = stop
+                self.target_index[-1][1] = stop
                 # the next block starts now
-                target_index.append([self.seq_number[i], 0])
+                self.target_index.append([self.seq_number[i], 0])
+
+                # the number before the gab gives the end of
+                # the continuous block of data in the fully sized array
+                self.target_index_full_size[-1][1] = stop_full_size
+                # the next block starts now
+                # original sequence number started with 1
+                self.target_index_full_size.append([self.source_seq_number[i] - 1, 0])
+
                 # the end of the block in the source
-                source_index.append(i)
+                self.source_index.append(i)
 
             stop = self.seq_number[i]
+            stop_full_size = self.source_seq_number[i] - 1
 
         # the last block ends with the end of the data
-        target_index[-1][1] = self.seq_number[-1]
-        source_index.append(self.expected_nimages_per_file)
-        print("target_index {}".format(target_index))
-        print("source_index {}".format(source_index))
+        self.target_index[-1][1] = self.seq_number[-1]
+        self.target_index_full_size[-1][1] = self.source_seq_number[-1] - 1
+        self.source_index.append(self.expected_nimages_per_file)
+        print("target_index {}".format(self.target_index))
+        print("target_index_full_size {}".format(self.target_index_full_size))
+        print("source_index {}".format(self.source_index))
 
+    def fillup_frame_loss(self, raw_data, loaded_raw_data, target_index):
         # getting the blocks from source to target
         s_start = 0
         for i in range(len(target_index)):
@@ -479,13 +589,48 @@ class GatherData():
             # start and stop of the block in the source
             # s_start was set in the previous loop iteration
             # (or for i=0 is set to 0)
-            s_stop = source_index[i]
+            s_stop = self.source_index[i]
 
             raw_data[t_start:t_stop, ...] = loaded_raw_data[s_start:s_stop, ...]
-            s_start = source_index[i]
+            s_start = self.source_index[i]
 
-    def extract_metadata(self, source_file):
-        pass
+    def get_metadata(self, source_file, column_index, part_index):
+
+        ### normal metadata ###
+        for k in self.metadata:
+            dset_path = self.metadata[k]["path"]
+            dset = source_file[dset_path][()]
+            self.metadata[k]["value"][column_index, part_index, ...] = dset
+
+        ### special metadata ###
+
+        # get total_loss_frames
+        dset_path = self.metadata_derived["total_loss_frames"]["path"]
+        self.metadata_derived["total_loss_frames"]["value"][column_index] = source_file[dset_path][()]
+
+        # merge lists of error codes
+        dset_path = self.metadata_derived["error_code"]["path"]
+        dset = source_file[dset_path][()]
+        self.metadata_derived["error_code"]["value"][column_index][part_index] = dset
+
+        # merge lists of error codes
+        dset_path = self.metadata_derived["sequence_number"]["path"]
+        dset = source_file[dset_path][()]
+        self.metadata_derived["sequence_number"]["value"][column_index][part_index] = dset
+
+    def get_tmp_metadata(self, source_file, column_index, part_index):
+
+        dset = self.metadata_derived["error_code"]["value"][column_index][part_index]
+
+        # get aggregated information about frame and package loss
+        self.fillup_frame_loss(self.metadata_tmp["frame_loss_details"][column_index],
+                               dset,
+                               self.target_index_full_size)
+
+        start_index = part_index * self.expected_nimages_per_file
+        stop_index = (part_index + 1) * self.expected_nimages_per_file
+        print("frame_loss_details", self.metadata_tmp["frame_loss_details"][column_index][start_index:stop_index])
+
 
     def write_data(self):
         """
@@ -496,25 +641,31 @@ class GatherData():
 
         save_file = h5py.File(self.save_file, "w", libver='latest')
         print("Create analog data set")
-        dset_analog = save_file.create_dataset("analog",
+        dset_analog = save_file.create_dataset(self.data_path,
                                                shape=self.target_shape,
                                                chunks=self.chunksize,
                                                compression=None, dtype='int16')
         print("Create digital data set")
-        dset_digital = save_file.create_dataset("digital",
+        dset_digital = save_file.create_dataset(self.digital_data_path,
                                                shape=self.target_shape,
                                                chunks=self.chunksize,
                                                compression=None, dtype='int16')
 
+
         try:
+            print("\nStart saving metadata")
             t = time.time()
+            self.write_metadata(save_file)
+            print("took time: {}".format(time.time() - t))
+
             print("\nStart transposing")
+            t = time.time()
             analog_transposed = self.analog.transpose(self.transpose_order)
             digital_transposed = self.digital.transpose(self.transpose_order)
             print("took time: {}".format(time.time() - t))
 
+            print("\nStart saving data")
             t = time.time()
-            print("\nStart saving")
             dset_analog[...] = analog_transposed
             dset_digital[...] = digital_transposed
             save_file.flush()
@@ -522,6 +673,32 @@ class GatherData():
         finally:
             save_file.close()
 
+
+    def extend_metadata(self):
+
+        for i in np.arange(len(self.files)):
+            dset = self.metadata_tmp["frame_loss_details"][i]
+
+            self.metadata_derived["frame_loss_analog"]["value"][i] = dset[::2]
+            self.metadata_derived["frame_loss_digital"]["value"][i] = dset[1::2]
+
+    def write_metadata(self, target):
+
+        self.extend_metadata()
+
+        ### normal metadata ###
+        for k in self.metadata:
+            dset_path = self.metadata[k]["path"]
+            dset = self.metadata[k]["value"]
+
+            target.create_dataset(dset_path, data=dset)
+
+        ### special metadata ###
+        for k in self.metadata_derived:
+            dset_path = self.metadata_derived[k]["path"]
+            dset = self.metadata_derived[k]["value"]
+
+            target.create_dataset(dset_path, data=dset)
 
 if __name__ == "__main__":
     rel_file_path = "311-312-301-300-310-234/temperature_m20C/drscs/itestc150"
