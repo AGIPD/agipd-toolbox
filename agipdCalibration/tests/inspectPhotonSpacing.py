@@ -23,7 +23,7 @@ import pyqtgraph as pg
 # pg.image((photonSpacing80-photonSpacing200).transpose())
 
 # dataFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_full/photonSpacing_m1.h5'
-dataFileName = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/aschkan_stash/302-303-314-305/temperature_40C/xray/photonSpacing_m3_Cu.h5'
+dataFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/photonSpacing_m6_xray_Mo_00000.h5'
 f = h5py.File(dataFileName, 'r', libver='latest')
 photonSpacing175 = f['photonSpacing'][...]
 
@@ -31,11 +31,8 @@ pg.image(photonSpacing175.transpose())
 plt.imshow(photonSpacing175, vmin=30, vmax=130)
 plt.show()
 
-tmp = photonSpacing175[64:,:].flatten()
-tmp = np.hstack((tmp, photonSpacing175[0:64,0:128].flatten()))
-tmp = np.hstack((tmp, photonSpacing175[0:64,192:].flatten()))
-tmp = np.hstack((tmp, photonSpacing175[0:48,128:192].flatten()))
-failed = (sum(tmp > 117) + sum(tmp < 82))
+tmp = photonSpacing175.flatten()
+failed = (sum(tmp > 150) + sum(tmp < 120))/tmp.size
 
 
 # dataFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/xRay80.h5'

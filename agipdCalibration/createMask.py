@@ -4,13 +4,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pyqtgraph as pg
 
-moduleNumber = 2
-analogGainsFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/analogGains_m' + str(moduleNumber) + '.h5'
-digitalMeansFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/digitalMeans_m' + str(moduleNumber) + '.h5'
-darkOffsetFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/darkOffset_m' + str(moduleNumber) + '.h5'
-photonSpacingFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/photonSpacing_m' + str(moduleNumber) + '.h5'
+# moduleNumber = 2
+# analogGainsFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/analogGains_m' + str(moduleNumber) + '.h5'
+# digitalMeansFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/digitalMeans_m' + str(moduleNumber) + '.h5'
+# darkOffsetFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/darkOffset_m' + str(moduleNumber) + '.h5'
+# photonSpacingFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/photonSpacing_m' + str(moduleNumber) + '.h5'
+#
+# saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/mask_m' + str(moduleNumber) + '.h5'
 
-saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/agipdCalibration_workspace/mask_m' + str(moduleNumber) + '.h5'
+moduleNumber = 6
+analogGainsFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/analogGains_M303_m6_drscs_itestc80.h5'
+digitalMeansFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/digitalMeans_M303_m6_drscs_itestc80.h5'
+darkOffsetFileName = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/aschkan_stash/3_module_MC_imaging/dark/M303_m6_MC_3module_image_darkcal_replicated.h5'
+photonSpacingFileName = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/aschkan_stash/3_module_MC_imaging/xray/photonSpacing_m6_xray_Mo_00000.h5'
+
+saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/mask_m6.h5'
+
 
 saveFile = h5py.File(saveFileName, "w", libver='latest')
 dset_badCellMask = saveFile.create_dataset("badCellMask", shape=(352, 128, 512), dtype=bool)
@@ -29,6 +38,7 @@ digitalThresholds = digitalMeansFile["/digitalThresholds"][...]  # shape=(2, 352
 digitalStdDeviations = digitalMeansFile["/digitalStdDeviations"][...]  # shape=(352, 3, 128, 512)
 digitalStdDeviations = digitalStdDeviations.transpose((1, 0, 2, 3))  # shape=(3, 352, 128, 512)
 digitalSpacingsSafetyFactors = digitalMeansFile["/digitalSpacingsSafetyFactors"][...]  # shape=(352, 2, 128, 512)
+digitalSpacingsSafetyFactors.transpose((1,0,2,3)) # shape=(2, 352, 128, 512)
 digitalMeans = digitalMeans.transpose((1, 0, 2, 3))  # shape=(3, 352, 128, 512)
 
 darkOffset = darkOffsetFile["/darkOffset"][...]  # shape=(352, 128, 512)
@@ -37,20 +47,20 @@ darkStandardDeviation = darkOffsetFile["/darkStandardDeviation"][...]  # shape=(
 photonSpacing = photonSpacingFile["/photonSpacing"][...]  # shape=(128, 512)
 photonSpacingQuality = photonSpacingFile["/quality"][...]  # shape=(128, 512)
 
-# ########### fix values - edit, if you want to rerun script multiple times, without always reentering the same values
-# if moduleNumber == 1:
-#     darkOffsetRange = np.array([3150, 4800])
-#     darkStandardDeviationRange = np.array([0, 40])
-#     analogFitStdDevsRange = np.array([[0, 25], [0, 15], [0, 0]])
-#     analogGainsRange = np.array([[30, 42], [0.9, 1.2], [0, 0]])
-#     analogLineOffsetsRange = np.array([[2950, 5250], [4300, 6200], [0, 0]])
-#     digitalStdDeviationsRange = np.array([[0, 80], [0, 35], [0, 0]])
-#     digitalSpacingsSafetyFactorsMin = np.array([9, 0])
-#     digitalMeansRange = np.array([[5580, 7000], [6740, 8000], [0, 0]])
-#     digitalThresholdsRange = np.array([[6000, 7600], [0, 0]])
-#     photonSpacingRange = np.array([120, 200])
-#     photonSpacingQualityMin = 0
-# ###########
+########### fix values - edit, if you want to rerun script multiple times, without always reentering the same values
+if moduleNumber == 6:
+    darkOffsetRange = np.array([4000, 9000])
+    darkStandardDeviationRange = np.array([2, 40])
+    analogFitStdDevsRange = np.array([[0, 150], [0, 1250], [0, 550]])
+    analogGainsRange = np.array([[20, 400], [0.45, 10.6], [0.01, 2]])
+    analogLineOffsetsRange = np.array([[2950, 5250], [4300, 6200], [0, 0]])
+    digitalStdDeviationsRange = np.array([[0, 80], [0, 35], [0, 0]])
+    digitalSpacingsSafetyFactorsMin = np.array([9, 0])
+    digitalMeansRange = np.array([[5580, 7000], [6740, 8000], [0, 0]])
+    digitalThresholdsRange = np.array([[6000, 7600], [0, 0]])
+    photonSpacingRange = np.array([120, 200])
+    photonSpacingQualityMin = 0
+###########
 
 badCellMask = np.zeros((352, 128, 512), dtype=bool)
 
@@ -70,17 +80,17 @@ badCellMask = np.logical_or(manualMask, badCellMask)
 ###########
 
 ######### systematic mask - please edit
-systematicMask = np.zeros((128, 512, 11, 32), dtype=bool)
+# systematicMask = np.zeros((128, 512, 11, 32), dtype=bool)
 # systematicMask[..., 27:29] = True  # 32-column tips
 # systematicMask = systematicMask.reshape((128, 512, 352)).transpose(2, 0, 1)
-badCellMask = np.logical_or(systematicMask, badCellMask)
+# badCellMask = np.logical_or(systematicMask, badCellMask)
 #########
 
 ######### bad asic borders mask - please edit
 badAsicBordersMask = np.zeros((352, 128, 512), dtype=bool)
-badAsicBordersMask[:, (0, 63, 64, 127), :] = True
-for column in np.arange(8):
-    badAsicBordersMask[:, :, (column * 64, column * 64 + 63)] = True
+# badAsicBordersMask[:, (0, 63, 64, 127), :] = True
+# for column in np.arange(8):
+#     badAsicBordersMask[:, :, (column * 64, column * 64 + 63)] = True
 badCellMask = np.logical_or(badAsicBordersMask, badCellMask)
 #########
 

@@ -183,7 +183,6 @@ def fit3DynamicScanSlopes(analog, digital):
     try:
         #digitalMeanValues = get3DigitalMeans(digital, refinementStepsCount=3, minDigitalSpacing=800)
         digitalMeanValues = get3DigitalMeans_diffFilter_lowGainExtrapolated(digital)
-        digitalMeanValues = get3DigitalMeans_diffFilter_lowGainExtrapolated(digital)
         # print(digitalMeanValues)
     except ValueError:
          return fitLineParameters, digitalMeanValues, analogFitStdDevs, (digitalStdDev_highGain, digitalStdDev_mediumGain, digitalStdDev_lowGain)
@@ -307,13 +306,15 @@ def get3DigitalMeans(digital, refinementStepsCount=3, minDigitalSpacing=600):
 
 def get3DigitalMeans_diffFilter_lowGainExtrapolated(digital):
     derivative = np.diff(digital)
-    switchingIndicesCandidates = np.where(derivative > 300)
-    switchingIndicesCandidates_sorted = switchingIndicesCandidates[0][np.argsort(derivative[switchingIndicesCandidates[0]])]
+    derivative[0] = 0 #first sample usually bad
+    switchingIndicesCandidates = np.where(derivative > 350)
+    #switchingIndicesCandidates_sorted = switchingIndicesCandidates[0][np.argsort(derivative[switchingIndicesCandidates[0]])][::-1]
+    switchingIndicesCandidates_sorted = np.sort(switchingIndicesCandidates[0])
 
     if switchingIndicesCandidates_sorted.size < 2:
         raise ValueError
 
-    switchingIndices = np.zeros(2)
+    switchingIndices = np.zeros(2, dtype=int)
     switchingIndices[0] = switchingIndicesCandidates_sorted[0]
 
     minSamplesCountInMediumGain = 30
@@ -322,12 +323,15 @@ def get3DigitalMeans_diffFilter_lowGainExtrapolated(digital):
             switchingIndices[1] = switchingIndicesCandidates_sorted[i]
             break
 
+    if switchingIndices[0] <= 10 or switchingIndices[1] <= 10:
+        raise ValueError
+
     switchingIndices.sort()
 
     means = np.zeros(3)
     means[0] = np.mean(digital[2:switchingIndices[0] - 3])
     means[1] = np.mean(digital[switchingIndices[0] + 3:switchingIndices[1] - 3])
-    means[2] = means[1] + (means[1] - means[0])  # extrapolation
+    means[2] = means[1] + (means[1] - means[0])*0.8  # extrapolation
 
     return means
 

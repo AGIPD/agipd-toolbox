@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pyqtgraph as pg
 
-dataFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/correctedProteinDestructionData/m3_nilyso_3a_30percent_135keV_pos_-640.000_00000.nxs'
+dataFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/equalized_MXX_m6_Mo_tube_burst_data_00001.h5'
 
 dataFile = h5py.File(dataFileName, 'r', libver='latest')
 dset_analogCorrected = dataFile['/analogCorrected']
@@ -12,7 +12,7 @@ dset_digitalGainStage = dataFile['/digitalGainStage']
 
 # print(dset_analogCorrected.shape)
 
-a = pg.image(dset_analogCorrected[...].transpose(0, 2, 1))
+a = pg.image(dset_analogCorrected[0,...].transpose(0, 2, 1))
 # b = pg.image(dset_digitalGainStage[...].transpose(0, 2, 1))
 
 # pg.image(dset_analogCorrected[0,0,...].T)

@@ -15,7 +15,10 @@ def getPhotonHistogramLowpassCorrected(analog, localityRadius, lowpassSamplePoin
     # plt.show()
 
     localData = data[2 * localityRadius:6 * localityRadius]
-    localBinEdges = np.arange(np.min(localData), np.max(localData))
+    localBinEdges = np.arange(np.min(localData), np.max(localData) + 1)
+
+    if (localBinEdges.size == 1):  # stuck pixel
+        localBinEdges = np.arange(localBinEdges - 1, localBinEdges + 1)
 
     (localHistogram, _) = np.histogram(localData, localBinEdges)
     smoothWindowSize = 11
@@ -46,7 +49,10 @@ def getPhotonHistogramLowpassCorrected(analog, localityRadius, lowpassSamplePoin
     # plt.figure(3)
     # plt.plot(correctedData,'*')
 
-    binEdges = np.arange(np.min(correctedData), np.max(correctedData))
+    binEdges = np.arange(np.min(correctedData), np.max(correctedData)+1)
+
+    if (binEdges.size == 1):  # stuck pixel
+        binEdges = np.arange(binEdges - 1, binEdges + 1)
 
     return np.histogram(correctedData, binEdges)
 
@@ -112,6 +118,7 @@ def indexes_peakutilsManuallyAdjusted(y, thres=0.3, min_dist=1):
 
     return peaks
 
+
 def interpolate_peakutilsManuallyAdjusted(x, y, ind, width, func):
     '''Tries to enhance the resolution of the peak detection by using
     Gaussian fitting, centroid computation or an arbitrary function on the
@@ -139,11 +146,12 @@ def interpolate_peakutilsManuallyAdjusted(x, y, ind, width, func):
     '''
 
     out = []
-    for slice_ in (slice(max((0,i - width)), min((x.size, i + width))) for i in ind):
+    for slice_ in (slice(max((0, i - width)), min((x.size, i + width))) for i in ind):
         fit = func(x[slice_], y[slice_])
         out.append(fit)
 
     return np.array(out)
+
 
 def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=801, lwopassSamplePointsCount=1000):
     if applyLowpass:
@@ -162,32 +170,31 @@ def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=
     # plt.plot(photonHistogramBins[0:-1],photonHistoramValues)
     # plt.show()
 
-    minPeakDistance = 25
+    minPeakDistance = 40
     x = np.arange(len(photonHistoramValues))
     y = photonHistogramValuesSmooth  # photonHistoramValues
-    roughPeakLocations = indexes_peakutilsManuallyAdjusted(y, thres=0.05, min_dist=minPeakDistance)
+    roughPeakLocations = indexes_peakutilsManuallyAdjusted(y, thres=0.007, min_dist=minPeakDistance)
 
-    peakWidth = 21
+    peakWidth = 31
     try:
         interpolatedPeakParameters = interpolate_peakutilsManuallyAdjusted(x, y, ind=roughPeakLocations, width=peakWidth, func=manual_gaussian_fit)
     except:
-        return (0, 0, (0,0))
+        return (0, 0, (0, 0))
     if interpolatedPeakParameters.size < 2:
-        return (0, 0, (0,0))
+        return (0, 0, (0, 0))
 
     (interpolatedPeakLocations, peakStdDev) = zip(*interpolatedPeakParameters)
 
     peakLocations = np.clip(interpolatedPeakLocations, 0, len(photonHistoramValues) - 1)
     peakStdDev = np.array(peakStdDev)
 
-
-    maxPeakRelocation = 15
+    maxPeakRelocation = 20
     validIndices = np.abs(peakLocations - roughPeakLocations) <= maxPeakRelocation
     peakLocations = peakLocations[validIndices]
     peakStdDev = peakStdDev[validIndices]
 
     if peakLocations.size < 2:
-        return (0, 0, (0,0))
+        return (0, 0, (0, 0))
 
     peakIndices = np.round(peakLocations).astype(int)
 
@@ -202,7 +209,7 @@ def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=
     onePhotonAdcCounts = np.abs(sizeSortedPeakLocations[1] - sizeSortedPeakLocations[0])
 
     if onePhotonAdcCounts <= 10:
-        return (0, 0, (0,0))
+        return (0, 0, (0, 0))
 
     indicesBetweenPeaks = np.sort(sizeSortedPeakIndices[0:2])
     valleyDepthBetweenPeaks = sizeSortPeakSizes[1] - np.min(photonHistogramValuesSmooth[indicesBetweenPeaks[0]:indicesBetweenPeaks[1]])

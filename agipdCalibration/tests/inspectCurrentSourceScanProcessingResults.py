@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 import pyqtgraph as pg
 
 workspacePath = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/'
-dataFileName_analogGains = workspacePath + 'analogGains_currentSource_gainsFromCS.h5'
-dataFileName_digitalMeans = workspacePath + 'digitalMeans_currentSource_gainsFromCS.h5'
+dataFileName_analogGains = workspacePath + 'analogGains_M303_m6_drscs_itestc80.h5'
+dataFileName_digitalMeans = workspacePath + 'digitalMeans_M303_m6_drscs_itestc80.h5'
 
 dataFile_analogGains = h5py.File(dataFileName_analogGains, 'r', libver='latest')
 dataFile_digitalMeans = h5py.File(dataFileName_digitalMeans, 'r', libver='latest')
@@ -24,8 +24,8 @@ digitalSpacingsSafetyFactors = dataFile_digitalMeans["digitalSpacingsSafetyFacto
 dataFile_digitalMeans.close()
 dataFile_analogGains.close()
 
-#dataToPlot = [analogGains[0,...],analogGains[1,...],analogGains[2,...]]
-dataToPlot = [digitalMeans[:, 0,...],digitalMeans[:, 1,...],digitalMeans[:, 2,...]]
+dataToPlot = [analogGains[0,...],analogGains[1,...],analogGains[2,...],analogGains[0,...]/analogGains[1,...],analogGains[1,...]/analogGains[2,...]]
+#dataToPlot = [digitalMeans[:, 0,...],digitalMeans[:, 1,...],digitalMeans[:, 2,...]]
 # dataToPlot = [digitalStdDeviations[:, 0, ...], digitalStdDeviations[:, 1, ...], digitalStdDeviations[:, 2, ...]]
 for i in np.arange(len(dataToPlot)):
     data = dataToPlot[i]
