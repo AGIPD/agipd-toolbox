@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 module_file_path = "/gpfs/cfel/fsds/labs/processed/calibration/processed/M314/temperature_40C/drscs/itestc150/"
-axis_file_path = "/gpfs/cfel/fsds/labs/processed/calibration/processed/M314/temperature_40C/drscs/itestc150/"
+asic_file_path = "/gpfs/cfel/fsds/labs/processed/calibration/processed/M314/temperature_40C/drscs/itestc150/"
 
 module = "M314"
 current = "itestc150"
@@ -97,7 +97,7 @@ asic_files = [
 
 for asic in asic_files:
 
-    f = h5py.File(os.path.join(axis_file_path, asic["file_name"]), "r")
+    f = h5py.File(os.path.join(asic_file_path, asic["file_name"]), "r")
 
     dataf = f["/analog"][:, :, :, :]
     datag = g["/analog"][:, :, asic["index"][0]:asic["index"][1], asic["index"][2]:asic["index"][3]]
