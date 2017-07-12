@@ -11,6 +11,8 @@ from string import Template
 
 class GatherData():
     def __init__(self, asic, rel_file_path, file_base_name, output_file_name, col_spec, max_part):
+        print("Using numpy version {}".format(np.__version__))
+        print("Using h5py version {}".format(h5py.__version__))
 
         base_path = "/gpfs/cfel/fsds/labs/calibration/current/"
         filename_template = Template("${prefix}_col${column}")
@@ -102,6 +104,10 @@ class GatherData():
         self.raw_data_shape = (self.charges_per_file, self.mem_cells, 2,
                                self.module_h, self.module_l)
 
+        self.orign_raw_data_shape = (self.expected_total_images,
+                                     self.asic_size, self.asic_size)
+        self.reshaped_origin_raw_data_shape = (self.charges, self.mem_cells, 2,
+                                               self.asic_size, self.asic_size)
         # pixel data from raw is written into an intermediate format before
         # it is transposed into the target shape
         self.intermediate_shape = (self.charges, self.mem_cells,
@@ -196,7 +202,7 @@ class GatherData():
 
         source_file = None
         try:
-            source_file = h5py.File(self.files[0][0], "r", libver="latest")
+            source_file = h5py.File(self.files[0][0], "r", libver="latest", drivers="core")
 
             # TODO: verify that the shape is always right and not dependant on frame loss
             source_shape = source_file[self.data_path].shape
@@ -234,7 +240,7 @@ class GatherData():
         # TODO once Tango has fixed this, adjust it here as well
         source_file = None
         try:
-            source_file = h5py.File(self.files[0][1], "r", libver="latest")
+            source_file = h5py.File(self.files[0][1], "r", libver="latest", driver="core")
             # total_lost_frames are totally missing frames as well as
             # frames where only a package was lost
             total_lost_frames = source_file[self.total_lost_frames_path][0]
@@ -288,7 +294,7 @@ class GatherData():
     def init_metadata(self):
         #self.save_file.create_group(self.collection_path)
         try:
-            source_file = h5py.File(self.files[0][0], "r", libver="latest")
+            source_file = h5py.File(self.files[0][0], "r", libver="latest", driver="core")
 
             ### normal metadata ###
             # metadata which is not handled individually is gathered
@@ -326,15 +332,20 @@ class GatherData():
 
             # lists can have different length
             dset_path = "{}/error_code".format(self.collection_path)
+            dset_dtype = source_file[dset_path].dtype
+            shape = (len(self.files), self.number_of_files, self.expected_nimages_per_file)
             self.metadata_derived["error_code"] = {
                 "path": dset_path,
-                "value": [[[] for _ in t] for t in self.files]
+                "value": np.zeros(shape, dset_dtype)
             }
 
             # lists can have different length
+            dset_dtype = source_file[self.seq_number_path].dtype
+            shape = (len(self.files), self.number_of_files, self.expected_nimages_per_file)
             self.metadata_derived["sequence_number"] = {
                 "path": self.seq_number_path,
-                "value": [[[] for _ in t] for t in self.files]
+                "value": np.zeros(shape, dset_dtype)
+#                "value": [[[] for _ in t] for t in self.files]
             }
 
             dset_path = "{}/frame_loss_analog".format(self.collection_path)
@@ -361,6 +372,8 @@ class GatherData():
             print("setting frame_loss_details to shape: {}".format(shape))
             # initiate with -1
             self.metadata_tmp["frame_loss_details"] = -1 * np.ones(shape, "int32")
+
+            self.metadata_tmp["source_seq_number"] = [0]
 
 
         except:
@@ -413,6 +426,19 @@ class GatherData():
         self.digital = np.zeros(self.intermediate_shape, dtype="int16")
         print("took time: {}".format(time.time() - t))
 
+        print("Initiate tmp data")
+        t = time.time()
+        # Creating the array with np.zero is faster than copying the array from analog
+        self.tmp_data_real_position = np.zeros(self.orign_raw_data_shape, dtype="int16")
+        print("took time: {}".format(time.time() - t))
+
+        print("Initiate tmp data")
+        t = time.time()
+        # Creating the array with np.zero is faster than copying the array from analog
+        self.tmp_data = np.zeros(self.orign_raw_data_shape, dtype="int16")
+        print("took time: {}".format(time.time() - t))
+
+
         self.init_metadata()
 
         n_cols = len(self.files)
@@ -423,28 +449,32 @@ class GatherData():
             for i in np.arange(n_cols):
                 #TODO: find a generic solution for this
                 if self.a_row_start == 0:
-                    col_index_source = np.arange(self.a_col_start + (n_cols - 1) - i,
+                    col_index_module = np.arange(self.a_col_start + (n_cols - 1) - i,
                                                  self.a_col_stop,
                                                  n_cols)
-                    col_index_target = np.arange((n_cols - 1) - i,
-                                                 self.asic_size,
-                                                 n_cols)
+                    col_index_asic = np.arange((n_cols - 1) - i,
+                                               self.asic_size,
+                                               n_cols)
                     #index_upper_row = np.arange(3 - i, 512, 4)
                 else:
                     # the asics of the lower rows are upside down
-                    col_index_source = np.arange(self.a_col_start + i,
+                    col_index_module = np.arange(self.a_col_start + i,
                                                  self.a_col_stop,
                                                  n_cols)
-                    col_index_target = np.arange(i, self.asic_size, n_cols)
+                    col_index_asic = np.arange(i, self.asic_size, n_cols)
                     #index_lower_row = np.arange(i, 512, 4)
 
-                print("col_index_source {}".format(col_index_source))
-                print("col_index_target {}".format(col_index_target))
+                print("col_index_module {}".format(col_index_module))
+                print("col_index_asic {}".format(col_index_asic))
 
                 self.source_seq_number = [0]
                 for j in np.arange(self.number_of_files):
+                    file_processing_time = time.time()
+
                     print("\nStarting file {}".format(self.files[i][j]))
-                    source_file = h5py.File(self.files[i][j], "r", libver="latest")
+                    t = time.time()
+                    source_file = h5py.File(self.files[i][j], "r", libver="latest", driver="core")
+                    print("Opening file took {}".format(time.time() - t))
 
                     print("Getting metadata")
                     t = time.time()
@@ -455,8 +485,9 @@ class GatherData():
                     # seq_number should be loaded before duing operations on
                     # it due to performance benefits
                     seq_number_last_entry_previous_file = self.source_seq_number[-1]
-                    self.source_seq_number = self.metadata_derived["sequence_number"]["value"][i][j]
-                    print("seq_number_last_entry_previous_file={}".format(seq_number_last_entry_previous_file))
+                    self.source_seq_number = self.metadata_tmp["source_seq_number"]
+                    print("seq_number_last_entry_previous_file={}"
+                          .format(seq_number_last_entry_previous_file))
                     print("seq_number before modifying: {}".format(self.source_seq_number))
                     self.seq_number = (self.source_seq_number
                                        # seq_number starts counting with 1
@@ -466,52 +497,42 @@ class GatherData():
                                        #- j * self.expected_nimages_per_file)
                     print("seq_number: {}".format(self.seq_number))
 
-                    source_shape, expected_shape = self.determine_expected_shape(source_file)
-                    print("expected_shape={}".format(expected_shape))
-
                     self.get_frame_loss_indices()
                     self.get_tmp_metadata(source_file, i, j)
 
                     print("Start data loading")
                     t = time.time()
-                    loaded_raw_data = source_file[self.data_path][()]
+                    loaded_raw_data = source_file[self.data_path][:, self.a_row_start:self.a_row_stop,
+                                                                     self.a_col_start:self.a_col_stop]
                     print("took time: {}".format(time.time() - t))
 
-                    if source_shape == expected_shape:
-                        raw_data = loaded_raw_data
-                    else:
-                        print("Start initializing raw data with zeros")
-                        t = time.time()
-                        raw_data = np.zeros(expected_shape)
-                        print("took time: {}".format(time.time() - t))
-
-                        print("Start getting data blocks")
-                        t = time.time()
-                        self.fillup_frame_loss(raw_data, loaded_raw_data, self.target_index)
-                        print("took time: {}".format(time.time() - t))
-
-                    print("Start reshaping")
-                    reshaping_t_start = time.time()
-                    print("raw_data_shape={}".format(raw_data.shape))
-                    raw_data.shape = self.raw_data_shape
-
-                    dc_start = j * self.charges_per_file
-                    dc_stop = (j + 1) * self.charges_per_file
-
-                    # raw_data:       charges_per_file, mem_cells, 2, module_h, module_l
-                    # analod/digital: charges_per_file, mem_cells, asic_h, asic_l
-                    tmp = raw_data[:, :, 0, :, :]
-                    self.analog[dc_start:dc_stop, :, :,
-                                col_index_target] = tmp[..., self.a_row_start:self.a_row_stop,
-                                                             col_index_source]
-                    tmp = raw_data[:, :, 1, :, :]
-                    self.digital[dc_start:dc_stop, :, :,
-                                 col_index_target] = tmp[..., self.a_row_start:self.a_row_stop,
-                                                              col_index_source]
-
-                    print("Reshaping of data took time: {}".format(time.time() - reshaping_t_start))
                     source_file.close()
                     source_file = None
+
+                    print("Start getting data blocks")
+                    t = time.time()
+                    self.fillup_frame_loss(self.tmp_data, loaded_raw_data, self.target_index_full_size)
+                    print("took time: {}".format(time.time() - t))
+
+                    print("Processing the file took: {}".format(time.time() - file_processing_time))
+
+                # this is done on the end of the file type handling due to performance reasons
+                print("Start getting columns")
+                t = time.time()
+                self.tmp_data_real_position[..., col_index_asic] = self.tmp_data[..., col_index_asic]
+                print("took time: {}".format(time.time() - t))
+
+            print("Start reshaping")
+            reshaping_t_start = time.time()
+            print("tmp_data_shape={}".format(self.tmp_data_real_position.shape))
+            print("reshaped_origin_raw_data_shape={}".format(self.reshaped_origin_raw_data_shape))
+            self.tmp_data_real_position.shape = self.reshaped_origin_raw_data_shape
+
+            # raw_data:       charges_per_file, mem_cells, 2, module_h, module_l
+            # analod/digital: charges_per_file, mem_cells, asic_h, asic_l
+            self.analog = self.tmp_data_real_position[:, :, 0, :, :]
+            self.digital = self.tmp_data_real_position[:, :, 1, :, :]
+            print("Reshaping of data took time: {}".format(time.time() - reshaping_t_start))
 
         finally:
             if source_file is not None:
@@ -542,7 +563,7 @@ class GatherData():
         # The borders (regarding the source_shape) of
         # continuous blocks of data read from the source
         # (no elements in between these blocks)
-        self.source_index = []
+        self.source_index = [[0, 0]]
         stop = 0
         for i in np.arange(len(self.seq_number)):
 
@@ -562,16 +583,18 @@ class GatherData():
                 # original sequence number started with 1
                 self.target_index_full_size.append([self.source_seq_number[i] - 1, 0])
 
+                self.source_index[-1][1] = stop_source
                 # the end of the block in the source
-                self.source_index.append(i)
+                self.source_index.append([i, 0])
 
+            stop_source = i
             stop = self.seq_number[i]
             stop_full_size = self.source_seq_number[i] - 1
 
         # the last block ends with the end of the data
         self.target_index[-1][1] = self.seq_number[-1]
         self.target_index_full_size[-1][1] = self.source_seq_number[-1] - 1
-        self.source_index.append(self.expected_nimages_per_file)
+        self.source_index[-1][1] = len(self.seq_number) - 1
         print("target_index {}".format(self.target_index))
         print("target_index_full_size {}".format(self.target_index_full_size))
         print("source_index {}".format(self.source_index))
@@ -589,10 +612,17 @@ class GatherData():
             # start and stop of the block in the source
             # s_start was set in the previous loop iteration
             # (or for i=0 is set to 0)
-            s_stop = self.source_index[i]
+            s_start = self.source_index[i][0]
+            s_stop = self.source_index[i][1] + 1
 
+            print("t_start = {}".format(t_start))
+            print("t_stop = {}".format(t_stop))
+            print("s_start = {}".format(s_start))
+            print("s_stop = {}".format(s_stop))
+
+            #print("loaded_raw_data = {}".format(loaded_raw_data[s_start:s_stop, ...]))
             raw_data[t_start:t_stop, ...] = loaded_raw_data[s_start:s_stop, ...]
-            s_start = self.source_index[i]
+            #print("after raw_data = {}".format(raw_data[t_start:t_stop, ...]))
 
     def get_metadata(self, source_file, column_index, part_index):
 
@@ -611,12 +641,14 @@ class GatherData():
         # merge lists of error codes
         dset_path = self.metadata_derived["error_code"]["path"]
         dset = source_file[dset_path][()]
-        self.metadata_derived["error_code"]["value"][column_index][part_index] = dset
+        self.metadata_derived["error_code"]["value"][column_index][part_index][:dset.shape[0]] = dset
 
         # merge lists of error codes
         dset_path = self.metadata_derived["sequence_number"]["path"]
         dset = source_file[dset_path][()]
-        self.metadata_derived["sequence_number"]["value"][column_index][part_index] = dset
+        self.metadata_derived["sequence_number"]["value"][column_index][part_index][:dset.shape[0]] = dset
+
+        self.metadata_tmp["source_seq_number"] = dset
 
     def get_tmp_metadata(self, source_file, column_index, part_index):
 
@@ -627,11 +659,6 @@ class GatherData():
                                dset,
                                self.target_index_full_size)
 
-        start_index = part_index * self.expected_nimages_per_file
-        stop_index = (part_index + 1) * self.expected_nimages_per_file
-        print("frame_loss_details", self.metadata_tmp["frame_loss_details"][column_index][start_index:stop_index])
-
-
     def write_data(self):
         """
         transposes the data dimensions for optimal analysis access
@@ -639,7 +666,7 @@ class GatherData():
         and writes it into a file
         """
 
-        save_file = h5py.File(self.save_file, "w", libver='latest')
+        save_file = h5py.File(self.save_file, "w", libver="latest")
         print("Create analog data set")
         dset_analog = save_file.create_dataset(self.data_path,
                                                shape=self.target_shape,
@@ -676,8 +703,10 @@ class GatherData():
 
     def extend_metadata(self):
 
+
         for i in np.arange(len(self.files)):
             dset = self.metadata_tmp["frame_loss_details"][i]
+            print("{}: lost frames: {}".format(i, np.where(dset == -1)))
 
             self.metadata_derived["frame_loss_analog"]["value"][i] = dset[::2]
             self.metadata_derived["frame_loss_digital"]["value"][i] = dset[1::2]
