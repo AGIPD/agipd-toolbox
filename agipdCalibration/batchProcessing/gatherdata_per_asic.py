@@ -415,17 +415,6 @@ class GatherData():
         e.g.totalframes, 128, 512 -> charges_per_file, 352, 64, 64
         """
 
-        print("Initiate analog data")
-        t = time.time()
-        self.analog = np.zeros(self.intermediate_shape, dtype="int16")
-        print("took time: {}".format(time.time() - t))
-
-        print("Initiate digital data")
-        t = time.time()
-        # Creating the array with np.zero is faster than copying the array from analog
-        self.digital = np.zeros(self.intermediate_shape, dtype="int16")
-        print("took time: {}".format(time.time() - t))
-
         print("Initiate tmp data")
         t = time.time()
         # Creating the array with np.zero is faster than copying the array from analog
@@ -522,22 +511,24 @@ class GatherData():
                 self.tmp_data_real_position[..., col_index_asic] = self.tmp_data[..., col_index_asic]
                 print("took time: {}".format(time.time() - t))
 
-            print("Start reshaping")
-            reshaping_t_start = time.time()
-            print("tmp_data_shape={}".format(self.tmp_data_real_position.shape))
-            print("reshaped_origin_raw_data_shape={}".format(self.reshaped_origin_raw_data_shape))
-            self.tmp_data_real_position.shape = self.reshaped_origin_raw_data_shape
-
-            # raw_data:       charges_per_file, mem_cells, 2, module_h, module_l
-            # analod/digital: charges_per_file, mem_cells, asic_h, asic_l
-            self.analog = self.tmp_data_real_position[:, :, 0, :, :]
-            self.digital = self.tmp_data_real_position[:, :, 1, :, :]
-            print("Reshaping of data took time: {}".format(time.time() - reshaping_t_start))
-
         finally:
             if source_file is not None:
                 source_file.close()
                 source_file = None
+
+        print("Start reshaping")
+        reshaping_t_start = time.time()
+        print("tmp_data_shape={}".format(self.tmp_data_real_position.shape))
+        print("reshaped_origin_raw_data_shape={}".format(self.reshaped_origin_raw_data_shape))
+        self.tmp_data_real_position.shape = self.reshaped_origin_raw_data_shape
+
+        # raw_data:       charges_per_file, mem_cells, 2, module_h, module_l
+        # analod/digital: charges_per_file, mem_cells, asic_h, asic_l
+        self.analog = self.tmp_data_real_position[:, :, 0, :, :]
+        self.digital = self.tmp_data_real_position[:, :, 1, :, :]
+
+        print("Reshaping of data took time: {}".format(time.time() - reshaping_t_start))
+
 
     def determine_expected_shape(self, source_file):
         # TODO: verify that the shape is always right and not dependant on frame loss
