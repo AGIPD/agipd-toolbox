@@ -2,32 +2,34 @@
 
 mail_address=manuela.kuhn@desy.de
 
-base_path=/home/kuhnm/agipd-calibration/agipdCalibration/batchProcessing
-batch_job_dir=/home/kuhnm/agipd-calibration/batchJobCreation
-work_dir=/home/kuhnm/sbatch_out
+base_path=/home/kuhnm/agipd-calibration
+batch_job_dir=$base_path/batchJobCreation
+work_dir=$base_path/sbatch_out
 
 input_path=302-303-314-305
-module=M314_m3
-temperature=temperature_40C
-current=itestc150
+module=M314
+temperature=temperature_m15C
+current=itestc20
 max_part=false
 #column_spec="22 23 24 25"
 column_spec=false
 
-#asic_set1="1 2 3 4 5 6 7 8"
+#asic_set1="16"
+asic_set1="1 2 3 4 5 6 7 8"
 asic_set2="9 10 11 12 13 14 15 16"
+
+if [ ! -d "$work_dir" ]; then
+  mkdir $work_dir
+fi
 
 call_sbatch()
 {
     sbatch_params="--partition=all \
-                   --job-name=gather_drscs_${module}_asic${asic} \
                    --time=00:30:00 \
                    --nodes=1 \
                    --mail-type END \
                    --mail-user ${mail_address} \
                    --workdir=${work_dir} \
-                   --output=gather_drscs_${module}_${asic}.out \
-                   --error=gather_drscs_${module}_${asic}.err \
                    --job-name=gather_drscs_${module}_asic \
                    --output=gather_drscs_${module}_asic-%j.out \
                    --error=gather_drscs_${module}_asic-%j.err "
@@ -44,9 +46,9 @@ call_sbatch()
                                                      $*
 }
 
-#nasics=${asic_set1}
-#printf "Starting job for asics ${nasics}\n"
-#call_sbatch ${nasics}
+nasics=${asic_set1}
+printf "Starting job for asics ${nasics}\n"
+call_sbatch ${nasics}
 
 nasics=${asic_set2}
 printf "Starting job for asics ${nasics}\n"
