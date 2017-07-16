@@ -8,12 +8,18 @@ from agipdCalibration.algorithms.helperFunctions import orderFilterCourse
 import matplotlib.pyplot as plt
 
 
+# compute histogram and apply fast lowpass correction. For being fast, from the
 def getPhotonHistogramLowpassCorrected(analog, localityRadius, lowpassSamplePointsCount):
     data = analog
 
     # plt.plot(data,'.')
     # plt.show()
 
+    # expect localityRadius to be small enough
+    if (data.size <= 2 * localityRadius):
+        return ValueError
+
+    # compute small local histogram
     localData = data[2 * localityRadius:6 * localityRadius]
     localBinEdges = np.arange(np.min(localData), np.max(localData) + 1)
 
@@ -27,16 +33,15 @@ def getPhotonHistogramLowpassCorrected(analog, localityRadius, lowpassSamplePoin
     mostFrequentLocalValue = np.mean(localBinEdges[np.argmax(localHistogramSmooth)]).astype(int)
 
     # set order to be the same order as the maximum of the histogram in the local data. Should be least affected by noise
-    order = (2 * localityRadius * np.mean(np.nonzero(np.sort(localData) == mostFrequentLocalValue)) / localData.shape[0])
+    order = (2 * localityRadius * np.mean(np.nonzero(np.sort(localData) == mostFrequentLocalValue)) / localData.size)
 
     if np.isnan(order):
         order = np.array(0.4 * 2 * localityRadius)
 
-    order = order.astype(int)
+    order = order.astype(int)  # to be used as index
 
     # plt.figure(1)
     # plt.plot(localBinEdges[0:-1], localHistogramSmooth)
-
 
     lowPassData = orderFilterCourse(data, localityRadius, order, lowpassSamplePointsCount)
 
@@ -49,7 +54,8 @@ def getPhotonHistogramLowpassCorrected(analog, localityRadius, lowpassSamplePoin
     # plt.figure(3)
     # plt.plot(correctedData,'*')
 
-    binEdges = np.arange(np.min(correctedData), np.max(correctedData)+1)
+    # coompute histogram of corrected data
+    binEdges = np.arange(np.min(correctedData), np.max(correctedData) + 1)
 
     if (binEdges.size == 1):  # stuck pixel
         binEdges = np.arange(binEdges - 1, binEdges + 1)
@@ -57,7 +63,23 @@ def getPhotonHistogramLowpassCorrected(analog, localityRadius, lowpassSamplePoin
     return np.histogram(correctedData, binEdges)
 
 
+# version of the peakutils gaussian_fit that handles a possible exception
 def manual_gaussian_fit(x, y):
+    '''Performs a Gaussian fitting of the specified data.
+
+        Parameters
+        ----------
+        x : ndarray
+            Data on the x axis.
+        y : ndarray
+            Data on the y axis.
+
+        Returns
+        -------
+        ndarray or float
+            Parameters of the Gaussian that fits the specified data
+        '''
+
     initial = [np.max(y), x[0], (x[1] - x[0]) * 5]
     try:
         params, pcov = curve_fit(peakutils.peak.gaussian, x, y, initial)
@@ -146,13 +168,16 @@ def interpolate_peakutilsManuallyAdjusted(x, y, ind, width, func):
     '''
 
     out = []
-    for slice_ in (slice(max((0, i - width)), min((x.size, i + width))) for i in ind):
+    for slice_ in (slice(max((0, i - width)), min((x.size, i + width))) for i in ind):  # Addition by yaroslav.gevorkov@desy.de: added border checking
         fit = func(x[slice_], y[slice_])
         out.append(fit)
 
     return np.array(out)
 
 
+# apply lowpass, if temperature drift available:
+#   localityRadius should be local enough to be assumed as homogenous
+#   lwopassSamplePointsCount < 2*localityRadius, is used to speed up computation by using only a subset of the samples
 def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=801, lwopassSamplePointsCount=1000):
     if applyLowpass:
         (photonHistoramValues, photonHistogramBins) = getPhotonHistogramLowpassCorrected(analog, localityRadius, lwopassSamplePointsCount)
@@ -170,11 +195,14 @@ def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=
     # plt.plot(photonHistogramBins[0:-1],photonHistoramValues)
     # plt.show()
 
+
+    # compute rough peak locations by finding maxima
     minPeakDistance = 40
     x = np.arange(len(photonHistoramValues))
     y = photonHistogramValuesSmooth  # photonHistoramValues
     roughPeakLocations = indexes_peakutilsManuallyAdjusted(y, thres=0.007, min_dist=minPeakDistance)
 
+    # use regions around maxima to estimate the real peak positions by fitting a gaussian to them
     peakWidth = 31
     try:
         interpolatedPeakParameters = interpolate_peakutilsManuallyAdjusted(x, y, ind=roughPeakLocations, width=peakWidth, func=manual_gaussian_fit)
@@ -188,6 +216,7 @@ def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=
     peakLocations = np.clip(interpolatedPeakLocations, 0, len(photonHistoramValues) - 1)
     peakStdDev = np.array(peakStdDev)
 
+    # peaks that are too far away from their maximum sample are assumed to be not real peaks
     maxPeakRelocation = 20
     validIndices = np.abs(peakLocations - roughPeakLocations) <= maxPeakRelocation
     peakLocations = peakLocations[validIndices]
@@ -198,6 +227,7 @@ def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=
 
     peakIndices = np.round(peakLocations).astype(int)
 
+    # sort all values by peak size
     peakSizes = photonHistogramValuesSmooth[peakIndices]
     sizeSortIndices = np.argsort(peakSizes)[::-1]
     sizeSortedPeakLocations = peakLocations[sizeSortIndices]
@@ -206,9 +236,10 @@ def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=
 
     peakSizeSortedPeakStdDev = peakStdDev[sizeSortIndices]
 
+    # take biggest peak and second biggest peak to compute the photon spacing
     onePhotonAdcCounts = np.abs(sizeSortedPeakLocations[1] - sizeSortedPeakLocations[0])
 
-    if onePhotonAdcCounts <= 10:
+    if onePhotonAdcCounts <= 20:
         return (0, 0, (0, 0))
 
     indicesBetweenPeaks = np.sort(sizeSortedPeakIndices[0:2])
