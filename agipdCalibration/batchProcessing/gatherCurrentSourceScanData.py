@@ -3,23 +3,17 @@ import time
 import sys
 import numpy as np
 
-# dataFileNameRoot_column1and5 = '/gpfs/cfel/fsds/labs/calibration/current/m1_drscs_with_scaling_RT_15_00000_part0000'
-# dataFileNameRoot_column2and6 = '/gpfs/cfel/fsds/labs/calibration/current/m1_drscs_with_scaling_RT_26_00001_part0000'
-# dataFileNameRoot_column3and7 = '/gpfs/cfel/fsds/labs/calibration/current/m1_drscs_with_scaling_RT_37_00002_part0000'
-# dataFileNameRoot_column4and8 = '/gpfs/cfel/fsds/labs/calibration/current/m1_drscs_with_scaling_RT_48_00003_part0000'
-# clampedGainMediumFileName = sys.argv[4]
-# clampedGainLowFileName = sys.argv[5]
-# darkDataFileName = sys.argv[6]
+# dataFileNameRoot_column1and5 = '/gpfs/cfel/fsds/labs/calibration/current/302-303-314-305/temperature_m15C/drscs/itestc20/M305_m8_drscs_itestc20_col15_00009_part000'
+# dataFileNameRoot_column2and6 = '/gpfs/cfel/fsds/labs/calibration/current/302-303-314-305/temperature_m15C/drscs/itestc20/M305_m8_drscs_itestc20_col26_00010_part000'
+# dataFileNameRoot_column3and7 = '/gpfs/cfel/fsds/labs/calibration/current/302-303-314-305/temperature_m15C/drscs/itestc20/M305_m8_drscs_itestc20_col37_00011_part000'
+# dataFileNameRoot_column4and8 = '/gpfs/cfel/fsds/labs/calibration/current/302-303-314-305/temperature_m15C/drscs/itestc20/M305_m8_drscs_itestc20_col48_00012_part000'
 # dataPathInFile = '/entry/instrument/detector/data'
-# saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/currentSource_chunked.h5'
+# saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/gathered_M305_m8_drscs_itestc20_-15degree_chunked.h5'
 
 dataFileNameRoot_column1and5 = sys.argv[1]
 dataFileNameRoot_column2and6 = sys.argv[2]
 dataFileNameRoot_column3and7 = sys.argv[3]
 dataFileNameRoot_column4and8 = sys.argv[4]
-#clampedGainMediumFileName = sys.argv[4]
-#clampedGainLowFileName = sys.argv[5]
-#darkDataFileName = sys.argv[6]
 dataPathInFile = '/entry/instrument/detector/data'
 saveFileName = sys.argv[5]
 
@@ -29,9 +23,9 @@ print('')
 
 fileNamesRoots = (dataFileNameRoot_column1and5, dataFileNameRoot_column2and6, dataFileNameRoot_column3and7, dataFileNameRoot_column4and8)
 
-f = h5py.File(fileNamesRoots[0] + '0.nxs', 'r', libver='latest')
+f = h5py.File(fileNamesRoots[0] + '00.nxs', 'r', libver='latest')
 dataCountPerFile = int(f[dataPathInFile].shape[0] / 2 / 352)
-dataCount = dataCountPerFile * 10
+dataCount = dataCountPerFile * 13
 f.close()
 
 saveFile = h5py.File(saveFileName, "w", libver='latest')
@@ -44,9 +38,12 @@ analog = np.zeros((dataCount, 352, 128, 512), dtype='int16')
 digital = np.zeros((dataCount, 352, 128, 512), dtype='int16')
 
 for i in np.arange(4):
-    for j in np.arange(10):
+    for j in np.arange(13):
         t = time.time()
-        fileName = fileNamesRoots[i] + str(j) + '.nxs'
+        if j <= 9:
+            fileName = fileNamesRoots[i] + '0' + str(j) + '.nxs'
+        else:
+            fileName = fileNamesRoots[i] + str(j) + '.nxs'
         print('start loading', fileName)
         f = h5py.File(fileName, 'r', libver='latest')
         rawData = f[dataPathInFile][..., 0:128, 0:512]
