@@ -101,7 +101,7 @@ class GatherData():
                                self.asic_size, self.asic_size)
         # pixel data from raw is written into an intermediate format before
         # it is transposed into the target shape
-        self.reshaped_raw_data_shape = (self.charges, self.mem_cells, 2,
+        self.reshaped_data_shape = (self.charges, self.mem_cells, 2,
                                         self.asic_size, self.asic_size)
 
         # reshaped data is split into analog and digital data + transposed
@@ -109,10 +109,17 @@ class GatherData():
                              self.mem_cells, self.charges)
         self.chunksize = self.target_shape
 
+        self.raw_frame_loss_shape = (self.charges, self.mem_cells)
+
         # (self.charges, self.mem_cells, self.asic_size, self.asic_size)
         # is transposed to
         # (self.asic_size, self.asic_size, self.mem_cells, self.charges)
         self.transpose_order = (2,3,1,0)
+
+        # (self.charges, self.mem_cells)
+        # is transposed to
+        # (self.mem_cells, self.charges)
+        self.frame_loss_transpose_order = (1, 0)
 
         self.analog = None
         self.digital = None
@@ -509,8 +516,8 @@ class GatherData():
         print("Start reshaping")
         reshaping_t_start = time.time()
         print("tmp_data_shape={}".format(self.tmp_data_real_position.shape))
-        print("origin_raw_data_shape={}".format(self.origin_raw_data_shape))
-        self.tmp_data_real_position.shape = self.origin_raw_data_shape
+        print("reshaped_data_shape={}".format(self.reshaped_data_shape))
+        self.tmp_data_real_position.shape = self.reshaped_data_shape
 
         # raw_data:       charges, mem_cells, 2, module_h, module_l
         # analod/digital: charges, mem_cells, asic_h, asic_l
@@ -518,7 +525,6 @@ class GatherData():
         self.digital = self.tmp_data_real_position[:, :, 1, :, :]
 
         print("Reshaping of data took time: {}".format(time.time() - reshaping_t_start))
-
 
     def get_frame_loss_indices(self):
         # The borders (regarding the expected shape) of
@@ -689,8 +695,16 @@ class GatherData():
             dset = self.metadata_tmp["frame_loss_details"][i]
             print("{}: lost frames: {}".format(i, np.where(dset == -1)))
 
-            self.metadata_derived["frame_loss_analog"]["value"][i] = dset[::2]
-            self.metadata_derived["frame_loss_digital"]["value"][i] = dset[1::2]
+            dset_analog = dset[::2]
+            dset_analog.shape = self.raw_frame_loss_shape
+            dset_analog = dset_analog.transpose(self.frame_loss_transpose_order)
+
+            dset_digital = dset[1::2]
+            dset_digital.shape = self.raw_frame_loss_shape
+            dset_digital = dset_digital.transpose(self.frame_loss_transpose_order)
+
+            self.metadata_derived["frame_loss_analog"]["value"][i] = dset_analog
+            self.metadata_derived["frame_loss_digital"]["value"][i] = dset_digital
 
     def write_metadata(self, target):
 
