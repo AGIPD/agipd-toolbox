@@ -10,11 +10,10 @@ from string import Template
 
 
 class GatherData():
-    def __init__(self, asic, rel_file_path, file_base_name, output_file_name, col_spec, max_part):
+    def __init__(self, asic, input_file, output_file_name, col_spec, max_part):
         print("Using numpy version {}".format(np.__version__))
         print("Using h5py version {}".format(h5py.__version__))
 
-        base_path = "/gpfs/cfel/fsds/labs/calibration/current/"
         filename_template = Template("${prefix}_col${column}")
         self.data_path = "/entry/instrument/detector/data"
         self.digital_data_path = "/entry/instrument/detector/data_digital"
@@ -23,8 +22,6 @@ class GatherData():
         self.total_lost_frames_path = "{}/total_loss_frames".format(self.collection_path)
         self.error_code_path = "{}/error_code".format(self.collection_path)
         self.frame_number_path = "{}/frame_numbers".format(self.collection_path)
-
-        file_path = os.path.join(base_path, rel_file_path, file_base_name)
 
         self.save_file = output_file_name
         self.check_output_file_exist()
@@ -59,7 +56,7 @@ class GatherData():
         self.file_name_prefix = []
         if type(self.column_specs[0]) == list:
             for c, i in self.column_specs:
-                file_prefix = filename_template.substitute(prefix=file_path, column=c)
+                file_prefix = filename_template.substitute(prefix=input_file, column=c)
 
                 # The method zfill() pads string on the left with zeros to fill width.
                 self.file_name_prefix.append("{}_{}".format(file_prefix,
@@ -67,7 +64,7 @@ class GatherData():
         else:
             for c in self.column_specs:
                 self.file_name_prefix.append(
-                    filename_template.substitute(prefix=file_path, column=c))
+                    filename_template.substitute(prefix=input_file, column=c))
 
         print("\nUsed prefixes")
         self.files = []
@@ -669,7 +666,6 @@ class GatherData():
                                                chunks=self.chunksize,
                                                compression=None, dtype='int16')
 
-
         try:
             print("\nStart saving metadata")
             t = time.time()
@@ -691,9 +687,7 @@ class GatherData():
         finally:
             save_file.close()
 
-
     def extend_metadata(self):
-
 
         for i in np.arange(len(self.files)):
             dset = self.metadata_tmp["frame_loss_details"][i]

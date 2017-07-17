@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 
-base_path=/home/kuhnm/agipd-calibration/agipdCalibration/batchProcessing
+# this script starts mutiple processes in the background on one node
 
-input_path=
+source /etc/profile.d/modules.sh
+source /gpfs/cfel/cxi/common/cfelsoft-rh7/setup.sh
+module load cfel-anaconda/py3-4.3.0
+
+base_dir=
+run_type=
+input_dir=
+output_dir=
 module=
 temperature=
 current=
@@ -12,8 +19,20 @@ nasics=
 while test $# -gt 0
 do
     case $1 in
-        --input_path)
-            input_path=$2
+        --script_base_dir)
+            base_dir=$2
+            shift
+            ;;
+        --run_type)
+            run_type=$2
+            shift
+            ;;
+        --input_dir)
+            input_dir=$2
+            shift
+            ;;
+        --output_dir)
+            output_dir=$2
             shift
             ;;
         --module)
@@ -47,13 +66,18 @@ do
         -h | --help ) usage
             exit
             ;;
-        * ) break;  # end of options
+        * ) nasics=$*; echo break;  # end of options
     esac
     shift
 done
-nasics=$*
 
-script_params="--input_path ${input_path} \
+#TODO check for required parameters and stop if they are not set
+
+script_dir=$base_dir/src
+
+script_params="--type ${run_type}
+               --input_dir ${input_dir} \
+               --output_dir ${output_dir} \
                --module ${module} \
                --temperature ${temperature} \
                --current ${current}"
@@ -80,8 +104,8 @@ do
         script_params="${script_params} --max_part ${max_part}"
     fi
 
-    /usr/bin/python ${base_path}/gatherCurrentSourceScanData_generic_per_asic.py \
-        ${script_params} --asic ${asic} &
+    /usr/bin/python ${script_dir}/drscs.py \
+        ${script_params} --asic ${asic} #&
     tmp+=( ${!} )
 done
 
