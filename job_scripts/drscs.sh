@@ -66,10 +66,11 @@ do
         -h | --help ) usage
             exit
             ;;
-        * ) nasics=$*; echo break;  # end of options
+        * ) break;  # end of options
     esac
     shift
 done
+nasics=$*
 
 #TODO check for required parameters and stop if they are not set
 
@@ -105,7 +106,7 @@ do
     fi
 
     /usr/bin/python ${script_dir}/drscs.py \
-        ${script_params} --asic ${asic} #&
+        ${script_params} --asic ${asic} &
     tmp+=( ${!} )
 done
 
