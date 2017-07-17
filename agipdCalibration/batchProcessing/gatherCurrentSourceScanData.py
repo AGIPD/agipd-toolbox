@@ -10,12 +10,13 @@ import numpy as np
 # dataPathInFile = '/entry/instrument/detector/data'
 # saveFileName = '/gpfs/cfel/fsds/labs/processed/Yaroslav/python_saved_workspace/gathered_M305_m8_drscs_itestc20_-15degree_chunked.h5'
 
-dataFileNameRoot_column1and5 = sys.argv[1]
-dataFileNameRoot_column2and6 = sys.argv[2]
-dataFileNameRoot_column3and7 = sys.argv[3]
-dataFileNameRoot_column4and8 = sys.argv[4]
+nParts = sys.argv[1]
+dataFileNameRoot_column1and5 = sys.argv[2]
+dataFileNameRoot_column2and6 = sys.argv[3]
+dataFileNameRoot_column3and7 = sys.argv[4]
+dataFileNameRoot_column4and8 = sys.argv[5]
 dataPathInFile = '/entry/instrument/detector/data'
-saveFileName = sys.argv[5]
+saveFileName = sys.argv[6]
 
 print('\n\n\nstart gatherCurrentSourceScanData')
 print('saveFileName = ', saveFileName)
@@ -25,7 +26,7 @@ fileNamesRoots = (dataFileNameRoot_column1and5, dataFileNameRoot_column2and6, da
 
 f = h5py.File(fileNamesRoots[0] + '00.nxs', 'r', libver='latest')
 dataCountPerFile = int(f[dataPathInFile].shape[0] / 2 / 352)
-dataCount = dataCountPerFile * 13
+dataCount = dataCountPerFile * nParts
 f.close()
 
 saveFile = h5py.File(saveFileName, "w", libver='latest')
@@ -38,7 +39,7 @@ analog = np.zeros((dataCount, 352, 128, 512), dtype='int16')
 digital = np.zeros((dataCount, 352, 128, 512), dtype='int16')
 
 for i in np.arange(4):
-    for j in np.arange(13):
+    for j in np.arange(nParts):
         t = time.time()
         if j <= 9:
             fileName = fileNamesRoots[i] + '0' + str(j) + '.nxs'

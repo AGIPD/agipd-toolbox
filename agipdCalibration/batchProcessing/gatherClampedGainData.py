@@ -26,14 +26,17 @@ import os
 
 
 # Directories
-cgDir = '/gpfs/cfel/fsds/labs/calibration/current/raw/302-303-314-305/m15/clamped_gain/'
-darkDir = '/gpfs/cfel/fsds/labs/calibration/current/7-modules/temperature_m25C/dark/'
+cgDir = '/gpfs/cfel/fsds/labs/calibration/current/302-303-314-305/temperature_m15C/clamped_gain/'
+darkDir = '/gpfs/cfel/fsds/labs/calibration/current/302-303-314-305/temperature_m15C/dark/'
 outDir = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/jenny_stash/GainBitCorrection/'
 
 # Input file names
-fileName_dark = 'M314_m5_dark_tint150ns_00012_part00000.nxs' 
-fileName_med = 'm7_20170703_medium_00000.nxs'
-fileName_low = 'm7_20170703_low_00000.nxs'
+# For dark: tango splits into parts! this is the base of the name
+# the files end with "part0000<n>.nxs" where <n> goes from 0 to nParts
+nParts = 10
+fileName_dark = 'M305_m8_dark_tint150ns_00000_part000' 
+fileName_med = 'M305_m8_cg_medium_00000.nxs'
+fileName_low = 'M305_m8_cg_low_00000.nxs'
 
 # Complete path to input files
 fDark = os.path.join(darkDir, fileName_dark)
@@ -43,16 +46,28 @@ fLow = os.path.join(cgDir, fileName_low)
 dataPathInFile = '/entry/instrument/detector/data'
 
 # Output file containing means and stdev for each gain stage
-saveFileName = 'M314_Tm15_clampedGainData_test.h5'
+saveFileName = 'M314_Tm15_clampedGainData_testParts.h5'
 saveFilePath = os.path.join(outDir, saveFileName)
 
 
 # High gain from dark data
-print('start loading', dataPathInFile, 'from', fDark)
-f = h5py.File(fDark, 'r')
-rawData = f[dataPathInFile][..., 0:128, 0:512]
+# have to calculate how many events first!
+f = h5py.File(fDark + '00.nxs', 'r', libver='latest')
+dataCountPerFile = int(f[dataPathInFile].shape[0] / 2 / 352) #how many per file
+dataCount = dataCountPerFile * nParts # times nParts files for total
 f.close()
-print('loading done')
+
+# Loop over all nParts files, read in data
+for j in np.arange(nParts):
+    if j <= 9:
+        fDark_j = fDark + '0' + str(j) + '.nxs'
+    else:
+        fDark_j = fDark + str(j) + '.nxs'
+    print('start loading', dataPathInFile, 'from', fDark_j)
+    f = h5py.File(fDark_j, 'r')
+    rawData = f[dataPathInFile][..., 0:128, 0:512]
+    f.close()
+    print('loading done')
 
 print(rawData.shape) 
 rawData.shape = (-1, 352, 2, 128, 512) # Dark data contains analog and digital
