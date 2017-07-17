@@ -1,55 +1,92 @@
 #!/usr/bin/env bash
 
-mail_address=manuela.kuhn@desy.de
+base_path=/home/kuhnm/agipd-calibration/agipdCalibration/batchProcessing
 
-base_path=/home/kuhnm/agipd-calibration
-batch_job_dir=$base_path/batchJobCreation
-work_dir=$base_path/sbatch_out
+input_path=
+module=
+temperature=
+current=
+max_part=
+column_spec=
+nasics=
+while test $# -gt 0
+do
+    case $1 in
+        --input_path)
+            input_path=$2
+            shift
+            ;;
+        --module)
+            module=$2
+            shift
+            ;;
+        --temperature)
+            temperature=$2
+            shift
+            ;;
+        --current)
+            current=$2
+            shift
+            ;;
+        --max_part)
+            if [ "$2" != "false" ]
+            then
+                max_part=$2
+            fi
+            shift
+            ;;
+        --column_spec)
+            if [ "$2" == "false" ]
+            then
+                shift
+            else
+                column_spec="$2 $3 $4 $5"
+                shift 4
+            fi
+            ;;
+        -h | --help ) usage
+            exit
+            ;;
+        * ) break;  # end of options
+    esac
+    shift
+done
+nasics=$*
 
-input_path=302-303-314-305
-module=M314
-temperature=temperature_m15C
-current=itestc20
-max_part=false
-#column_spec="22 23 24 25"
-column_spec=false
+script_params="--input_path ${input_path} \
+               --module ${module} \
+               --temperature ${temperature} \
+               --current ${current}"
 
-#asic_set1="16"
-asic_set1="1 2 3 4 5 6 7 8"
-asic_set2="9 10 11 12 13 14 15 16"
+printf "script_params: ${script_params}\n"
+printf "max_part: ${max_part}\n"
+printf "column_spec: ${column_spec}\n"
+printf "nasics: ${nasics}\n"
+printf "\n"
 
-if [ ! -d "$work_dir" ]; then
-  mkdir $work_dir
-fi
+tmp=
+for asic in $(echo ${nasics})
+do
+    printf "Starting script for asic ${asic}\n"
 
-call_sbatch()
-{
-    sbatch_params="--partition=all \
-                   --time=00:30:00 \
-                   --nodes=1 \
-                   --mail-type END \
-                   --mail-user ${mail_address} \
-                   --workdir=${work_dir} \
-                   --job-name=gather_drscs_${module}_asic \
-                   --output=gather_drscs_${module}_asic-%j.out \
-                   --error=gather_drscs_${module}_asic-%j.err "
+    if [ -z ${column_spec+x} ]
+    then
+        printf "column index list is set to '$column_spec'\n"
+        script_params="${script_params} --column_spec ${column_spec}"
+    fi
 
-    script_params="--input_path ${input_path} \
-                   --module ${module} \
-                   --temperature ${temperature} \
-                   --current ${current} \
-                   --max_part ${max_part} \
-                   --column_spec ${column_spec}"
+    if [ -z ${max_part+x} ]
+    then
+        script_params="${script_params} --max_part ${max_part}"
+    fi
 
-    sbatch ${sbatch_params} \
-           ${batch_job_dir}/batchJob_gather_asics.sh ${script_params}\
-                                                     $*
-}
+    /usr/bin/python ${base_path}/gatherCurrentSourceScanData_generic_per_asic.py \
+        ${script_params} --asic ${asic} &
+    tmp+=( ${!} )
+done
 
-nasics=${asic_set1}
-printf "Starting job for asics ${nasics}\n"
-call_sbatch ${nasics}
+wait $tmp
 
-nasics=${asic_set2}
-printf "Starting job for asics ${nasics}\n"
-call_sbatch ${nasics}
+## wait ${!}	# won't work' cause only last bg process would be covered - what
+                # if last process ends earlier then previous ones -> script
+                # ends and shus sbatch

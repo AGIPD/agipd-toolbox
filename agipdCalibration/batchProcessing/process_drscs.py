@@ -39,7 +39,7 @@ def contiguous_regions(condition):
 #    print("idx", idx)
     return idx
 
-class Calibration():
+class ProcessDrscs():
     def __init__(self, file_name, plot_dir=None, create_plots=False):
 
         self.file_name = file_name
@@ -112,15 +112,12 @@ class Calibration():
 
     def scale_x_axis(self):
         lower  = np.arange(self.scaling_point)
-        upper = np.arange(self.scaling_point, self.digital.shape[3]) * self.scaling_factor - self.scaling_point * self.scaling_factor + self.scaling_point
+        upper = (np.arange(self.scaling_point, self.digital.shape[3])
+                 * self.scaling_factor
+                 - self.scaling_point * self.scaling_factor
+                 + self.scaling_point)
 
         self.scaled_x_axis = np.concatenate((lower, upper))
-
-#        a = self.analog[:, :, :, :self.scaling_point]
-
-#        self.analog[:, :, :, :self.scaling_point] = a * self.scaling_factor
-#        self.analog[:, :, :, :self.scaling_point -= self.analog[:, :, :, self.scaling_point]
-
 
     def run(self,  pixel, mem_cell):
         self.pixel = pixel
@@ -152,12 +149,12 @@ class Calibration():
         # remove the first intervall found if it starts with the first bin
         if idx[0][0] == 0:
             idx = idx [1:]
-            print("Pixel {}, mem cell {}: Removed first intervall".format(self.pixel, self.mem_cell))
+            #print("Pixel {}, mem cell {}: Removed first intervall".format(self.pixel, self.mem_cell))
 
         # remove the last intervall found if it ends with the last bin
         if idx[-1][1] == self.nbins:
             idx = idx [1:]
-            print("Pixel {}, mem cell {}: Removed last intervall".format(self.pixel, self.mem_cell))
+            #print("Pixel {}, mem cell {}: Removed last intervall".format(self.pixel, self.mem_cell))
 
         if len(idx) < 2:
             print("thold_for_zero={}".format(self.thold_for_zero))
@@ -310,7 +307,7 @@ if __name__ == "__main__":
     pixel_u_list = np.arange(64)
     mem_cell_list = np.arange(352)
 
-    cal = Calibration(file_name, plot_dir=plot_dir, create_plots=True)
+    cal = ProcessDrscs(file_name, plot_dir=plot_dir, create_plots=True)
 
     for pixel_v in pixel_v_list:
         for pixel_u in pixel_u_list:
