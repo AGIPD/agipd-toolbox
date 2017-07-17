@@ -101,8 +101,8 @@ class GatherData():
         self.raw_data_shape = (self.charges_per_file, self.mem_cells, 2,
                                self.module_h, self.module_l)
 
-        self.orign_raw_data_shape = (self.expected_total_images,
-                                     self.asic_size, self.asic_size)
+        self.origin_raw_data_shape = (self.expected_total_images,
+                                      self.asic_size, self.asic_size)
         self.reshaped_origin_raw_data_shape = (self.charges, self.mem_cells, 2,
                                                self.asic_size, self.asic_size)
         # pixel data from raw is written into an intermediate format before
@@ -255,7 +255,7 @@ class GatherData():
                                           - number_of_frames_with_pkg_loss)
 
         self.charges_per_file = int(self.expected_nimages_per_file / 2 / self.mem_cells)
-        self.charges = self.charges_per_file * self.number_of_files
+        self.charges = int(self.expected_total_images / 2 / self.mem_cells)
 
         print("expected_total_images={}".format(self.expected_total_images))
         print("expected_nimages_per_file={}".format(self.expected_nimages_per_file))
@@ -408,22 +408,15 @@ class GatherData():
                        module_length
 
         i.e. totalframes, module_h, module_l
-                 -> charges_per_file, mem_cells, asic_h, asic_l
-        e.g.totalframes, 128, 512 -> charges_per_file, 352, 64, 64
+                 -> charges, mem_cells, asic_h, asic_l
+        e.g.totalframes, 128, 512 -> charges, 352, 64, 64
         """
 
         print("Initiate tmp data")
         t = time.time()
         # Creating the array with np.zero is faster than copying the array from analog
-        self.tmp_data_real_position = np.zeros(self.orign_raw_data_shape, dtype="int16")
+        self.tmp_data_real_position = np.zeros(self.origin_raw_data_shape, dtype="int16")
         print("took time: {}".format(time.time() - t))
-
-        print("Initiate tmp data")
-        t = time.time()
-        # Creating the array with np.zero is faster than copying the array from analog
-        self.tmp_data = np.zeros(self.orign_raw_data_shape, dtype="int16")
-        print("took time: {}".format(time.time() - t))
-
 
         self.init_metadata()
 
@@ -433,6 +426,13 @@ class GatherData():
         source_file = None
         try:
             for i in np.arange(n_cols):
+
+                print("Initiate tmp data")
+                t = time.time()
+                # Creating the array with np.zero is faster than copying the array from analog
+                self.tmp_data = np.zeros(self.origin_raw_data_shape, dtype="int16")
+                print("took time: {}".format(time.time() - t))
+
                 #TODO: find a generic solution for this
                 if self.a_row_start == 0:
                     col_index_module = np.arange(self.a_col_start + (n_cols - 1) - i,
@@ -575,8 +575,14 @@ class GatherData():
                 # the end of the block in the source
                 self.source_index.append([i, 0])
 
+                print("seq_number[{}]={}, seq_number[{}]={}"
+                      .format(i-1, self.seq_number[i-1], i, self.seq_number[i]))
+                print("source_seq_number[{}]={}, source_seq_number[{}]={}"
+                      .format(i-1, self.source_seq_number[i-1], i, self.source_seq_number[i]))
+
             stop_source = i
             stop = self.seq_number[i]
+            # original sequence number started with 1
             stop_full_size = self.source_seq_number[i] - 1
 
         # the last block ends with the end of the data
@@ -586,6 +592,10 @@ class GatherData():
         print("target_index {}".format(self.target_index))
         print("target_index_full_size {}".format(self.target_index_full_size))
         print("source_index {}".format(self.source_index))
+
+        if len(self.target_index_full_size) > 1:
+            print("sequence_number: {}".format(
+                self.source_seq_number[(self.target_index[0][1] - 1):(self.target_index[1][0] + 1)]))
 
     def fillup_frame_loss(self, raw_data, loaded_raw_data, target_index):
         # getting the blocks from source to target
@@ -611,6 +621,11 @@ class GatherData():
             #print("loaded_raw_data = {}".format(loaded_raw_data[s_start:s_stop, ...]))
             raw_data[t_start:t_stop, ...] = loaded_raw_data[s_start:s_stop, ...]
             #print("after raw_data = {}".format(raw_data[t_start:t_stop, ...]))
+            if raw_data.shape == self.origin_raw_data_shape and t_start != 0:
+                print_start = t_start - 2
+                print_stop = t_start + 2
+                print("raw_data in frame_loss region={}"
+                      .format(raw_data[(print_start):(print_stop), 0, 0]))
 
     def get_metadata(self, source_file, column_index, part_index):
 
