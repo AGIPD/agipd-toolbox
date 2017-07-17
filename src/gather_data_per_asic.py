@@ -94,22 +94,17 @@ class GatherData():
         self.target_index = None
         self.source_index = None
 
-        self.charges_per_file = None
         self.charges = None
         self.get_charges()
 
-        self.raw_data_shape = (self.charges_per_file, self.mem_cells, 2,
-                               self.module_h, self.module_l)
-
-        self.origin_raw_data_shape = (self.expected_total_images,
-                                      self.asic_size, self.asic_size)
-        self.reshaped_origin_raw_data_shape = (self.charges, self.mem_cells, 2,
-                                               self.asic_size, self.asic_size)
+        self.raw_data_shape = (self.expected_total_images,
+                               self.asic_size, self.asic_size)
         # pixel data from raw is written into an intermediate format before
         # it is transposed into the target shape
-        self.intermediate_shape = (self.charges, self.mem_cells,
-                                   self.asic_size, self.asic_size)
+        self.reshaped_raw_data_shape = (self.charges, self.mem_cells, 2,
+                                        self.asic_size, self.asic_size)
 
+        # reshaped data is split into analog and digital data + transposed
         self.target_shape = (self.asic_size, self.asic_size,
                              self.mem_cells, self.charges)
         self.chunksize = self.target_shape
@@ -254,12 +249,10 @@ class GatherData():
                                           + total_lost_frames
                                           - number_of_frames_with_pkg_loss)
 
-        self.charges_per_file = int(self.expected_nimages_per_file / 2 / self.mem_cells)
         self.charges = int(self.expected_total_images / 2 / self.mem_cells)
 
         print("expected_total_images={}".format(self.expected_total_images))
         print("expected_nimages_per_file={}".format(self.expected_nimages_per_file))
-        print("charges_per_file={}".format(self.charges_per_file))
         print("charges={}".format(self.charges))
 
 
@@ -415,7 +408,7 @@ class GatherData():
         print("Initiate tmp data")
         t = time.time()
         # Creating the array with np.zero is faster than copying the array from analog
-        self.tmp_data_real_position = np.zeros(self.origin_raw_data_shape, dtype="int16")
+        self.tmp_data_real_position = np.zeros(self.raw_data_shape, dtype="int16")
         print("took time: {}".format(time.time() - t))
 
         self.init_metadata()
@@ -430,7 +423,7 @@ class GatherData():
                 print("Initiate tmp data")
                 t = time.time()
                 # Creating the array with np.zero is faster than copying the array from analog
-                self.tmp_data = np.zeros(self.origin_raw_data_shape, dtype="int16")
+                self.tmp_data = np.zeros(self.raw_data_shape, dtype="int16")
                 print("took time: {}".format(time.time() - t))
 
                 #TODO: find a generic solution for this
@@ -516,33 +509,19 @@ class GatherData():
         print("Start reshaping")
         reshaping_t_start = time.time()
         print("tmp_data_shape={}".format(self.tmp_data_real_position.shape))
-        print("reshaped_origin_raw_data_shape={}".format(self.reshaped_origin_raw_data_shape))
-        self.tmp_data_real_position.shape = self.reshaped_origin_raw_data_shape
+        print("origin_raw_data_shape={}".format(self.origin_raw_data_shape))
+        self.tmp_data_real_position.shape = self.origin_raw_data_shape
 
-        # raw_data:       charges_per_file, mem_cells, 2, module_h, module_l
-        # analod/digital: charges_per_file, mem_cells, asic_h, asic_l
+        # raw_data:       charges, mem_cells, 2, module_h, module_l
+        # analod/digital: charges, mem_cells, asic_h, asic_l
         self.analog = self.tmp_data_real_position[:, :, 0, :, :]
         self.digital = self.tmp_data_real_position[:, :, 1, :, :]
 
         print("Reshaping of data took time: {}".format(time.time() - reshaping_t_start))
 
 
-    def determine_expected_shape(self, source_file):
-        # TODO: verify that the shape is always right and not dependant on frame loss
-        source_shape = source_file[self.data_path].shape
-        print("source_shape reading from the file {}".format(source_shape))
-
-        if source_shape[1] != self.module_h and source_shape[2] != self.module_l:
-            print("Shape does not match requirements")
-            print("source_shape = {}".format(source_shape))
-            sys.exit(1)
-
-        expected_shape = (self.expected_nimages_per_file, source_shape[1], source_shape[2])
-
-        return source_shape, expected_shape
-
     def get_frame_loss_indices(self):
-        # The borders (regarding the expected_shape) of
+        # The borders (regarding the expected shape) of
         # continuous blocks of data written into the target
         # (in between these blocks there will be zeros)
         self.target_index = [[0, 0]]
@@ -621,7 +600,9 @@ class GatherData():
             #print("loaded_raw_data = {}".format(loaded_raw_data[s_start:s_stop, ...]))
             raw_data[t_start:t_stop, ...] = loaded_raw_data[s_start:s_stop, ...]
             #print("after raw_data = {}".format(raw_data[t_start:t_stop, ...]))
-            if raw_data.shape == self.origin_raw_data_shape and t_start != 0:
+
+            # debug output
+            if raw_data.shape == self.raw_data_shape and t_start != 0:
                 print_start = t_start - 2
                 print_stop = t_start + 2
                 print("raw_data in frame_loss region={}"
