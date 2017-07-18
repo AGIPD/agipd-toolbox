@@ -119,7 +119,30 @@ class ProcessDrscs():
 
         self.scaled_x_axis = np.concatenate((lower, upper))
 
-    def run(self,  pixel, mem_cell):
+
+    def run(self, pixel_v_list, pixel_u_list, mem_cell_list, create_error_plots):
+        for pixel_v in pixel_v_list:
+            for pixel_u in pixel_u_list:
+                for mem_cell in mem_cell_list:
+                    pixel = [pixel_v, pixel_u]
+                    try:
+                        self.process_data_point(pixel, mem_cell)
+                    except KeyboardInterrupt:
+                        sys.exit(1)
+                    except Exception as e:
+                        print("Failed to run for pixel {} and mem_cell {}"
+                              .format(pixel, mem_cell))
+                        print("Error was: {}".format(e))
+
+                        if create_error_plots:
+                            try:
+                                self.generate_data_plot()
+                            except:
+                                print("Failed to generate plot")
+
+                        #raise
+
+    def process_data_point(self, pixel, mem_cell):
         self.pixel = pixel
         self.mem_cell = mem_cell
 
@@ -188,9 +211,6 @@ class ProcessDrscs():
 
         #print("condition value={}".format(condition))
         idx = contiguous_regions(condition)[0]
-
-        # note scaling
-        #idx[np.where(idx > self.scaling_point)] *= self.scaling_factor
 
         # find the inner points (cut off the top and bottom part
         tmp = np.arange(idx[0], idx[1])
@@ -293,39 +313,36 @@ class ProcessDrscs():
                  "r", label="Fitted line low")
 
         plt.legend()
-        prefix = self.combined_plot_name.substitute(px=self.pixel, mc=self.mem_cell)
-        plt.savefig("{}{}".format(prefix, self.plot_ending))
-        plt.clf()
+        prefix = self.combined_plot_name.substitute(px=self.pixel,
+                                                    # fill number to be of 3 digits
+                                                    mc=str(self.mem_cell).zfill(3))
+        fig.savefig("{}{}".format(prefix, self.plot_ending))
+        fig.clf()
+        plt.close(fig)
+
+    def generate_all_plots(self):
+
+        self.generate_data_plot()
+
+        self.generate_fit_plot("high")
+        self.generate_fit_plot("medium")
+        self.generate_fit_plot("low")
+
+        self.generate_combined_plot()
 
 if __name__ == "__main__":
 
     file_name = "/gpfs/cfel/fsds/labs/processed/calibration/processed/M314/temperature_m15C/drscs/itestc150/M314_drscs_itestc150_asic1.h5"
-    plot_dir = "/home/kuhnm/agipd-calibration/plots"
+    plot_dir = "/gpfs/cfel/fsds/labs/processed/calibration/processed/M314/temperature_m15C/drscs/plots/itestc150"
 
-    create_plots = True
+    create_error_plots = True
     pixel_v_list = np.arange(64)
     pixel_u_list = np.arange(64)
     mem_cell_list = np.arange(352)
+    #pixel_v_list = np.arange(1)
+    #pixel_u_list = np.arange(2, 3)
+    #mem_cell_list = np.arange(60, 61)
 
-    cal = ProcessDrscs(file_name, plot_dir=plot_dir, create_plots=True)
+    cal = ProcessDrscs(file_name, plot_dir=plot_dir, create_plots="all")
 
-    for pixel_v in pixel_v_list:
-        for pixel_u in pixel_u_list:
-            for mem_cell in mem_cell_list:
-                pixel = [pixel_v, pixel_u]
-                try:
-                    cal.run(pixel, mem_cell)
-                except KeyboardInterrupt:
-                    sys.exit(1)
-                except Exception as e:
-                    print("Failed to run for pixel {} and mem_cell {}"
-                          .format(pixel, mem_cell))
-                    print("Error was: {}".format(e))
-
-                    if create_plots:
-                        try:
-                            cal.generate_data_plot()
-                        except:
-                            print("Failed to generate plot")
-
-                    #raise
+    cal.run(pixel_v_list, pixel_u_list, mem_cell_list, create_error_plots)

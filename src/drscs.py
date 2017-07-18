@@ -152,25 +152,6 @@ if __name__ == "__main__":
 
         cal = ProcessDrscs(input_file, plot_dir, create_plots=False)
 
-        for pixel_v in pixel_v_list:
-            for pixel_u in pixel_u_list:
-                for mem_cell in mem_cell_list:
-                    pixel = [pixel_v, pixel_u]
-                    try:
-                        cal.run(pixel, mem_cell)
-                    except KeyboardInterrupt:
-                        sys.exit(1)
-                    except Exception as e:
-                        print("Failed to run for pixel {} and mem_cell {}"
-                              .format(pixel, mem_cell))
-                        print("Error was: {}".format(e))
-
-                        if create_error_plots:
-                            try:
-                                cal.generate_data_plot()
-                            except:
-                                print("Failed to generate plot")
-
-                        #raise
+        cal.run(pixel_v_list, pixel_u_list, mem_cell_list, create_error_plots)
 
     print("\nFinished at", str(datetime.datetime.now()))
