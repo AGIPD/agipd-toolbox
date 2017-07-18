@@ -48,8 +48,8 @@ call_sbatch()
                    --mail-user ${mail_address} \
                    --workdir=${work_dir} \
                    --job-name=${run_type}_drscs_${module} \
-                   --output=${run_type}_drscs_${module}_$dt.out \
-                   --error=${run_type}_drscs_${module}_$dt.err "
+                   --output=${run_type}_drscs_${module}_$dt_%j.out \
+                   --error=${run_type}_drscs_${module}_$dt_%j.err "
 
     script_params="--script_base_dir ${script_base_dir} \
                    --run_type ${run_type} \
