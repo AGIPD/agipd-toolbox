@@ -57,7 +57,7 @@ do
                                                 ${photonSpacingCellNumber} \
                                                 ${keV_perPhoton} \
                                                 ${combinedCalibrationConstantsFileName} \
-                                                ${workspaceFolder} \
+                                                ${processedFolder} \
                                                 ${moduleNumber} \
                                                 ${batchJobCreationFolder} \
                                                 ${nPartsCS} \

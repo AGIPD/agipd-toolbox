@@ -22,15 +22,18 @@ keV_perPhoton=${16}
 
 combinedCalibrationConstantsFileName=${17}
 
-workspaceFolder=${18}
+processedFolder=${18}
 
 moduleNumber=${19}
 
 batchJobCreationFolder=${20}
 
+nPartsCS=${21}
+nPartsDark=${22}
+
 sbatch --job-name=processAgipdCalibration_module${moduleNumber} \
-		--output=${workspaceFolder}batchJobProcessAgipdCalibration_m${moduleNumber}.output \
-		--error=${workspaceFolder}batchJobProcessAgipdCalibration_m${moduleNumber}.error \
+		--output=${processedFolder}/batchJobProcessAgipdCalibration_m${moduleNumber}.output \
+		--error=${processedFolder}/batchJobProcessAgipdCalibration_m${moduleNumber}.error \
 		${batchJobCreationFolder}batchJob_processAgipdCalibration_oneModule.sh \
 		${xRayTubeDataFileName} \
 		${gatheredXRayTubeDataFileName} \
@@ -48,6 +51,8 @@ sbatch --job-name=processAgipdCalibration_module${moduleNumber} \
         ${photonSpacingCellNumber} \
         ${keV_perPhoton} \
         ${combinedCalibrationConstantsFileName} \
-		${processingFilesFolder} 
+		${processingFilesFolder} \
+                ${nPartsCS} \
+                ${nPartsDark}
 		
 
