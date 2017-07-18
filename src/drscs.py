@@ -119,7 +119,7 @@ if __name__ == "__main__":
         input_file_dir = os.path.join(input_base_dir, temperature, "drscs", current)
         input_file = os.path.join(input_file_dir, input_file_name)
 
-        output_file_name = "{}_drscs_{}_asic{}.h5".format(module_split[0], current, asic)
+        output_file_name = "{}_drscs_{}_asic{}.h5".format(module_split[0], current, asic.zfill(2))
         output_file_dir = os.path.join(output_base_dir, module_split[0], temperature, "drscs", current)
         output_file = os.path.join(output_file_dir, output_file_name)
 
@@ -132,11 +132,11 @@ if __name__ == "__main__":
 
     else:
         # the input files for processing are the output ones from gather
-        input_file_name = "{}_drscs_{}_asic{}.h5".format(module, current, asic)
+        input_file_name = "{}_drscs_{}_asic{}.h5".format(module, current, asic.zfill(2))
         input_file_dir = os.path.join(input_base_dir, module, temperature, "drscs", current)
         input_file = os.path.join(input_file_dir, input_file_name)
 
-        output_file_name = "{}_drscs_{}_asic{}_processed.h5".format(module, current, asic)
+        output_file_name = "{}_drscs_{}_asic{}_processed.h5".format(module, current, asic.zfill(2))
         output_file_dir = os.path.join(output_base_dir, module, temperature, "drscs", current)
         output_file = os.path.join(output_file_dir, output_file_name)
 
