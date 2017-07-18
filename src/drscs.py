@@ -140,7 +140,7 @@ if __name__ == "__main__":
         output_file_dir = os.path.join(output_base_dir, module, temperature, "drscs", current)
         output_file = os.path.join(output_file_dir, output_file_name)
 
-        plot_dir = os.path.join(output_file_dir, "plots")
+        plot_dir = os.path.join(output_base_dir, module, temperature, "plots", current)
         create_dir(plot_dir)
 
         create_error_plots = False
