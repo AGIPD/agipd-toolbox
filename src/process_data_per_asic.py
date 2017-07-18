@@ -164,7 +164,20 @@ class ProcessDrscs():
         self.fit_data(self.threshold[1], None, "low")
 
         if self.generate_plots_flag:
-            self.generate_all_plots()
+            if self.generate_plots_flag == "data":
+                self.generate_data_plot()
+
+            elif self.generate_plots_flag == "fit":
+                self.generate_fit_plot("high")
+                self.generate_fit_plot("medium")
+                self.generate_fit_plot("low")
+
+            elif self.generate_plots_flag == "combined":
+                self.generate_combined_plot()
+
+            else:
+                self.generate_all_plots()
+
 
     def calc_thresholds(self):
         idx = contiguous_regions(self.hist < self.thold_for_zero)
