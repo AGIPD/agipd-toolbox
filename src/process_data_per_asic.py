@@ -242,34 +242,40 @@ class ProcessDrscs():
         #print("found slope: {}".format(self.slope[gain]))
         #print("found offset: {}".format(self.offset[gain]))
 
+    def write_data(self):
+        pass
+
     def generate_data_plot(self):
 
         width = 0.7 * (self.bins[1] - self.bins[0])
         center = (self.bins[:-1] + self.bins[1:]) / 2
 
         # plot data
-        plt.figure(figsize=(13, 5))
-        plt.subplot(121)
-        plt.bar(center, self.hist, align="center", width=width, label="hist digital")
-        plt.legend()
+        fig = plt.figure(figsize=(13, 5))
+        ax = fig.add_subplot(121)
+        ax.bar(center, self.hist, align="center", width=width, label="hist digital")
+        ax.legend()
 
-        plt.subplot(122)
-        plt.plot(self.scaled_x_axis,
+        ax = fig.add_subplot(122)
+        ax.plot(self.scaled_x_axis,
                  self.analog[self.pixel[0], self.pixel[1], self.mem_cell, :],
                  ".", markersize=0.5, label="analog")
-        plt.plot(self.scaled_x_axis,
+        ax.plot(self.scaled_x_axis,
                  self.digital[self.pixel[0], self.pixel[1], self.mem_cell, :],
                  ".", markersize=0.5, label="digital")
 
-        plt.legend()
-        prefix = self.origin_data_plot_name.substitute(px=self.pixel, mc=self.mem_cell)
-        plt.savefig("{}{}".format(prefix, self.plot_ending))
-        plt.clf()
+        ax.legend()
+        prefix = self.origin_data_plot_name.substitute(px=self.pixel,
+                                                       # fill number to be of 3 digits
+                                                       mc=str(self.mem_cell).zfill(3))
+        fig.savefig("{}{}".format(prefix, self.plot_ending))
+        fig.clf()
+        plt.close(fig)
 
 
     def generate_fit_plot(self, gain):
         # plot fitting
-        plt.figure(figsize=None)
+        fig = plt.figure(figsize=None)
         plt.plot(self.constant_terms[gain],
                  self.data_to_fit[gain],
                  'o', label="Original data", markersize=1)
@@ -279,19 +285,16 @@ class ProcessDrscs():
                  "r", label="Fitted line high")
 
         plt.legend()
-        prefix = self.fitting_plot_name.substitute(px=self.pixel, mc=self.mem_cell)
-        plt.savefig("{}_{}{}".format(prefix, gain, self.plot_ending))
-        plt.clf()
+        prefix = self.fitting_plot_name.substitute(px=self.pixel,
+                                                   # fill number to be of 3 digits
+                                                   mc=str(self.mem_cell).zfill(3))
+        fig.savefig("{}_{}{}".format(prefix, gain, self.plot_ending))
+        fig.clf()
+        plt.close(fig)
 
-    def generate_all_plots(self):
-
-        self.generate_data_plot()
-
-        self.generate_fit_plot("high")
-        self.generate_fit_plot("medium")
-        self.generate_fit_plot("low")
-
+    def generate_combined_plot(self):
         # plot combined
+        fig = plt.figure(figsize=None)
         plt.plot(self.scaled_x_axis,
                  self.analog[self.pixel[0], self.pixel[1], self.mem_cell, :],
                  ".", markersize=0.5, label="analog")
