@@ -92,7 +92,7 @@ class ProcessDrscs():
             plot_prefix = os.path.join(self.plot_dir, plot_prefix)
 
         self.origin_data_plot_name = Template(plot_prefix + "_${px}_${mc}_data")
-        self.fitting_plot_name = Template(plot_prefix + "_${px}_${mc}_fitting")
+        self.fitting_plot_name = Template(plot_prefix + "_${px}_${mc}_fit")
         self.combined_plot_name = Template(plot_prefix + "_${px}_${mc}_combined")
         self.plot_ending = ".png"
 
