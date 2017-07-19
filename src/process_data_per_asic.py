@@ -5,6 +5,7 @@ from string import Template
 import os
 import sys
 import time
+import traceback
 
 # from Joe Kington's answer here https://stackoverflow.com/a/4495197/3751373
 def contiguous_regions(condition):
@@ -40,14 +41,15 @@ def contiguous_regions(condition):
     return idx
 
 class ProcessDrscs():
-    def __init__(self, file_name, plot_dir=None, create_plots=False):
+    def __init__(self, input_file_name, output_file_name, plot_dir=None, create_plots=False):
 
-        self.file_name = file_name
+        self.input_fname = input_file_name
+        self.output_fname = output_file_name
 
         self.digital_path = "/entry/instrument/detector/data_digital"
         self.analog_path = "/entry/instrument/detector/data"
 
-        self.generate_plots_flag = create_plots
+        self.create_plot_type = create_plots
         self.plot_dir = plot_dir
 
         self.digital = None
@@ -62,11 +64,16 @@ class ProcessDrscs():
         self.scaling_point = 200
         self.scaling_factor = 10
 
-        self.scaled_x_axis = None
+        self.n_gain_stages = 3
+
+        self.pixel = None
+        self.mem_cell = None
+        self.stage_idx = None
+        self.scaled_x_values = None
         self.hist = None
         self.bin = None
         self.coefficient_matrix = None
-        self.constant_terms = {
+        self.x_values = {
             "high" : None,
             "medium": None,
             "low": None
@@ -76,16 +83,8 @@ class ProcessDrscs():
             "medium": None,
             "low": None
         }
-        self.slope = {
-            "high" : None,
-            "medium": None,
-            "low": None
-        }
-        self.offset = {
-            "high" : None,
-            "medium": None,
-            "low": None
-        }
+        self.slope = None
+        self.offset = None
 
         plot_prefix = "M314_itestc150_asic1"
         if plot_dir is not None:
@@ -96,12 +95,15 @@ class ProcessDrscs():
         self.combined_plot_name = Template(plot_prefix + "_${px}_${mc}_combined")
         self.plot_ending = ".png"
 
+        print("Load data")
+        t = time.time()
         self.load_data()
-        self.scale_x_axis()
+        print("took time: {}".format(time.time() - t))
+        self.scale_full_x_axis()
 
     def load_data(self):
 
-        source_file = h5py.File(self.file_name, "r")
+        source_file = h5py.File(self.input_fname, "r")
 
         # origin data is written as int16 which results in a integer overflow
         # when handling the scaling
@@ -110,42 +112,57 @@ class ProcessDrscs():
 
         source_file.close()
 
-    def scale_x_axis(self):
-        lower  = np.arange(self.scaling_point)
-        upper = (np.arange(self.scaling_point, self.digital.shape[3])
-                 * self.scaling_factor
-                 - self.scaling_point * self.scaling_factor
-                 + self.scaling_point)
-
-        self.scaled_x_axis = np.concatenate((lower, upper))
-
-
     def run(self, pixel_v_list, pixel_u_list, mem_cell_list, create_error_plots):
+
+        # initiate
+        # +1 because counting starts with zero
+        shape = (self.n_gain_stages, pixel_v_list.max() + 1, pixel_u_list.max() + 1, mem_cell_list.max() + 1)
+        # thresholds between to distinguish between the gain stages
+        threshold_shape = (self.n_gain_stages - 1,
+                           pixel_v_list.max() + 1,
+                           pixel_u_list.max() + 1,
+                           mem_cell_list.max() + 1)
+        print("result shape: {}".format(shape))
+        print("theshold shape: {}".format(shape))
+
+        self.slope = np.zeros(shape, np.float32)
+        self.offset = np.zeros(shape, np.float32)
+        self.thresholds = np.zeros(threshold_shape, np.float32)
+
         for pixel_v in pixel_v_list:
             for pixel_u in pixel_u_list:
                 for mem_cell in mem_cell_list:
-                    pixel = [pixel_v, pixel_u]
                     try:
-                        self.process_data_point(pixel, mem_cell)
+                        self.pixel = [pixel_v, pixel_u]
+                        self.mem_cell = mem_cell
+                        self.current_idx = (pixel_v, pixel_u, mem_cell)
+                        self.stage_idx = {
+                            "high": (0, ) + self.current_idx,
+                            "medium": (1, ) + self.current_idx,
+                            "low": (2, ) + self.current_idx
+                        }
+
+                        self.process_data_point(self.pixel, self.mem_cell)
                     except KeyboardInterrupt:
                         sys.exit(1)
                     except Exception as e:
                         print("Failed to run for pixel {} and mem_cell {}"
-                              .format(pixel, mem_cell))
+                              .format(self.pixel, self.mem_cell))
                         print("Error was: {}".format(e))
+                        print(traceback.print_exc())
 
                         if create_error_plots:
                             try:
                                 self.generate_data_plot()
                             except:
                                 print("Failed to generate plot")
+                                raise
 
                         #raise
 
-    def process_data_point(self, pixel, mem_cell):
-        self.pixel = pixel
-        self.mem_cell = mem_cell
+        self.write_data()
 
+    def process_data_point(self, pixel, mem_cell):
         self.hist, self.bins = np.histogram(self.digital[self.pixel[0], self.pixel[1],
                                                          self.mem_cell, :],
                                             bins=self.nbins)
@@ -153,26 +170,27 @@ class ProcessDrscs():
         #print("bins={}".format(self.bins))
 
         self.calc_thresholds()
+        threshold = self.thresholds[:, self.current_idx[0], self.current_idx[1], self.current_idx[2]]
 
-#        print("\nfitting high gain with thresholds ({}, {})".format(0, self.threshold[0]))
-        self.fit_data(0, self.threshold[0], "high")
+#        print("\nfitting high gain with thresholds ({}, {})".format(0, threshold[0]))
+        self.fit_data(0, threshold[0], "high")
 
         #print("\nfitting medium gain")
-        self.fit_data(self.threshold[0], self.threshold[1], "medium")
+        self.fit_data(threshold[0], threshold[1], "medium")
 
-#        print("\nfitting low gain with threshholds ({}, {})".format(self.threshold[1], None))
-        self.fit_data(self.threshold[1], None, "low")
+#        print("\nfitting low gain with threshholds ({}, {})".format(threshold[1], None))
+        self.fit_data(threshold[1], None, "low")
 
-        if self.generate_plots_flag:
-            if self.generate_plots_flag == "data":
+        if self.create_plot_type:
+            if "data" in self.create_plot_type:
                 self.generate_data_plot()
 
-            elif self.generate_plots_flag == "fit":
+            elif "fit" in self.create_plot_type:
                 self.generate_fit_plot("high")
                 self.generate_fit_plot("medium")
                 self.generate_fit_plot("low")
 
-            elif self.generate_plots_flag == "combined":
+            elif "combined" in self.create_plot_type:
                 self.generate_combined_plot()
 
             else:
@@ -201,10 +219,14 @@ class ProcessDrscs():
             print("idx={}".format(idx))
             raise Exception("Too many intervalls")
 
-        mean_no_gain = np.mean(idx, axis=1).astype(int)
-        #print("mean_no_gain={}".format(mean_no_gain))
+        mean_zero_region = np.mean(idx, axis=1).astype(int)
+        #print("mean_zero_region={}".format(mean_zero_region))
 
-        self.threshold = self.bins[mean_no_gain]
+        #self.threshold = self.bins[mean_zero_region]
+        tmp = self.bins[mean_zero_region]
+        for i in xrange(len(tmp)):
+            self.thresholds[(i, ) + self.current_idx] = tmp[i]
+
         #print("theshold={}".format(self.threshold))
 
     def fit_data(self, threshold_l, threshold_u, gain):
@@ -234,29 +256,65 @@ class ProcessDrscs():
 
         # transform the problem y = mx + c
         # into the form y = Ap, where A = [[x 1]] and p = [[m], [c]]
-        # meaning  constant_terms = coefficient_matrix * [slope, offset]
+        # meaning  data_to_fit = coefficient_matrix * [slope, offset]
         self.data_to_fit[gain] = self.analog[self.pixel[0], self.pixel[1],
                                              self.mem_cell,
                                              lower_border:upper_border]
 
-        self.constant_terms[gain] = np.arange(lower_border, upper_border)
+        self.x_values[gain] = np.arange(lower_border, upper_border)
 
-        # note scaling
-        x = self.constant_terms[gain][np.where(self.constant_terms[gain] > self.scaling_point)]
-        self.constant_terms[gain][np.where(self.constant_terms[gain] > self.scaling_point)] = (
-                (x - self.scaling_point) * self.scaling_factor + self.scaling_point)
+        # scaling
+        self.scale_x_axis_intervall(gain)
 
-        self.coefficient_matrix = np.vstack([self.constant_terms[gain],
-                                             np.ones(len(self.constant_terms[gain]))]).T
+        self.coefficient_matrix = np.vstack([self.x_values[gain],
+                                             np.ones(len(self.x_values[gain]))]).T
 
         # fit the data
-        self.slope[gain], self.offset[gain] = np.linalg.lstsq(self.coefficient_matrix,
-                                                              self.data_to_fit[gain])[0]
+        idx = self.stage_idx[gain]
+        # reason to use numpy lstsq:
+        # https://stackoverflow.com/questions/29372559/what-is-the-difference-between-numpy-linalg-lstsq-and-scipy-linalg-lstsq
+        #lstsq returns: Least-squares solution (i.e. slope and offset), residuals, rank, singular values
+        self.slope[idx], self.offset[idx] = np.linalg.lstsq(self.coefficient_matrix,
+                                                            self.data_to_fit[gain])[0]
+
+        #self.slope[gain], self.offset[gain] = np.linalg.lstsq(self.coefficient_matrix,
+        #                                                      self.data_to_fit[gain])[0]
         #print("found slope: {}".format(self.slope[gain]))
         #print("found offset: {}".format(self.offset[gain]))
 
+    def scale_full_x_axis(self):
+        lower  = np.arange(self.scaling_point)
+        upper = (np.arange(self.scaling_point, self.digital.shape[3])
+                 * self.scaling_factor
+                 - self.scaling_point * self.scaling_factor
+                 + self.scaling_point)
+
+        self.scaled_x_values = np.concatenate((lower, upper))
+
+    def scale_x_axis_intervall(self, gain):
+        # tmp variables to improve reading
+        indices_to_scale = np.where(self.x_values[gain] > self.scaling_point)
+        x = self.x_values[gain][indices_to_scale]
+        # shift x value to root, scale, shift back
+        # e.g. x_new = (x_old - 200) * 10 + 200
+        self.x_values[gain][indices_to_scale] = (
+            (x - self.scaling_point) * self.scaling_factor + self.scaling_point)
+
     def write_data(self):
-        pass
+        save_file = h5py.File(self.output_fname, "w", libver="latest")
+
+        try:
+            print("\nStart saving data")
+            t = time.time()
+
+            save_file.create_dataset("/slope", data=self.slope)
+            save_file.create_dataset("/offset", data=self.offset)
+            save_file.create_dataset("/thresholds", data=self.thresholds)
+
+            save_file.flush()
+            print("took time: {}".format(time.time() - t))
+        finally:
+            save_file.close()
 
     def generate_data_plot(self):
 
@@ -270,12 +328,12 @@ class ProcessDrscs():
         ax.legend()
 
         ax = fig.add_subplot(122)
-        ax.plot(self.scaled_x_axis,
-                 self.analog[self.pixel[0], self.pixel[1], self.mem_cell, :],
-                 ".", markersize=0.5, label="analog")
-        ax.plot(self.scaled_x_axis,
-                 self.digital[self.pixel[0], self.pixel[1], self.mem_cell, :],
-                 ".", markersize=0.5, label="digital")
+        ax.plot(self.scaled_x_values,
+                self.analog[self.pixel[0], self.pixel[1], self.mem_cell, :],
+                ".", markersize=0.5, label="analog")
+        ax.plot(self.scaled_x_values,
+                self.digital[self.pixel[0], self.pixel[1], self.mem_cell, :],
+                ".", markersize=0.5, label="digital")
 
         ax.legend()
         prefix = self.origin_data_plot_name.substitute(px=self.pixel,
@@ -289,12 +347,12 @@ class ProcessDrscs():
     def generate_fit_plot(self, gain):
         # plot fitting
         fig = plt.figure(figsize=None)
-        plt.plot(self.constant_terms[gain],
+        plt.plot(self.x_values[gain],
                  self.data_to_fit[gain],
                  'o', label="Original data", markersize=1)
 
-        plt.plot(self.constant_terms[gain],
-                 self.slope[gain] * self.constant_terms[gain] + self.offset[gain],
+        plt.plot(self.x_values[gain],
+                 self.slope[self.stage_idx[gain]] * self.x_values[gain] + self.offset[self.stage_idx[gain]],
                  "r", label="Fitted line high")
 
         plt.legend()
@@ -306,26 +364,27 @@ class ProcessDrscs():
         plt.close(fig)
 
     def generate_combined_plot(self):
+        i = self.stage_idx
         # plot combined
         fig = plt.figure(figsize=None)
-        plt.plot(self.scaled_x_axis,
+        plt.plot(self.scaled_x_values,
                  self.analog[self.pixel[0], self.pixel[1], self.mem_cell, :],
                  ".", markersize=0.5, label="analog")
 
-        plt.plot(self.scaled_x_axis,
+        plt.plot(self.scaled_x_values,
                  self.digital[self.pixel[0], self.pixel[1], self.mem_cell, :],
                  ".", markersize=0.5, label="digital")
 
-        plt.plot(self.constant_terms["high"],
-                 self.slope["high"] * self.constant_terms["high"] + self.offset["high"],
+        plt.plot(self.x_values["high"],
+                 self.slope[i["high"]] * self.x_values["high"] + self.offset[i["high"]],
                  "r", label="Fitted line high")
 
-        plt.plot(self.constant_terms["medium"],
-                 self.slope["medium"] * self.constant_terms["medium"] + self.offset["medium"],
+        plt.plot(self.x_values["medium"],
+                 self.slope[i["medium"]] * self.x_values["medium"] + self.offset[i["medium"]],
                  "r", label="Fitted line medium")
 
-        plt.plot(self.constant_terms["low"],
-                 self.slope["low"] * self.constant_terms["low"] + self.offset["low"],
+        plt.plot(self.x_values["low"],
+                 self.slope[i["low"]] * self.x_values["low"] + self.offset[i["low"]],
                  "r", label="Fitted line low")
 
         plt.legend()
@@ -348,17 +407,21 @@ class ProcessDrscs():
 
 if __name__ == "__main__":
 
-    file_name = "/gpfs/cfel/fsds/labs/processed/calibration/processed/M314/temperature_m15C/drscs/itestc150/M314_drscs_itestc150_asic1.h5"
-    plot_dir = "/gpfs/cfel/fsds/labs/processed/calibration/processed/M314/temperature_m15C/drscs/plots/itestc150"
+    base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
+
+    input_file = os.path.join(base_dir, "M314/temperature_m15C/drscs/itestc150/M314_drscs_itestc150_asic1.h5")
+    output_file = os.path.join(base_dir, "M314/temperature_m15C/drscs/itestc150/M314_drscs_itestc150_asic1_results.h5")
+    plot_dir = os.path.join(base_dir, "M314/temperature_m15C/drscs/plots/itestc150")
 
     create_error_plots = True
-    pixel_v_list = np.arange(64)
-    pixel_u_list = np.arange(64)
-    mem_cell_list = np.arange(352)
-    #pixel_v_list = np.arange(1)
-    #pixel_u_list = np.arange(2, 3)
-    #mem_cell_list = np.arange(60, 61)
+    pixel_v_list = np.arange(10,11)
+    pixel_u_list = np.arange(11, 12)
+    mem_cell_list = np.arange(19, 20)
 
-    cal = ProcessDrscs(file_name, plot_dir=plot_dir, create_plots="all")
+    #create_plots can be set to False, "data", "fit", "combined" or "all"
+    cal = ProcessDrscs(input_file, output_file, plot_dir=plot_dir, create_plots=["combined"])
 
+    print("\nRun processing")
+    t = time.time()
     cal.run(pixel_v_list, pixel_u_list, mem_cell_list, create_error_plots)
+    print("took time: {}".format(time.time() - t))
