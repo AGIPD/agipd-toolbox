@@ -527,10 +527,10 @@ class ProcessDrscs():
             self.slope[gain][interval_idx], self.offset[gain][interval_idx] = res[0]
             self.residuals[gain][interval_idx] = res[1]
         except:
-            print("interval\n{}".format(interval))
-            print("self.coefficient_matrix\n{}".format(self.coefficient_matrix))
-            print("self.data_to_fit[{}][{}]\n{}"
-                  .format(gain, interval_idx, self.data_to_fit[gain][interval_idx]))
+            #print("interval\n{}".format(interval))
+            #print("self.coefficient_matrix\n{}".format(self.coefficient_matrix))
+            #print("self.data_to_fit[{}][{}]\n{}"
+            #      .format(gain, interval_idx, self.data_to_fit[gain][interval_idx]))
             raise
 
         #print("found slope: {}".format(self.slope[gain]))

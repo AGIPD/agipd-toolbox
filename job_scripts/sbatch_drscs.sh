@@ -5,21 +5,23 @@ mail_address=manuela.kuhn@desy.de
 script_base_dir=/home/kuhnm/agipd-calibration
 batch_job_dir=$script_base_dir/job_scripts
 
+# options are: gather, process
 run_type=gather
 #run_type=process
 
 module=M314
 temperature=temperature_m15C
-current=itestc20
+current=itestc150
 
 if [ "$run_type" == "gather" ]
 then
-    input_dir=/gpfs/cfel/fsds/labs/calibration/current/302-303-314-305
+    input_dir=/gpfs/cfel/fsds/labs/agipd/calibration/raw/302-303-314-305
+
 else
-    input_dir=/gpfs/cfel/fsds/labs/processed/calibration/processed
+    input_dir=/gpfs/cfel/fsds/labs/agipd/calibration/processed/
 fi
 
-output_dir=/gpfs/cfel/fsds/labs/processed/calibration/processed
+output_dir=/gpfs/cfel/fsds/labs/agipd/calibration/processed/
 
 ### Needed for gather ###
 max_part=false
@@ -48,8 +50,8 @@ call_sbatch()
                    --mail-user ${mail_address} \
                    --workdir=${work_dir} \
                    --job-name=${run_type}_drscs_${module} \
-                   --output=${run_type}_drscs_${module}_$dt_%j.out \
-                   --error=${run_type}_drscs_${module}_$dt_%j.err "
+                   --output=${run_type}_drscs_${module}_${dt}_%j.out \
+                   --error=${run_type}_drscs_${module}_${dt}_%j.err "
 
     script_params="--script_base_dir ${script_base_dir} \
                    --run_type ${run_type} \

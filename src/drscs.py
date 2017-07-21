@@ -120,7 +120,7 @@ if __name__ == "__main__":
         input_file = os.path.join(input_file_dir, input_file_name)
 
         output_file_name = "{}_drscs_{}_asic{}.h5".format(module_split[0], current, str(asic).zfill(2))
-        output_file_dir = os.path.join(output_base_dir, module_split[0], temperature, "drscs", current)
+        output_file_dir = os.path.join(output_base_dir, module_split[0], temperature, "drscs", current, run_type)
         output_file = os.path.join(output_file_dir, output_file_name)
 
         create_dir(output_file_dir)
@@ -133,25 +133,27 @@ if __name__ == "__main__":
     else:
         # the input files for processing are the output ones from gather
         input_file_name = "{}_drscs_{}_asic{}.h5".format(module, current, str(asic).zfill(2))
-        input_file_dir = os.path.join(input_base_dir, module, temperature, "drscs", current)
+        input_file_dir = os.path.join(input_base_dir, module, temperature, "drscs", current, "gather")
         input_file = os.path.join(input_file_dir, input_file_name)
 
         output_file_name = "{}_drscs_{}_asic{}_processed.h5".format(module, current, str(asic).zfill(2))
-        output_file_dir = os.path.join(output_base_dir, module, temperature, "drscs", current)
+        output_file_dir = os.path.join(output_base_dir, module, temperature, "drscs", current, run_type)
         output_file = os.path.join(output_file_dir, output_file_name)
 
-        plot_dir = os.path.join(output_base_dir, module, temperature, "plots", current)
+        create_dir(output_file_dir)
+
+        plot_dir = os.path.join(output_base_dir, module, temperature, "drscs", "plots", current)
+        plot_prefix = "{}_{}_asic".format(module, current)
         create_dir(plot_dir)
 
-        create_error_plots = False
         pixel_v_list = np.arange(64)
         pixel_u_list = np.arange(64)
         mem_cell_list = np.arange(352)
 
         print("\nStarted at", str(datetime.datetime.now()))
 
-        cal = ProcessDrscs(input_file, plot_dir, create_plots=False)
-
-        cal.run(pixel_v_list, pixel_u_list, mem_cell_list, create_error_plots)
+        #create_plots can be set to False, "data", "fit", "combined" or "all"
+        cal = ProcessDrscs(asic, input_file, output_file, plot_prefix, plot_dir=plot_dir, create_plots=False)
+        cal.run(pixel_v_list, pixel_u_list, mem_cell_list, create_error_plots=False, create_colormaps=False)
 
     print("\nFinished at", str(datetime.datetime.now()))
