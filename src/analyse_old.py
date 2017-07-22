@@ -1,9 +1,24 @@
+"""
+Attempt at making drscs.py more generic
+
+Called from job_scripts/analyse.sh (doesn't exist yet)
+   - there all the input arguments are defined
+
+For gather:
+- calls GatherData from gather_data_per_asic_generic.py
+
+TODO: adjust processing to be generic
+For processing:
+- calls ProcessDrscs from process_data_per_asic.py
+
+"""
+
 from __future__ import print_function
 
 import os
 import sys
 from process_data_per_asic import ProcessDrscs
-from gather_data_per_asic import GatherData
+from gather_data_per_asic_generic import GatherData
 import argparse
 import datetime
 import numpy as np
@@ -29,8 +44,13 @@ def get_arguments():
                         help="temperature to gather, e.g. temperature_30C")
     parser.add_argument("--current",
                         type=str,
-                        required=True,
                         help="Current to use, e.g. itestc20")
+    parser.add_argument("--tint",
+                        type=str,
+                        help="Integration time, e.g. tint150ns")
+    parser.add_argument("--element",
+                        type=str,
+                        help="Element used for fluorescence, e.g. Cu")
     parser.add_argument("--asic",
                         type=int,
                         required=True,
@@ -41,6 +61,11 @@ def get_arguments():
                         required=True,
                         choices=["gather", "process"],
                         help="What type of run should be started")
+    parser.add_argument("--measurement",
+                        type=str,
+                        required=True,
+                        choices=["dark", "xray", "clamped_gain", "drscs"],
+                        help="Which measurement to analyse: dark, xray, clamped_gain, drscs")
     parser.add_argument("--column_spec",
                         type=int,
                         nargs='+',
@@ -56,6 +81,10 @@ def get_arguments():
         if args.column_spec and len(args.column_spec) != 4:
             print("There have to be 4 columns defined")
             sys.exit(1)
+
+    if args.measurement == "drscs" and not args.current:
+        print("The current must be defined for drscs!")
+        sys.exit(1)
 
     return args
 
@@ -75,11 +104,14 @@ if __name__ == "__main__":
     args = get_arguments()
 
     run_type = args.type
+    meas_type = args.measurement
     input_base_dir = args.input_dir
     output_base_dir = args.output_dir
     module = args.module
     temperature = args.temperature
     current = args.current
+    tint = args.tint
+    element = args.element
     asic = args.asic
 
     #module = "M314"
@@ -88,6 +120,7 @@ if __name__ == "__main__":
     #asic = 1
     #input_base_dir = "/gpfs/cfel/fsds/labs/processed/calibration/processed/"
 
+    
     if args.column_spec:
         # [[<column>, <file index>],...]
         # e.g. for a file name of the form M234_m8_drscs_itestc150_col15_00001_part00000.nxs
@@ -105,55 +138,78 @@ if __name__ == "__main__":
     print("Configured parameter for type {}: ".format(run_type))
     print("module: ", module)
     print("temperature: ", temperature)
-    print("current: ", current)
+    print("measurement: ", meas_type)
+    print("current (drscs): ", current)
+    print("tint (dark): ", tint)
+    print("element (xray): ", element)
     print("asic: ", asic)
     print("input_dir: ", input_base_dir)
     print("output_dir: ", output_base_dir)
     print("column_specs: ", column_specs)
     print("max_part: ", max_part)
 
+    meas_spec = {
+		"dark" : tint,
+		"xray" : element,
+		"drscs" : current,
+	}
+
     if run_type == "gather":
         module_split = module.split("_")
 
-        input_file_name = "{}*_drscs_{}".format(module_split[0], current)
-        input_file_dir = os.path.join(input_base_dir, temperature, "drscs", current)
+        #TODO: make this work for clamped gain! (in directory: clamped_gain, in filename: cg)
+        input_file_name = "{}*_{}_{}".format(module_split[0], meas_type, meas_spec[meas_type])
+        input_file_dir = os.path.join(input_base_dir, temperature, meas_type)
+        # drscs is additionally separated into current directories
+        if meas_type == "drscs":
+            input_file_dir = os.path.join(input_file_dir, current)
+       
         input_file = os.path.join(input_file_dir, input_file_name)
 
-        output_file_name = "{}_drscs_{}_asic{}.h5".format(module_split[0], current, str(asic).zfill(2))
-        output_file_dir = os.path.join(output_base_dir, module_split[0], temperature, "drscs", current, run_type)
+        output_file_name = "{}_{}_{}_asic{}.h5".format(module_split[0], meas_type, meas_spec[meas_type], str(asic).zfill(2))
+        output_file_dir = os.path.join(output_base_dir, module_split[0], temperature, meas_type)
+        if meas_type == "drscs": #same as above
+            output_file_dir = os.path.join(output_file_dir, current)
         output_file = os.path.join(output_file_dir, output_file_name)
 
         create_dir(output_file_dir)
 
         print("\nStarted at", str(datetime.datetime.now()))
 
-        GatherData(asic, input_file, output_file, column_specs, max_part)
-        #GatherData(rel_file_path, input_file_name, output_file, column_specs, max_part)
+        # is this necessary? or is there a better way to do this?
+        if meas_type == "drscs":
+            GatherData(asic, input_file, output_file, meas_type, max_part, column_specs)
+        else:
+            GatherData(asic, input_file, output_file, meas_type, max_part)
 
     else:
         # the input files for processing are the output ones from gather
-        input_file_name = "{}_drscs_{}_asic{}.h5".format(module, current, str(asic).zfill(2))
-        input_file_dir = os.path.join(input_base_dir, module, temperature, "drscs", current, "gather")
+        input_file_name = "{}_{}_{}_asic{}.h5".format(module, meas_type, str(asic).zfill(2))
+        input_file_dir = os.path.join(input_base_dir, module, temperature, meas_type)
+        if meas_type == "drscs":
+            input_file_dir = os.path.join(input_file_dir, current)
         input_file = os.path.join(input_file_dir, input_file_name)
 
-        output_file_name = "{}_drscs_{}_asic{}_processed.h5".format(module, current, str(asic).zfill(2))
-        output_file_dir = os.path.join(output_base_dir, module, temperature, "drscs", current, run_type)
+        output_file_name = "{}_{}_{}_asic{}_processed.h5".format(module, meas_type, str(asic).zfill(2))
+        output_file_dir = os.path.join(output_base_dir, module, temperature, meas_type)
+        if meas_type == "drscs":
+            output_file_dir = os.path.join(output_file_dir, current)
         output_file = os.path.join(output_file_dir, output_file_name)
 
-        create_dir(output_file_dir)
-
-        plot_dir = os.path.join(output_base_dir, module, temperature, "drscs", "plots", current)
-        plot_prefix = "{}_{}_asic".format(module, current)
+        plot_dir = os.path.join(output_base_dir, module, temperature, "plots", meas_type)
+        if meas_type == "drscs":
+            plot_dir = os.path.join(plot_dir, current)
         create_dir(plot_dir)
 
+        create_error_plots = False
         pixel_v_list = np.arange(64)
         pixel_u_list = np.arange(64)
         mem_cell_list = np.arange(352)
 
         print("\nStarted at", str(datetime.datetime.now()))
 
-        #create_plots can be set to False, "data", "fit", "combined" or "all"
-        cal = ProcessDrscs(asic, input_file, output_file, plot_prefix, plot_dir=plot_dir, create_plots=False)
-        cal.run(pixel_v_list, pixel_u_list, mem_cell_list, create_error_plots=False, create_colormaps=False)
+        cal = ProcessDrscs(input_file, plot_dir, create_plots=False)
+
+        cal.run(pixel_v_list, pixel_u_list, mem_cell_list, create_error_plots)
 
     print("\nFinished at", str(datetime.datetime.now()))

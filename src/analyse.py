@@ -18,9 +18,10 @@ from __future__ import print_function
 import os
 import sys
 from process_data_per_asic import ProcessDrscs
-from gather_data_per_asic_generic import GatherData
+from gather_data_per_asic import GatherData
 import argparse
 import datetime
+import time
 import numpy as np
 
 def get_arguments():
@@ -82,6 +83,14 @@ def get_arguments():
             print("There have to be 4 columns defined")
             sys.exit(1)
 
+    if args.measurement == "dark" and not args.tint:
+        print("The tint must be defined for dark!")
+        sys.exit(1)
+
+    if args.measurement == "xray" and not args.element:
+        print("The element must be defined for xray!")
+        sys.exit(1)
+
     if args.measurement == "drscs" and not args.current:
         print("The current must be defined for drscs!")
         sys.exit(1)
@@ -114,13 +123,6 @@ if __name__ == "__main__":
     element = args.element
     asic = args.asic
 
-    #module = "M314"
-    #temperature = "temperature_m15C"
-    #current = "itestc150"
-    #asic = 1
-    #input_base_dir = "/gpfs/cfel/fsds/labs/processed/calibration/processed/"
-
-    
     if args.column_spec:
         # [[<column>, <file index>],...]
         # e.g. for a file name of the form M234_m8_drscs_itestc150_col15_00001_part00000.nxs
@@ -149,34 +151,50 @@ if __name__ == "__main__":
     print("max_part: ", max_part)
 
     meas_spec = {
-		"dark" : tint,
-		"xray" : element,
-		"drscs" : current,
-	}
+        "dark" : tint,
+        "xray" : element,
+        "drscs" : current,
+    }
 
     if run_type == "gather":
         module_split = module.split("_")
 
         #TODO: make this work for clamped gain! (in directory: clamped_gain, in filename: cg)
         input_file_name = "{}*_{}_{}".format(module_split[0], meas_type, meas_spec[meas_type])
-        input_file_dir = os.path.join(input_base_dir, temperature, meas_type)
+        input_file_dir = os.path.join(input_base_dir,
+                                      temperature,
+                                      meas_type,
+                                      meas_spec[meas_type])
+        # TODO: Manu and Jenny have to discuss the dir structure
+        # (i.e. if xray and dark should have subdir as in dict)
         # drscs is additionally separated into current directories
-        if meas_type == "drscs":
-            input_file_dir = os.path.join(input_file_dir, current)
-       
+        #if meas_type == "drscs":
+        #    input_file_dir = os.path.join(input_file_dir, current)
+
         input_file = os.path.join(input_file_dir, input_file_name)
 
-        output_file_name = "{}_{}_{}_asic{}.h5".format(module_split[0], meas_type, meas_spec[meas_type], str(asic).zfill(2))
-        output_file_dir = os.path.join(output_base_dir, module_split[0], temperature, meas_type)
-        if meas_type == "drscs": #same as above
-            output_file_dir = os.path.join(output_file_dir, current)
+        output_file_name = "{}_{}_{}_asic{}.h5".format(module_split[0],
+                                                       meas_type,
+                                                       meas_spec[meas_type],
+                                                       str(asic).zfill(2))
+        output_file_dir = os.path.join(output_base_dir,
+                                       module_split[0],
+                                       temperature,
+                                       meas_type,
+                                       meas_spec[meas_type],
+                                       run_type)
+        #TODO: see input_file_dir
+        #if meas_type == "drscs": #same as above
+        #    output_file_dir = os.path.join(output_file_dir, current)
+
         output_file = os.path.join(output_file_dir, output_file_name)
 
         create_dir(output_file_dir)
 
         print("\nStarted at", str(datetime.datetime.now()))
+        t = time.time()
 
-        # is this necessary? or is there a better way to do this?
+       # is this necessary? or is there a better way to do this?
         if meas_type == "drscs":
             GatherData(asic, input_file, output_file, meas_type, max_part, column_specs)
         else:
@@ -184,32 +202,62 @@ if __name__ == "__main__":
 
     else:
         # the input files for processing are the output ones from gather
-        input_file_name = "{}_{}_{}_asic{}.h5".format(module, meas_type, str(asic).zfill(2))
-        input_file_dir = os.path.join(input_base_dir, module, temperature, meas_type)
-        if meas_type == "drscs":
-            input_file_dir = os.path.join(input_file_dir, current)
+        input_file_name = "{}_{}_{}_asic{}.h5".format(module,
+                                                      meas_type,
+                                                      meas_spec[meas_type],
+                                                      str(asic).zfill(2))
+        input_file_dir = os.path.join(input_base_dir,
+                                      module,
+                                      temperature,
+                                      meas_type,
+                                      meas_spec[meas_type],
+                                      "gather")
+        #TODO see gather input_file_dir
+        #if meas_type == "drscs":
+        #    input_file_dir = os.path.join(input_file_dir, current)
+
         input_file = os.path.join(input_file_dir, input_file_name)
 
-        output_file_name = "{}_{}_{}_asic{}_processed.h5".format(module, meas_type, str(asic).zfill(2))
-        output_file_dir = os.path.join(output_base_dir, module, temperature, meas_type)
-        if meas_type == "drscs":
-            output_file_dir = os.path.join(output_file_dir, current)
+        output_file_name = "{}_{}_{}_asic{}_processed.h5".format(module,
+                                                                 meas_type,
+                                                                 meas_spec[meas_type],
+                                                                 str(asic).zfill(2))
+        print("output_file_name", output_file_name)
+        output_file_dir = os.path.join(output_base_dir,
+                                       module,
+                                       temperature,
+                                       meas_type,
+                                       meas_spec[meas_type],
+                                       run_type)
+        #TODO see gather input_file_dir
+        #if meas_type == "drscs":
+        #    output_file_dir = os.path.join(output_file_dir, current)
         output_file = os.path.join(output_file_dir, output_file_name)
 
-        plot_dir = os.path.join(output_base_dir, module, temperature, "plots", meas_type)
-        if meas_type == "drscs":
-            plot_dir = os.path.join(plot_dir, current)
+        create_dir(output_file_dir)
+
+        plot_prefix = "{}_{}_asic".format(module, meas_spec[meas_type])
+        plot_dir = os.path.join(output_base_dir,
+                                module,
+                                temperature,
+                                meas_type,
+                                "plots",
+                                meas_spec[meas_type])
+        #TODO see gather input_file_dir
+        #if meas_type == "drscs":
+        #    plot_dir = os.path.join(plot_dir, current)
         create_dir(plot_dir)
 
-        create_error_plots = False
         pixel_v_list = np.arange(64)
         pixel_u_list = np.arange(64)
         mem_cell_list = np.arange(352)
 
         print("\nStarted at", str(datetime.datetime.now()))
+        t = time.time()
 
-        cal = ProcessDrscs(input_file, plot_dir, create_plots=False)
-
-        cal.run(pixel_v_list, pixel_u_list, mem_cell_list, create_error_plots)
+        #create_plots can be set to False, "data", "fit", "combined" or "all"
+        cal = ProcessDrscs(asic, input_file, output_file, plot_prefix, plot_dir=plot_dir, create_plots=False)
+        cal.run(pixel_v_list, pixel_u_list, mem_cell_list, create_error_plots=False, create_colormaps=False)
 
     print("\nFinished at", str(datetime.datetime.now()))
+    print("took time: ", time.time() - t)

@@ -27,6 +27,10 @@ do
             run_type=$2
             shift
             ;;
+        --measurement)
+            measurement=$2
+            shift
+            ;;
         --input_dir)
             input_dir=$2
             shift
@@ -76,7 +80,8 @@ nasics=$*
 
 script_dir=$base_dir/src
 
-script_params="--type ${run_type}
+script_params="--type ${run_type} \
+               --measurement ${measurement} \
                --input_dir ${input_dir} \
                --output_dir ${output_dir} \
                --module ${module} \
@@ -105,7 +110,7 @@ do
         script_params="${script_params} --max_part ${max_part}"
     fi
 
-    /usr/bin/python ${script_dir}/drscs.py \
+    /usr/bin/python ${script_dir}/analyse.py \
         ${script_params} --asic ${asic} &
     tmp+=( ${!} )
 done

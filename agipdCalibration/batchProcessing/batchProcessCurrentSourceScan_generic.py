@@ -150,8 +150,8 @@ class ProcessDrscs():
                               considered_pixels_x[0], considered_pixels_x[1]))
                 t = time.time()
                 parallel_result = self.pool.starmap(compute_drscs_per_mc,
-                                            cell_list,
-                                            chunksize=352 * 4)
+                                                    cell_list,
+                                                    chunksize=352 * 4)
                 print("took time: {}".format(time.time() - t))
 
                 print("all calculation done, rows {} - {} columns {} - {}"

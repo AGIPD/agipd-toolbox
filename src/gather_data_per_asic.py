@@ -10,7 +10,7 @@ from string import Template
 
 
 class GatherData():
-    def __init__(self, asic, input_file, output_file_name, col_spec, max_part):
+    def __init__(self, asic, input_file, output_file_name, meas_type, max_part, col_spec=[0]):
         print("Using numpy version {}".format(np.__version__))
         print("Using h5py version {}".format(h5py.__version__))
 
@@ -25,6 +25,8 @@ class GatherData():
 
         self.save_file = output_file_name
         self.check_output_file_exist()
+
+        self.measurement_type = meas_type
 
         # [[<column>, <file index>],...]
         self.column_specs = col_spec
@@ -77,7 +79,6 @@ class GatherData():
 
         self.check_file_number()
 
-
         self.metadata = {}
         self.metadata_tmp = {}
         self.metadata_derived = {}
@@ -102,7 +103,7 @@ class GatherData():
         # pixel data from raw is written into an intermediate format before
         # it is transposed into the target shape
         self.reshaped_data_shape = (self.charges, self.mem_cells, 2,
-                                        self.asic_size, self.asic_size)
+                                    self.asic_size, self.asic_size)
 
         # reshaped data is split into analog and digital data + transposed
         self.target_shape = (self.asic_size, self.asic_size,
@@ -261,7 +262,6 @@ class GatherData():
         print("expected_total_images={}".format(self.expected_total_images))
         print("expected_nimages_per_file={}".format(self.expected_nimages_per_file))
         print("charges={}".format(self.charges))
-
 
     def determine_asic_border(self):
         #       ____ ____ ____ ____ ____ ____ ____ ____
