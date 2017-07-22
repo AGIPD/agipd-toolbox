@@ -52,9 +52,9 @@ call_sbatch()
                    --mail-type END \
                    --mail-user ${mail_address} \
                    --workdir=${work_dir} \
-                   --job-name=${run_type}_drscs_${module} \
-                   --output=${run_type}_drscs_${module}_${dt}_%j.out \
-                   --error=${run_type}_drscs_${module}_${dt}_%j.err "
+                   --job-name=${run_type}_${measurement}_${module} \
+                   --output=${run_type}_${measurement}_${module}_${dt}_%j.out \
+                   --error=${run_type}_${measurement}_${module}_${dt}_%j.err "
 
     script_params="--script_base_dir ${script_base_dir} \
                    --run_type ${run_type} \
@@ -73,7 +73,7 @@ call_sbatch()
     fi
 
     sbatch ${sbatch_params} \
-           ${batch_job_dir}/drscs.sh ${script_params} $*
+           ${batch_job_dir}/analyse.sh ${script_params} $*
 }
 
 nasics=${asic_set1}
