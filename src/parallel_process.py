@@ -5,7 +5,7 @@ import numpy as np
 import os
 import time
 import h5py
-from process_data_per_asic import ProcessDrscs, initiate_result
+from process import ProcessDrscs, initiate_result
 
 
 def exec_process(asic, input_file, pixel_v_list, pixel_u_list, mem_cell_list):
@@ -16,7 +16,7 @@ def exec_process(asic, input_file, pixel_v_list, pixel_u_list, mem_cell_list):
     return cal.result, pixel_v_list, pixel_u_list, mem_cell_list
 
 
-class ParallelProcessing():
+class ParallelProcess():
     def __init__(self, asic, input_fname, pixel_v_list, pixel_u_list,
                  mem_cell_list, n_processes, output_fname):
         self.asic = asic
@@ -223,5 +223,5 @@ if __name__ == "__main__":
 
     n_processes = 10
 
-    proc = ParallelProcessing(asic, input_fname, pixel_v_list, pixel_u_list,
-                              mem_cell_list, n_processes, output_fname)
+    proc = ParallelProcess(asic, input_fname, pixel_v_list, pixel_u_list,
+                           mem_cell_list, n_processes, output_fname)

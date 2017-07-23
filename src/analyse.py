@@ -1,15 +1,15 @@
 """
 Attempt at making drscs.py more generic
 
-Called from job_scripts/analyse.sh (doesn't exist yet)
+Called from job_scripts/analyse.sh
    - there all the input arguments are defined
 
 For gather:
-- calls GatherData from gather_data_per_asic_generic.py
+- calls GatherData from gather.py
 
 TODO: adjust processing to be generic
 For processing:
-- calls ProcessDrscs from process_data_per_asic.py
+- calls ParallelProcessing from parallel_process.py
 
 """
 
@@ -17,8 +17,8 @@ from __future__ import print_function
 
 import os
 import sys
-from parallel_process import ParallelProcessing
-from gather_data_per_asic import GatherData
+from parallel_process import ParallelProcess
+from gather import GatherData
 import argparse
 import datetime
 import time
