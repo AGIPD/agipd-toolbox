@@ -17,7 +17,7 @@ from __future__ import print_function
 
 import os
 import sys
-from process_data_per_asic import ProcessDrscs
+from parallel_process import ParallelProcessing
 from gather_data_per_asic import GatherData
 import argparse
 import datetime
@@ -35,6 +35,9 @@ def get_arguments():
                         type=str,
                         required=True,
                         help="Base directory to write results to")
+    parser.add_argument("--n_processes",
+                        type=int,
+                        help="The number of processes for the pool")
     parser.add_argument("--module",
                         type=str,
                         required=True,
@@ -116,6 +119,7 @@ if __name__ == "__main__":
     meas_type = args.measurement
     input_base_dir = args.input_dir
     output_base_dir = args.output_dir
+    n_processes = args.n_processes
     module = args.module
     temperature = args.temperature
     current = args.current
@@ -171,7 +175,7 @@ if __name__ == "__main__":
         #if meas_type == "drscs":
         #    input_file_dir = os.path.join(input_file_dir, current)
 
-        input_file = os.path.join(input_file_dir, input_file_name)
+        input_fname = os.path.join(input_file_dir, input_file_name)
 
         output_file_name = "{}_{}_{}_asic{}.h5".format(module_split[0],
                                                        meas_type,
@@ -187,7 +191,7 @@ if __name__ == "__main__":
         #if meas_type == "drscs": #same as above
         #    output_file_dir = os.path.join(output_file_dir, current)
 
-        output_file = os.path.join(output_file_dir, output_file_name)
+        output_fname = os.path.join(output_file_dir, output_file_name)
 
         create_dir(output_file_dir)
 
@@ -196,9 +200,9 @@ if __name__ == "__main__":
 
        # is this necessary? or is there a better way to do this?
         if meas_type == "drscs":
-            GatherData(asic, input_file, output_file, meas_type, max_part, column_specs)
+            GatherData(asic, input_fname, output_fname, meas_type, max_part, column_specs)
         else:
-            GatherData(asic, input_file, output_file, meas_type, max_part)
+            GatherData(asic, input_fname, output_fname, meas_type, max_part)
 
     else:
         # the input files for processing are the output ones from gather
@@ -216,7 +220,7 @@ if __name__ == "__main__":
         #if meas_type == "drscs":
         #    input_file_dir = os.path.join(input_file_dir, current)
 
-        input_file = os.path.join(input_file_dir, input_file_name)
+        input_fname = os.path.join(input_file_dir, input_file_name)
 
         output_file_name = "{}_{}_{}_asic{}_processed.h5".format(module,
                                                                  meas_type,
@@ -232,7 +236,7 @@ if __name__ == "__main__":
         #TODO see gather input_file_dir
         #if meas_type == "drscs":
         #    output_file_dir = os.path.join(output_file_dir, current)
-        output_file = os.path.join(output_file_dir, output_file_name)
+        output_fname = os.path.join(output_file_dir, output_file_name)
 
         create_dir(output_file_dir)
 
@@ -255,9 +259,8 @@ if __name__ == "__main__":
         print("\nStarted at", str(datetime.datetime.now()))
         t = time.time()
 
-        #create_plots can be set to False, "data", "fit", "combined" or "all"
-        cal = ProcessDrscs(asic, input_file, output_file, plot_prefix, plot_dir=plot_dir, create_plots=False)
-        cal.run(pixel_v_list, pixel_u_list, mem_cell_list, create_error_plots=False, create_colormaps=False)
+        proc = ParallelProcessing(asic, input_fname, pixel_v_list, pixel_u_list,
+                                  mem_cell_list, n_processes, output_fname)
 
     print("\nFinished at", str(datetime.datetime.now()))
     print("took time: ", time.time() - t)

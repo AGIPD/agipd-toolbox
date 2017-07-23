@@ -31,9 +31,15 @@ max_part=false
 #column_spec="22 23 24 25"
 column_spec=false
 
-asic_set1="1"
+#asic_set1="1"
 #asic_set1="1 2 3 4 5 6 7 8"
 #asic_set2="9 10 11 12 13 14 15 16"
+asic_set1="1 2 3 4"
+asic_set2="5 6 7 8"
+asic_set3="9 10 11 12"
+asic_set4="13 14 15 16"
+
+n_processes=4
 
 work_dir=$output_dir/$module/$temperature/sbatch_out
 if [ ! -d "$work_dir" ]; then
@@ -61,6 +67,7 @@ call_sbatch()
                    --measurement ${measurement} \
                    --input_dir ${input_dir} \
                    --output_dir ${output_dir} \
+                   --n_processes ${n_processes} \
                    --module ${module} \
                    --temperature ${temperature} \
                    --current ${current}"
@@ -80,6 +87,14 @@ nasics=${asic_set1}
 printf "Starting job for asics ${nasics}\n"
 call_sbatch ${nasics}
 
-#nasics=${asic_set2}
-#printf "Starting job for asics ${nasics}\n"
-#call_sbatch ${nasics}
+nasics=${asic_set2}
+printf "Starting job for asics ${nasics}\n"
+call_sbatch ${nasics}
+
+nasics=${asic_set3}
+printf "Starting job for asics ${nasics}\n"
+call_sbatch ${nasics}
+
+nasics=${asic_set4}
+printf "Starting job for asics ${nasics}\n"
+call_sbatch ${nasics}

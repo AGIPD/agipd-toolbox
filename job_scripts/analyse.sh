@@ -10,6 +10,7 @@ base_dir=
 run_type=
 input_dir=
 output_dir=
+n_processes=
 module=
 temperature=
 current=
@@ -37,6 +38,10 @@ do
             ;;
         --output_dir)
             output_dir=$2
+            shift
+            ;;
+        --n_processes)
+            n_processes=$2
             shift
             ;;
         --module)
@@ -84,6 +89,7 @@ script_params="--type ${run_type} \
                --measurement ${measurement} \
                --input_dir ${input_dir} \
                --output_dir ${output_dir} \
+               --n_processes ${n_processes} \
                --module ${module} \
                --temperature ${temperature} \
                --current ${current}"
@@ -110,7 +116,7 @@ do
         script_params="${script_params} --max_part ${max_part}"
     fi
 
-    /usr/bin/python ${script_dir}/analyse.py \
+    /usr/bin/python3 ${script_dir}/analyse.py \
         ${script_params} --asic ${asic} &
     tmp+=( ${!} )
 done
