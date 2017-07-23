@@ -1,18 +1,39 @@
+from __future__ import print_function
+
 import os
 import sys
 import datetime
 import configparser
 import subprocess
+import argparse
 
 batch_job_dir = os.path.dirname(os.path.realpath(__file__))
 script_base_dir = os.path.dirname(batch_job_dir)
+conf_dir = os.path.join(script_base_dir, "conf")
+
+def get_arguments():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--module",
+                        type=str,
+                        required=True,
+                        help="Config file name to get config parameters from")
+
+    args = parser.parse_args()
+
+    return args
 
 class SubmitJobs():
     def __init__(self):
-        global batch_job_dir
         global script_base_dir
+        global conf_dir
 
-        ini_file = os.path.join(batch_job_dir, "sbatch.ini")
+        args = get_arguments()
+
+        config_name = args.module
+
+        ini_file = os.path.join(conf_dir, "{}.ini".format(config_name))
+        print("Using ini_file: {}".format(ini_file))
 
         config = configparser.ConfigParser()
         config.read(ini_file)
@@ -105,8 +126,6 @@ class SubmitJobs():
             #print("command", cmd)
 
             subprocess.call(cmd)
-    #        sbatch ${sbatch_params} \
-    #               ${batch_job_dir}/analyse.sh ${script_params} asic_set
 
 if __name__ == "__main__":
     SubmitJobs()
