@@ -102,7 +102,16 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
         },
         "thresholds": None,
         "error_code": None,
-        "warning_code": None
+        "warning_code": None,
+        "collection": {
+            "nbins": None,
+            "thold_for_zero": None,
+            "scaling_point": None,
+            "scaling_factor": None,
+            "n_gain_stages": None,
+            "fit_cutoff_left": None,
+            "fit_cutoff_right": None
+        }
     }
 
     # +1 because counting starts with zero
@@ -287,6 +296,14 @@ class ProcessDrscs():
                                       self.mem_cell_list, self.n_gain_stages,
                                       self.n_intervals,
                                       self.n_zero_region_stored)
+
+        self.result["collection"]["nbins"] = self.nbins
+        self.result["collection"]["thold_for_zero"] = self.thold_for_zero
+        self.result["collection"]["scaling_point"] = self.scaling_point
+        self.result["collection"]["scaling_factor"] = self.scaling_factor
+        self.result["collection"]["n_gain_stages"] = self.n_gain_stages
+        self.result["collection"]["fit_cutoff_left"] = self.fit_cutoff_left
+        self.result["collection"]["fit_cutoff_right"] = self.fit_cutoff_right
 
         for pixel_v in self.pixel_v_list:
             for pixel_u in self.pixel_u_list:

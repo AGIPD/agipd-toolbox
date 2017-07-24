@@ -114,6 +114,9 @@ class ParallelProcess():
         m_start = mem_cell_list[0]
         m_stop = mem_cell_list[-1] + 1
 
+        for key in p_result["collection"]:
+            self.result["collection"][key] = p_result["collection"][key]
+
         # idx at start: individual, zero_regions, subintervals
         for key in ["slope", "offset", "residuals"]:
             for gain in ["high", "medium", "low"]:
