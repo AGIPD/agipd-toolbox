@@ -250,11 +250,18 @@ class ProcessDrscs():
                 "combined": Template(plot_prefix + "_${px}_${mc}_combined"),
                 "colormap": Template(plot_prefix + "_${mc}_colormap"),
             }
+
+            title_prefix = plot_prefix.rsplit("/", 1)[1]
+            self.plot_title = {
+                "origin_data": Template(title_prefix + "_${px}_${mc} data"),
+                "fit": Template(title_prefix + "_${px}_${mc} fit ${g}"),
+                "combined": Template(title_prefix + "_${px}_${mc} combined"),
+                "colormap": Template(title_prefix + "_${mc} colormap"),
+            }
             self.plot_ending = ".png"
         else:
             self.plot_name = None
             self.plot_ending = None
-
 
         print("Load data")
         t = time.time()
@@ -414,15 +421,24 @@ class ProcessDrscs():
 
         (self.result["intervals"]["gain_stages"][self.gain_idx["high"]],
          self.result["intervals"]["subintervals"]["high"][self.current_idx])= (
-            self.fit_gain("high", 0, self.res["thresholds"][0], cut_off_ends=False))
+            self.fit_gain("high",
+                          0,
+                          self.res["thresholds"][0],
+                          cut_off_ends=False))
 
         (self.result["intervals"]["gain_stages"][self.gain_idx["medium"]],
          self.result["intervals"]["subintervals"]["medium"][self.current_idx]) = (
-            self.fit_gain("medium", self.res["thresholds"][0], self.res["thresholds"][1], cut_off_ends=False))
+            self.fit_gain("medium",
+                          self.res["thresholds"][0],
+                          self.res["thresholds"][1],
+                          cut_off_ends=False))
 
         (self.result["intervals"]["gain_stages"][self.gain_idx["low"]],
          self.result["intervals"]["subintervals"]["low"][self.current_idx]) = (
-            self.fit_gain("low", self.res["thresholds"][1], None, cut_off_ends=False))
+            self.fit_gain("low",
+                          self.res["thresholds"][1],
+                          None,
+                          cut_off_ends=False))
 
         self.calc_gain_median()
 
@@ -431,20 +447,23 @@ class ProcessDrscs():
             t = time.time()
 
             if type(self.create_plot_type) == list:
+                print("plot type", self.create_plot_type)
 
-                if "data" in self.create_plot_type:
-                    self.generate_data_plot()
-
-                elif "fit" in self.create_plot_type:
-                    self.generate_fit_plot("high")
-                    self.generate_fit_plot("medium")
-                    self.generate_fit_plot("low")
-
-                elif "combined" in self.create_plot_type:
-                    self.generate_combined_plot()
-
-                else:
+                if "all" in self.create_plot_type:
                     self.generate_all_plots()
+                else:
+                    if "data" in self.create_plot_type:
+                        print("data plot")
+                        self.generate_data_plot()
+
+                    if "fit" in self.create_plot_type:
+                        self.generate_fit_plot("high")
+                        self.generate_fit_plot("medium")
+                        self.generate_fit_plot("low")
+
+                    if "combined" in self.create_plot_type:
+                        print("combined plot")
+                        self.generate_combined_plot()
             else:
                 self.generate_all_plots()
 
@@ -700,6 +719,10 @@ class ProcessDrscs():
         prefix = self.plot_name["origin_data"].substitute(px=[self.current_idx[0], self.current_idx[1]],
                                                           # fill number to be of 3 digits
                                                           mc=str(self.current_idx[2]).zfill(3))
+        title = self.plot_title["origin_data"].substitute(px=[self.current_idx[0], self.current_idx[1]],
+                                                          # fill number to be of 3 digits
+                                                          mc=str(self.current_idx[2]).zfill(3))
+        fig.suptitle(title)
         fig.savefig("{}{}".format(prefix, self.plot_ending))
         fig.clf()
         plt.close(fig)
@@ -738,8 +761,13 @@ class ProcessDrscs():
         plt.legend(handles, labels)
 
         prefix = self.plot_name["fit"].substitute(px=[self.current_idx[0], self.current_idx[1]],
-                                                   # fill number to be of 3 digits
-                                                   mc=str(self.current_idx[2]).zfill(3))
+                                                  # fill number to be of 3 digits
+                                                  mc=str(self.current_idx[2]).zfill(3))
+        title = self.plot_title["fit"].substitute(px=[self.current_idx[0], self.current_idx[1]],
+                                                  # fill number to be of 3 digits
+                                                  mc=str(self.current_idx[2]).zfill(3),
+                                                  g=gain)
+        fig.suptitle(title)
         fig.savefig("{}_{}{}".format(prefix, gain, self.plot_ending))
         fig.clf()
         plt.close(fig)
@@ -811,6 +839,10 @@ class ProcessDrscs():
         prefix = self.plot_name["combined"].substitute(px=[self.current_idx[0], self.current_idx[1]],
                                                        # fill number to be of 3 digits
                                                        mc=str(self.current_idx[2]).zfill(3))
+        title = self.plot_title["combined"].substitute(px=[self.current_idx[0], self.current_idx[1]],
+                                                       # fill number to be of 3 digits
+                                                       mc=str(self.current_idx[2]).zfill(3))
+        fig.suptitle(title)
         fig.savefig("{}{}".format(prefix, self.plot_ending))
         fig.clf()
         plt.close(fig)
@@ -917,7 +949,7 @@ if __name__ == "__main__":
                                "{}_drscs_{}_asic{}_processed.h5".format(module, current, str(asic).zfill(2)))
     #plot_dir = os.path.join(base_dir, "M314/temperature_m15C/drscs/plots/itestc150/manu_test")
     plot_dir = os.path.join(base_dir, module, temperature, "drscs", "plots", current, "manu_test")
-    plot_prefix = "{}_{}_asic".format(module, current)
+    plot_prefix = "{}_{}_asic{}".format(module, current, asic)
 
     #pixel_v_list = np.arange(2,10)
     #pixel_u_list = np.arange(64)
@@ -926,8 +958,14 @@ if __name__ == "__main__":
     pixel_u_list = np.arange(63, 64)
     mem_cell_list = np.arange(38, 39)
 
+    output_fname = False
+    create_plots = False
+    #create_plots=["data", "combined"]
+
     #create_plots can be set to False, "data", "fit", "combined" or "all"
-    cal = ProcessDrscs(asic, input_fname, output_fname=output_fname, plot_prefix=plot_prefix, plot_dir=plot_dir, create_plots=False)
+    cal = ProcessDrscs(asic, input_fname, output_fname=output_fname,
+                       plot_prefix=plot_prefix, plot_dir=plot_dir,
+                       create_plots=create_plots)
 
     print("\nRun processing")
     t = time.time()
