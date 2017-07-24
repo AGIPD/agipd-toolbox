@@ -272,8 +272,8 @@ class GatherData():
         # 2x64 |____|____|____|____|____|____|____|____|
         #      0*64 1x64 2x64 3x64 4x64 5x64 6x64 7x64 8x64
 
-        row_progress = self.mapped_asic / self.asics_per_module[1]
-        col_progress = self.mapped_asic % self.asics_per_module[1]
+        row_progress = int(self.mapped_asic / self.asics_per_module[1])
+        col_progress = int(self.mapped_asic % self.asics_per_module[1])
         print("row_progress: {}".format(row_progress))
         print("col_progress: {}".format(col_progress))
 
