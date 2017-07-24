@@ -32,6 +32,12 @@ def get_arguments():
                         type=str,
                         required=True,
                         help="Current to use, e.g. itestc20")
+    parser.add_argument("--individual_plots",
+                        help="Create plots per asic",
+                        action="store_true")
+#    parser.add_argument("--store_data",
+#                        help="Store calculated matrix into file")
+#                        action="store_true")
 
     args = parser.parse_args()
 
@@ -50,7 +56,8 @@ def create_dir(directory_name):
 
 class CreateColormaps():
     def __init__(self, input_file_dir, output_file_dir, module, current,
-                 plot_dir, pixel_v_list, pixel_u_list, mem_cell_list, mode):
+                 plot_dir, pixel_v_list, pixel_u_list, mem_cell_list, mode,
+                 individual_plots=False):
 
         self.plot_dir = plot_dir
         self.pixel_v_list = pixel_v_list
@@ -65,6 +72,10 @@ class CreateColormaps():
 
         self.asics_in_upper_row = range(16,8,-1)
         self.asics_in_lower_row = range(1,9)
+        self.asic_list = np.concatenate((self.asics_in_upper_row,
+                                         self.asics_in_lower_row))
+
+        self.individual_plots = individual_plots
 
         if mode == "live":
             self.create_row = self.create_row_from_raw
@@ -81,15 +92,67 @@ class CreateColormaps():
     def run(self):
         for mem_cell in self.mem_cell_list:
 
-            self.plot_prefix = "{}/{}_{}_{}".format(plot_dir, module, current,
-                                                    str(mem_cell).zfill(3))
-
             print("\nStarted at", str(datetime.datetime.now()))
             t= time.time()
-            self.get_data()
-            self.create_plots()
+
+            if self.individual_plots:
+
+                for asic in self.asic_list:
+                    self.plot_prefix = "{d}/{m}/{m}_{c}_asic{a}_{mc}".format(
+                        d=plot_dir, m=module, c=current, a=str(asic).zfill(2),
+                        mc=str(mem_cell).zfill(3))
+
+                    # the input files for processing are the output ones from gather
+                    input_fname = "{}{}_processed.h5".format(self.input_prefix, str(asic).zfill(2))
+                    print("input_file", input_fname)
+
+                    self.get_data_individual(input_fname)
+                    self.create_plots()
+            else:
+                self.plot_prefix = "{}/{}_{}_{}".format(plot_dir,
+                                                        module,
+                                                        current,
+                                                        str(mem_cell).zfill(3))
+
+                self.get_data()
+                self.create_plots()
+
             print("\nFinished at {} after {}"
                   .format(datetime.datetime.now(), time.time() - t))
+
+    def get_data_individual(self, input_fname):
+        process_result = {
+            "slope": {
+                "mean": None,
+                "individual": {
+                    "high" : None,
+                    "medium": None,
+                    "low": None
+                }
+            },
+            "offset": {
+                "mean": None,
+                "individual": {
+                    "high" : None,
+                    "medium": None,
+                    "low": None
+                }
+            },
+        }
+
+        # read in data
+        source_file = h5py.File(input_fname, "r")
+
+        process_result["slope"]["mean"] = source_file["/slope/mean"][()]
+        process_result["slope"]["individual"]["low"] = source_file["/slope/individual/low"][()]
+
+        process_result["offset"]["mean"] = source_file["/offset/mean"][()]
+        process_result["offset"]["individual"]["low"] = source_file["/offset/individual/low"][()]
+
+        source_file.close()
+
+        # calcurate matrix
+        self.colormap_matrix = self.generate_matrix(process_result)
 
     def get_data(self):
 
@@ -107,12 +170,26 @@ class CreateColormaps():
     def create_row_from_file(self, asic_list):
         print ("asic_list={}".format(asic_list))
 
-        colormap_matrix = {
-            "slope": None,
-            "offset": None
+        process_result = {
+            "slope": {
+                "mean": None,
+                "individual": {
+                    "high" : None,
+                    "medium": None,
+                    "low": None
+                }
+            },
+            "offset": {
+                "mean": None,
+                "individual": {
+                    "high" : None,
+                    "medium": None,
+                    "low": None
+                }
+            },
         }
 
-        colormap_matrix_per_asic = {
+        matrix = {
             "slope": None,
             "offset": None
         }
@@ -122,27 +199,36 @@ class CreateColormaps():
             # the input files for processing are the output ones from gather
             input_fname = "{}{}_processed.h5".format(self.input_prefix, str(asic).zfill(2))
             print("input_file", input_fname)
+            t = time.time()
 
+            # read in data
             source_file = h5py.File(input_fname, "r")
 
-            # origin data is written as int16 which results in a integer overflow
-            # when handling the scaling
-            colormap_matrix_per_asic["slope"] = source_file["/colormap_matrix/slope"][()]
-            colormap_matrix_per_asic["offset"] = source_file["/colormap_matrix/offset"][()]
+            process_result["slope"]["mean"] = source_file["/slope/mean"][()]
+            process_result["slope"]["individual"]["low"] = source_file["/slope/individual/low"][()]
+
+            process_result["offset"]["mean"] = source_file["/offset/mean"][()]
+            process_result["offset"]["individual"]["low"] = source_file["/offset/individual/low"][()]
 
             source_file.close()
 
-            if colormap_matrix["slope"] is None:
-                colormap_matrix["slope"] = colormap_matrix_per_asic["slope"]
-                colormap_matrix["offset"] = colormap_matrix_per_asic["offset"]
+            # calcurate matrix
+            generated_matrix = self.generate_matrix(process_result)
+
+            # build matrix for whole module
+            if matrix["slope"] is None:
+                matrix["slope"] = generated_matrix["slope"]
+                matrix["offset"] = generated_matrix["offset"]
 
             else:
-                colormap_matrix["slope"] = np.concatenate(
-                    (colormap_matrix["slope"], colormap_matrix_per_asic["slope"]), axis=1)
-                colormap_matrix["offset"] = np.concatenate(
-                    (colormap_matrix["offset"], colormap_matrix_per_asic["offset"]), axis=1)
+                matrix["slope"] = np.concatenate(
+                    (matrix["slope"], generated_matrix["slope"]), axis=1)
+                matrix["offset"] = np.concatenate(
+                    (matrix["offset"], generated_matrix["offset"]), axis=1)
 
-        return colormap_matrix
+            print("took time: {}".format(time.time() - t))
+
+        return matrix
 
     def create_row_from_raw(self, asic_list):
         try:
@@ -189,6 +275,54 @@ class CreateColormaps():
 
         return colormap_matrix
 
+    def generate_matrix(self, result):
+        """
+        generate map for low gain
+        """
+        gain = 2
+        gain_name = "low"
+
+        matrix = {
+            "slope": None,
+            "offset": None
+        }
+
+        #TODO generic (get from file)
+        n_used_fits = 3
+
+        # gain, pixel_v, pixel_u, mem_cell
+        # get them from the slope entry (offset and residual are of the same shape)
+        n_pixel_v, n_pixel_u, n_mem_cell = result["slope"]["mean"].shape[1:]
+
+        for key in matrix:
+            # create array
+            matrix[key] = np.empty((n_pixel_v, n_pixel_u, n_mem_cell))
+            # intiate with nan
+            matrix[key][...] = np.NAN
+
+        for v in np.arange(n_pixel_v):
+            for u in np.arange(n_pixel_u):
+                for mem_cell in np.arange(n_mem_cell):
+                    #print("pixel [{},{}], mem_cell {}".format(v, u, mem_cell))
+
+                    for key in ["slope", "offset"]:
+                        mean = result[key]["mean"][gain, v, u, mem_cell]
+                        values = result[key]["individual"][gain_name][v, u, mem_cell][1:-1]
+                        #print(key)
+                        #print("mean={}, values={}".format(mean, values))
+
+                        try:
+                            if mean != 0:
+                                matrix[key][v, u, mem_cell] = (
+                                    np.linalg.norm(values - mean)/(n_used_fits * mean))
+                        except:
+                            print("pixel {}, mem_cell {}".format(mem_cell, v, u))
+                            print(key)
+                            print("mean={}".format(mean))
+                            print("values={}".format(values))
+
+        return matrix
+
     def create_plots(self):
         #fig = plt.figure(figsize=None)
         #zoom = 8
@@ -219,6 +353,7 @@ if __name__ == "__main__":
     module = args.module
     temperature = args.temperature
     current = args.current
+    individual_plots = args.individual_plots
 
     #input_base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
     #output_base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
@@ -232,8 +367,9 @@ if __name__ == "__main__":
     print("module: ", module)
     print("temperature: ", temperature)
     print("current: ", current)
+    print("individual_plots: ", individual_plots)
 
-    input_file_dir = os.path.join(input_base_dir, module, temperature, "drscs", current, "process_result")
+    input_file_dir = os.path.join(input_base_dir, module, temperature, "drscs", current, "process")
     output_file_dir = os.path.join(output_base_dir, module, temperature, "drscs", current)
 
     plot_dir = os.path.join(output_base_dir, module, temperature, "drscs", "plots", current, "colormaps")
@@ -249,6 +385,7 @@ if __name__ == "__main__":
     mode = "file"
 
     obj = CreateColormaps(input_file_dir, output_file_dir, module, current,
-                          plot_dir, pixel_v_list, pixel_u_list, mem_cell_list, mode)
+                          plot_dir, pixel_v_list, pixel_u_list, mem_cell_list,
+                          mode, individual_plots)
 
     obj.run()
