@@ -14,6 +14,12 @@ import traceback
 class IntervalError(Exception):
     pass
 
+class FitError(Exception):
+    pass
+
+class IntervalSplitError(Exception):
+    pass
+
 # from Joe Kington's answer here https://stackoverflow.com/a/4495197/3751373
 def contiguous_regions(condition):
     """Finds contiguous True regions of the boolean array "condition". Returns
@@ -120,7 +126,8 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
             "low": np.zeros(shape_tmp + (n_intervals["low"],)),
         }
     result["medians"] = np.zeros(shape, np.float32)
-    result["error_code"] = np.zeros(shape_tmp, np.int16)
+    # initiated with -1 to distinguish between code failures and catched errors
+    result["error_code"] = -1 * np.ones(shape_tmp, np.int16)
     result["warning_code"] = np.zeros(shape_tmp, np.int16)
 
     # intiate intervals
@@ -208,7 +215,8 @@ class ProcessDrscs():
 
         ###
         # error_codes:
-        # 1    Uunknown error
+        # -1   Not handled (something went wrong)
+        # 1    Unknown error
         # 2    Zero region: too few intervals
         # 3    Zero region: too many intervals
         #
@@ -296,7 +304,8 @@ class ProcessDrscs():
 
                         # store current_idx dependent results in the final matrices
                         try:
-                            self.result["intervals"]["zero_regions"][self.current_idx] = self.res["zero_regions"]
+                            self.result["intervals"]["zero_regions"][self.current_idx] = (
+                                self.res["zero_regions"])
                         except ValueError:
                             # it is not fixed how many zero_regions are found
                             # but the size of np.arrays has to be fixed
@@ -326,19 +335,35 @@ class ProcessDrscs():
                         for i in np.arange(len(self.res["thresholds"])):
                             self.result["thresholds"][(i, ) + self.current_idx] = self.res["thresholds"][i]
 
+                        if self.result["error_code"][self.current_idx] < 0:
+                            self.result["error_code"][self.current_idx] = 0
+
                     except KeyboardInterrupt:
                         sys.exit(1)
                     except IntervalError as e:
-                        print("Failed to run for pixel [{}, {}] and mem_cell {}"
-                              .format(self.current_idx[0], self.current_idx[1], self.current_idx[2]))
-                        print("Exception was: {}".format(e))
+                        #print("IntervalError: Failed to run for pixel [{}, {}] and mem_cell {}"
+                        #      .format(self.current_idx[0], self.current_idx[1], self.current_idx[2]))
+                        pass
+                    except IntervalSplitError as e:
+                        #print("IntervalSplitError: Failed to run for pixel [{}, {}] and mem_cell {}"
+                        #      .format(self.current_idx[0], self.current_idx[1], self.current_idx[2]))
+                        pass
+                    except FitError as e:
+                        #print("FittError: Failed to run for pixel [{}, {}] and mem_cell {}"
+                        #      .format(self.current_idx[0], self.current_idx[1], self.current_idx[2]))
+                        pass
                     except Exception as e:
                         print("Failed to run for pixel [{}, {}] and mem_cell {}"
                               .format(self.current_idx[0], self.current_idx[1], self.current_idx[2]))
                         print(traceback.format_exc())
 
-                        if not self.result["error_code"][self.current_idx]:
+                        if self.result["error_code"][self.current_idx] <= 0:
                             self.result["error_code"][self.current_idx] = 1
+
+                        print("hist={}".format(self.hist))
+                        print("bins={}".format(self.bins))
+                        print("zero_regions", self.res["zero_regions"])
+                        print("thesholds={}".format(self.res["thresholds"]))
 
                         if create_error_plots:
                             try:
@@ -414,23 +439,25 @@ class ProcessDrscs():
         #print("zero_regions raw: {}".format(self.res["zero_regions"]))
 
         # remove the first interval found if it starts with the first bin
-        if self.res["zero_regions"][0][0] == 0:
+        if (self.res["zero_regions"].size != 0
+                and self.res["zero_regions"][0][0] == 0):
             self.res["zero_regions"] = self.res["zero_regions"][1:]
 
         # remove the last interval found if it ends with the last bin
-        if self.res["zero_regions"][-1][1] == self.nbins:
+        if (self.res["zero_regions"].size != 0
+                and self.res["zero_regions"][-1][1] == self.nbins):
             self.res["zero_regions"] = self.res["zero_regions"][:-1]
 
         #print("zero_regions ends removed: {}".format(self.res["zero_regions"]))
 
         if len(self.res["zero_regions"]) < 2:
-            print("thold_for_zero={}".format(self.thold_for_zero))
-            print("intervals={}".format(self.res["zero_regions"]))
+            #print("thold_for_zero={}".format(self.thold_for_zero))
+            #print("intervals={}".format(self.res["zero_regions"]))
             self.result["error_code"][self.current_idx] = 2
             raise IntervalError("Too few intervals")
         if len(self.res["zero_regions"]) > 2:
-            print("thold_for_zero={}".format(self.thold_for_zero))
-            print("intervals={}".format(self.res["zero_regions"]))
+            #print("thold_for_zero={}".format(self.thold_for_zero))
+            #print("intervals={}".format(self.res["zero_regions"]))
             self.result["error_code"][self.current_idx] = 3
             raise IntervalError("Too many intervals")
 
@@ -469,11 +496,16 @@ class ProcessDrscs():
         #print("interval={}".format(interval))
 
         step = int((interval[-1] - interval[0]) / nsplits)
+        #print("step", step)
 
-        splitted_intervals = []
-        for i in np.arange(nsplits):
-            splitted_intervals.append(
-                [interval[0] + i * step, interval[0] + (i + 1) * step])
+        if step == 0:
+            print("nsplits", nsplits)
+            print("interval={}".format(interval))
+            raise IntervalSplitError("Interval has not enough points to split")
+
+        splitted_intervals = [
+            [interval[0] + i * step, interval[0] + (i + 1) * step]
+                for i in np.arange(nsplits)]
 
         # due to rounding or int convertion the last calculated interval ends
         # before the end of the given interval
@@ -544,17 +576,33 @@ class ProcessDrscs():
         # https://stackoverflow.com/questions/29372559/what-is-the-difference-between-numpy-linalg-lstsq-and-scipy-linalg-lstsq
         #lstsq returns: Least-squares solution (i.e. slope and offset), residuals, rank, singular values
         array_idx = self.current_idx + (interval_idx,)
+        res = None
         try:
             res = np.linalg.lstsq(self.coefficient_matrix, self.data_to_fit[gain][interval_idx])
             self.result["slope"]["individual"][gain][array_idx] = res[0][0]
             self.result["offset"]["individual"][gain][array_idx] = res[0][1]
             self.result["residuals"]["individual"][gain][array_idx] = res[1]
         except:
-            print("interval\n{}".format(interval))
-            print("self.coefficient_matrix\n{}".format(self.coefficient_matrix))
-            print("self.data_to_fit[{}][{}]\n{}"
-                  .format(gain, interval_idx, self.data_to_fit[gain][interval_idx]))
-            raise
+            if res is None:
+                print("interval\n{}".format(interval))
+                print("self.coefficient_matrix\n{}".format(self.coefficient_matrix))
+                print("self.data_to_fit[{}][{}]\n{}"
+                      .format(gain, interval_idx, self.data_to_fit[gain][interval_idx]))
+
+                raise
+
+            if res[0].size != 2:
+                raise FitError("Failed to calculate slope and offset")
+            elif res[1].size != 1:
+                raise FitError("Failed to calculate residual")
+            else:
+                print("interval\n{}".format(interval))
+                print("self.coefficient_matrix\n{}".format(self.coefficient_matrix))
+                print("self.data_to_fit[{}][{}]\n{}"
+                      .format(gain, interval_idx, self.data_to_fit[gain][interval_idx]))
+                print("res", res)
+
+                raise
 
         #print("found slope: {}".format(self.result["slope"]["individual"][gain]))
         #print("found offset: {}".format(self.result["offset"]["individual"][gain]))

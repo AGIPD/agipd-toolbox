@@ -9,7 +9,7 @@ For gather:
 
 TODO: adjust processing to be generic
 For processing:
-- calls ParallelProcessing from parallel_process.py
+- calls ParallelProcess from parallel_process.py
 
 """
 
@@ -259,8 +259,8 @@ if __name__ == "__main__":
         print("\nStarted at", str(datetime.datetime.now()))
         t = time.time()
 
-        proc = ParallelProcessing(asic, input_fname, pixel_v_list, pixel_u_list,
-                                  mem_cell_list, n_processes, output_fname)
+        proc = ParallelProcess(asic, input_fname, pixel_v_list, pixel_u_list,
+                               mem_cell_list, n_processes, output_fname)
 
     print("\nFinished at", str(datetime.datetime.now()))
     print("took time: ", time.time() - t)
