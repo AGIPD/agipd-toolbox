@@ -52,8 +52,8 @@ class SubmitJobs():
         measurement = config["general"]["measurement"]
         current = config["general"]["current"]
 
-        n_jobs = int(config["general"]["n_jobs"])
-        n_processes = config["general"]["n_processes"]
+        n_jobs = int(config[run_type]["n_jobs"])
+        n_processes = config[run_type]["n_processes"]
 
         input_dir = config[run_type]["input_dir"]
         time_limit = config[run_type]["time_limit"]
