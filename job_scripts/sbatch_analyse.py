@@ -16,7 +16,7 @@ conf_dir = os.path.join(script_base_dir, "conf")
 def get_arguments():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--module",
+    parser.add_argument("--config_file",
                         type=str,
                         required=True,
                         help="Config file name to get config parameters from")
@@ -32,7 +32,7 @@ class SubmitJobs():
 
         args = get_arguments()
 
-        config_name = args.module
+        config_name = args.config_file
 
         ini_file = os.path.join(conf_dir, "{}.ini".format(config_name))
         print("Using ini_file: {}".format(ini_file))
