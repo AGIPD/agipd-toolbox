@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 from __future__ import print_function
 
 import os
@@ -66,7 +68,8 @@ class SubmitJobs():
         # convert list entries into ints
         asic_set = list(map(int, asic_set))
 
-        self.asic_lists = [asic_set[i:i+n_jobs] for i in range(0, len(asic_set), n_jobs)]
+        self.asic_lists = None
+        self.generate_asic_lists(asic_set, n_jobs)
 
         work_dir = os.path.join(output_dir, module, temperature, "sbatch_out")
         if not os.path.exists(work_dir):
@@ -106,6 +109,24 @@ class SubmitJobs():
                                    "--column_spec", column_spec]
 
         self.run()
+
+    def generate_asic_lists(self, asic_set, n_jobs):
+
+        if len(asic_set) <= n_jobs:
+            # if there are less tasks than jobs, start a job for every task
+            self.asic_lists = [[i] for i in asic_set]
+        else:
+            size = int(len(asic_set) / n_jobs)
+            rest = len(asic_set) % n_jobs
+
+            # distribute the workload
+            self.asic_lists = [asic_set[i:i + size]
+                for i in range(0, len(asic_set) - size * (rest + 1), size)]
+
+            # if list to split is not a multiple of size, the rest is equaly
+            # distributed over the remaining jobs
+            self.asic_lists += [asic_set[i:i + size + 1]
+                for i in range(len(self.asic_lists) * size, len(asic_set), size + 1)]
 
     def run(self):
         global batch_job_dir
