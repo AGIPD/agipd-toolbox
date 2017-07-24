@@ -68,8 +68,8 @@ def get_arguments():
     parser.add_argument("--measurement",
                         type=str,
                         required=True,
-                        choices=["dark", "xray", "clamped_gain", "drscs"],
-                        help="Which measurement to analyse: dark, xray, clamped_gain, drscs")
+                        choices=["dark", "xray", "clamped_gain", "drscs", "drscs_dark"],
+                        help="Which measurement to analyse: dark, xray, clamped_gain, drscs, drscs_dark")
     parser.add_argument("--column_spec",
                         type=int,
                         nargs='+',
@@ -139,6 +139,15 @@ if __name__ == "__main__":
     else:
         column_specs = [15, 26, 37, 48]
 
+    # the columns for drscs dark are a permutation of the columns of drscs
+    # columns 1, 5 injected -> 3, 7 dark
+    # columns 2, 6 injected -> 4, 8 dark
+    # columns 3, 7 injected -> 1, 5 dark
+    # columns 4, 8 injected -> 2, 6 dark
+    if meas_type == "drscs_dark":
+        c = column_specs
+        column_specs = [c[2], c[3], c[0], c[1]]
+
     max_part = args.max_part
 
     print("Configured parameter for type {}: ".format(run_type))
@@ -154,20 +163,27 @@ if __name__ == "__main__":
     print("column_specs: ", column_specs)
     print("max_part: ", max_part)
 
+    # Usually the input directory and file names correspond to the meas_type
+    meas_input = {}
+    meas_input[meas_type] = meas_type
+    # but there are exceptions
+    meas_input["drscs_dark"] = "drscs"
+
     meas_spec = {
         "dark" : tint,
         "xray" : element,
         "drscs" : current,
+        "drscs_dark" : current,
     }
 
     if run_type == "gather":
         module_split = module.split("_")
 
         #TODO: make this work for clamped gain! (in directory: clamped_gain, in filename: cg)
-        input_file_name = "{}*_{}_{}".format(module_split[0], meas_type, meas_spec[meas_type])
+        input_file_name = "{}*_{}_{}".format(module_split[0], meas_input[meas_type], meas_spec[meas_type])
         input_file_dir = os.path.join(input_base_dir,
                                       temperature,
-                                      meas_type,
+                                      meas_input[meas_type],
                                       meas_spec[meas_type])
         # TODO: Manu and Jenny have to discuss the dir structure
         # (i.e. if xray and dark should have subdir as in dict)
@@ -199,7 +215,7 @@ if __name__ == "__main__":
         t = time.time()
 
        # is this necessary? or is there a better way to do this?
-        if meas_type == "drscs":
+        if meas_type.startswith("drscs"):
             GatherData(asic, input_fname, output_fname, meas_type, max_part, column_specs)
         else:
             GatherData(asic, input_fname, output_fname, meas_type, max_part)

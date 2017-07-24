@@ -133,7 +133,7 @@ class GatherData():
         print("Total run time: {}".format(time.time() - t))
 
     def calculate_mapped_asic(self):
-        for row_i in xrange(len(self.asic_mapping)):
+        for row_i in np.arange(len(self.asic_mapping)):
             try:
                 col_i = self.asic_mapping[row_i].index(self.asic)
                 return self.index_map[row_i * self.asics_per_module[1] + col_i]
