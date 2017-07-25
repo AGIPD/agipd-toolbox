@@ -20,6 +20,14 @@ class FitError(Exception):
 class IntervalSplitError(Exception):
     pass
 
+def check_file_exist(file_name):
+    print("save_file = {}".format(file_name))
+    if os.path.exists(file_name):
+        print("Output file already exists")
+        sys.exit(1)
+    else:
+        print("Output file: ok")
+
 # from Joe Kington's answer here https://stackoverflow.com/a/4495197/3751373
 def contiguous_regions(condition):
     """Finds contiguous True regions of the boolean array "condition". Returns
@@ -262,6 +270,9 @@ class ProcessDrscs():
         else:
             self.plot_name = None
             self.plot_ending = None
+
+        if self.output_fname is not None:
+            check_file_exist(self.output_fname)
 
         print("Load data")
         t = time.time()
