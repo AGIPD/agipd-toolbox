@@ -312,11 +312,10 @@ class GatherData():
             ### special metadata ###
             # for special metadata it makes no sense to just gather it
             # for this data derived values are stored
-
             dset_path = "{}/gathered_files".format(self.collection_path)
             self.metadata_derived["gathered_files"] = {
                 "path": dset_path,
-                "value": self.files
+                "value": [[a.encode('utf8') for a in sublist] for sublist in self.files]
             }
 
             # aggregated over all parts but distinguished between file types
@@ -719,10 +718,16 @@ class GatherData():
 
         ### special metadata ###
         for k in self.metadata_derived:
-            dset_path = self.metadata_derived[k]["path"]
-            dset = self.metadata_derived[k]["value"]
+            try:
+                dset_path = self.metadata_derived[k]["path"]
+                dset = self.metadata_derived[k]["value"]
 
-            target.create_dataset(dset_path, data=dset)
+                target.create_dataset(dset_path, data=dset)
+            except:
+                print(k)
+                print(self.metadata_derived[k]["path"])
+                print(self.metadata_derived[k]["value"])
+                raise
 
 if __name__ == "__main__":
     rel_file_path = "311-312-301-300-310-234/temperature_m20C/drscs/itestc150"
