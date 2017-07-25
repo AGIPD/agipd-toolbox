@@ -28,11 +28,11 @@ import os
 # Directories
 cgDir = '/gpfs/cfel/fsds/labs/calibration/current/302-303-314-305/temperature_m15C/clamped_gain/'
 darkDir = '/gpfs/cfel/fsds/labs/calibration/current/302-303-314-305/temperature_m15C/dark/'
-outDir = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/jenny_stash/GainBitCorrection/'
+outDir = '/gpfs/cfel/fsds/labs/processed/calibration/processed/M305/temperature_m15C/clamped_gain/'
 
 # Input file names
 # For dark: tango splits into parts! this is the base of the name
-# the files end with "part0000<n>.nxs" where <n> goes from 0 to nParts
+# the files end with "part000<n>.nxs" where <n> goes from 00 to nParts
 nParts = 10
 fileName_dark = 'M305_m8_dark_tint150ns_00000_part000' 
 fileName_med = 'M305_m8_cg_medium_00000.nxs'
@@ -46,7 +46,7 @@ fLow = os.path.join(cgDir, fileName_low)
 dataPathInFile = '/entry/instrument/detector/data'
 
 # Output file containing means and stdev for each gain stage
-saveFileName = 'M314_Tm15_clampedGainData_testParts.h5'
+saveFileName = 'M305_m8_clampedGainData.h5'
 saveFilePath = os.path.join(outDir, saveFileName)
 
 

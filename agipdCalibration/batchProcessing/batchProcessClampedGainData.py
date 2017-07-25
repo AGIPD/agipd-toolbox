@@ -6,9 +6,9 @@ import time
 import matplotlib.pyplot as plt
 import pyqtgraph as pg
 
-filePath = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/jenny_stash/GainBitCorrection/'
-fileName = filePath + 'M314_clampedGainData.h5'
-saveFileName = filePath + 'M314_clampedDigitalMeans.h5'
+filePath = '/gpfs/cfel/fsds/labs/processed/calibration/processed/M305/temperature_m15C/clamped_gain/'
+fileName = filePath + 'M305_m8_clampedGainData.h5'
+saveFileName = filePath + 'M305_m8_clampedDigitalMeans.h5'
 # fileName = sys.argv[1]
 # saveFileName = sys.argv[2]
 
