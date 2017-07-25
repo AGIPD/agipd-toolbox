@@ -364,30 +364,28 @@ class ProcessDrscs():
 
                     except KeyboardInterrupt:
                         sys.exit(1)
-                    except IntervalError as e:
-                        #print("IntervalError: Failed to run for pixel [{}, {}] and mem_cell {}"
-                        #      .format(self.current_idx[0], self.current_idx[1], self.current_idx[2]))
-                        pass
-                    except IntervalSplitError as e:
-                        #print("IntervalSplitError: Failed to run for pixel [{}, {}] and mem_cell {}"
-                        #      .format(self.current_idx[0], self.current_idx[1], self.current_idx[2]))
-                        pass
-                    except FitError as e:
-                        #print("FittError: Failed to run for pixel [{}, {}] and mem_cell {}"
-                        #      .format(self.current_idx[0], self.current_idx[1], self.current_idx[2]))
-                        pass
                     except Exception as e:
-                        print("Failed to run for pixel [{}, {}] and mem_cell {}"
-                              .format(self.current_idx[0], self.current_idx[1], self.current_idx[2]))
-                        print(traceback.format_exc())
+                        if type(e) == IntervalError:
+                            #print("IntervalError")
+                            pass
+                        elif type(e) == IntervalSplitError:
+                            #print("IntervalSplitError")
+                            pass
+                        elif type(e) == IntervalSplitError:
+                            #print("IntervalSplitError")
+                            pass
+                        else:
+                            print("Failed to run for pixel [{}, {}] and mem_cell {}"
+                                  .format(self.current_idx[0], self.current_idx[1], self.current_idx[2]))
+                            print(traceback.format_exc())
 
-                        if self.result["error_code"][self.current_idx] <= 0:
-                            self.result["error_code"][self.current_idx] = 1
+                            if self.result["error_code"][self.current_idx] <= 0:
+                                self.result["error_code"][self.current_idx] = 1
 
-                        print("hist={}".format(self.hist))
-                        print("bins={}".format(self.bins))
-                        print("zero_regions", self.res["zero_regions"])
-                        print("thesholds={}".format(self.res["thresholds"]))
+                            print("hist={}".format(self.hist))
+                            print("bins={}".format(self.bins))
+                            print("zero_regions", self.res["zero_regions"])
+                            print("thesholds={}".format(self.res["thresholds"]))
 
                         if create_error_plots:
                             try:
