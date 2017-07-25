@@ -6,7 +6,7 @@ import time
 #fileName = '/gpfs/cfel/fsds/labs/calibration/current/1Mpix_calib/XFEL_testdata/m1_1_dark_before_00000.nxs'
 #saveFileName = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/jenny_stash/PhotonSpacing/darkData_m1_M314.h5'
 
-nParts = sys.argv[1]
+nParts = int(sys.argv[1])
 fileName = sys.argv[2]
 dataPathInFile = '/entry/instrument/detector/data'
 saveFileName = sys.argv[3]

@@ -31,9 +31,12 @@ batchJobCreationFolder=${20}
 nPartsCS=${21}
 nPartsDark=${22}
 
-sbatch --job-name=processAgipdCalibration_module${moduleNumber} \
-		--output=${processedFolder}/batchJobProcessAgipdCalibration_m${moduleNumber}.output \
-		--error=${processedFolder}/batchJobProcessAgipdCalibration_m${moduleNumber}.error \
+moduleID=${23}
+temperature=${24}
+
+sbatch --job-name=processAgipdCalibration_${moduleID}_m${moduleNumber}_T${temperature} \
+		--output=${processedFolder}/sbatch_out/batchJobProcessAgipdCalibration_m${moduleNumber}.output \
+		--error=${processedFolder}/sbatch_out/batchJobProcessAgipdCalibration_m${moduleNumber}.error \
 		${batchJobCreationFolder}batchJob_processAgipdCalibration_oneModule.sh \
 		${xRayTubeDataFileName} \
 		${gatheredXRayTubeDataFileName} \
