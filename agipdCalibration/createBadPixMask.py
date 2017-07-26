@@ -1,3 +1,12 @@
+"""
+Create bad pixel/cell masks based on general quality factors
+
+badCellMask: overall mask (logical OR of all sub-masks)
+
+Note: when no pixels/cells are masked, plotting throws an exception!
+
+"""
+
 import h5py
 import numpy as np
 import os
@@ -80,40 +89,10 @@ photonSpacingRange = np.array([50, 200])
 photonSpacingQualityMin = 0
 ###########
 
+
+##################### the rest can be left untouched ###################
+
 badCellMask = np.zeros((352, 128, 512), dtype=bool)
-
-################# manual mask - please edit (e.g. beamstop)
-manualMask = np.zeros((128, 512), dtype=bool)
-
-# if moduleNumber == 3:
-#     manualMask[65:105, 200:260] = True
-#     manualMask[80:105, 200:511] = True
-#
-#     manualMask[80:86, 22:43] = True
-#     manualMask[75:100, 31:43] = True
-#
-#     manualMask[64:127, 127:195] = True
-
-badCellMask = np.logical_or(manualMask, badCellMask)
-###########
-
-######### systematic mask - please edit
-# systematicMask = np.zeros((128, 512, 11, 32), dtype=bool)
-# systematicMask[..., 27:29] = True  # 32-column tips
-# systematicMask = systematicMask.reshape((128, 512, 352)).transpose(2, 0, 1)
-# badCellMask = np.logical_or(systematicMask, badCellMask)
-#########
-
-######### bad asic borders mask - please edit
-badAsicBordersMask = np.zeros((352, 128, 512), dtype=bool)
-# badAsicBordersMask[:, (0, 63, 64, 127), :] = True
-# for column in np.arange(8):
-#     badAsicBordersMask[:, :, (column * 64, column * 64 + 63)] = True
-badCellMask = np.logical_or(badAsicBordersMask, badCellMask)
-#########
-print('\n\n bad asic borders percentage of masked cells: ', 100 * badCellMask.flatten().sum() / badCellMask.size)
-
-########################################### the rest can be left untouched
 
 for tmp in (analogGains, analogLineOffsets, analogFitStdDevs, digitalMeans, digitalThresholds, digitalStdDeviations):
     #for i in np.arange(tmp.shape[0]):
