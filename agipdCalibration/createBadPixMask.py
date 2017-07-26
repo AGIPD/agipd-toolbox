@@ -43,7 +43,7 @@ saveFileName = os.path.join(baseDir, 'mask_{}_{}_{}_{}_{}_{}.h5'.format(moduleID
 # Create output file
 saveFile = h5py.File(saveFileName, "w", libver='latest')
 dset_badCellMask = saveFile.create_dataset("badCellMask", shape=(352, 128, 512), dtype=bool)
-
+subMasks = saveFile.create_group("subMasks")
 
 # Get data from gain files
 analogGainsFile = h5py.File(analogGainsFileName, 'r', libver='latest')
@@ -74,7 +74,7 @@ photonSpacing = photonSpacingFile["/photonSpacing"][...]  # shape=(128, 512)
 photonSpacingQuality = photonSpacingFile["/quality"][...]  # shape=(128, 512)
 photonSpacingFile.close()
 
-########### Cut values ############################################################
+########### Cut values #################################################
 #if moduleNumber == 6:
 darkOffsetRange = np.array([2000, 9000])
 darkStandardDeviationRange = np.array([2, 40])
@@ -87,26 +87,38 @@ digitalMeansRange = np.array([[5580, 7000], [6740, 8000], [0, 0]])
 digitalThresholdsRange = np.array([[6000, 7600], [0, 0]])
 photonSpacingRange = np.array([50, 200])
 photonSpacingQualityMin = 0
-###########
+########################################################################
+
 
 
 ##################### the rest can be left untouched ###################
 
 badCellMask = np.zeros((352, 128, 512), dtype=bool)
 
+
+########################################################################
+failedFitMask = np.zeros((352, 128, 512), dtype=bool)
+dset_failedFitMask = subMasks.create_dataset("failedFitMask", shape=(352, 128, 512), dtype=bool)
+
 for tmp in (analogGains, analogLineOffsets, analogFitStdDevs, digitalMeans, digitalThresholds, digitalStdDeviations):
-    #for i in np.arange(tmp.shape[0]):
-        #badCellMask = np.logical_or(badCellMask, ~np.isfinite(tmp[i, ...]))
+    for i in np.arange(tmp.shape[0]):
+        failedFitMask = np.logical_or(failedFitMask, ~np.isfinite(tmp[i, ...]))
     tmp[~np.isfinite(tmp)] = 0  # to surpress "invalid value in comparison" warnings
 for tmp in (darkOffset, darkStandardDeviation, photonSpacing, photonSpacingQuality):
-    badCellMask = np.logical_or(badCellMask, ~np.isfinite(tmp))
+    failedFitMask = np.logical_or(failedFitMask, ~np.isfinite(tmp))
     tmp[~np.isfinite(tmp)] = 0  # to surpress "invalid value in comparison" warnings
 
 figure = plt.figure()
 axes = figure.gca()
 #figure.show()
-print('\n\n starting percentage of masked cells: ', 100 * badCellMask.flatten().sum() / badCellMask.size)
 
+dset_failedFitMask[...] = failedFitMask
+badCellMask = np.logical_or(badCellMask, failedFitMask)
+print('\n\n failed fit percentage of masked cells: ', 100 * failedFitMask.flatten().sum() / failedFitMask.size)
+########################################################################
+
+
+########################################################################
 if not ('darkOffsetRange' in locals()):
     darkOffsetRange = np.zeros((2,))
     axes.clear()
@@ -117,24 +129,31 @@ if not ('darkOffsetRange' in locals()):
 
 darkOffset = darkOffset.transpose(1, 2, 0)  # shape = (128, 512, 352)
 darkOffset = darkOffset.reshape([128, 512, 11, 32])
-badOffsetPixelMask = np.zeros((128, 512, 11, 32), dtype=bool)
-badOffsetPixelMask[darkOffset < darkOffsetRange[0]] = True
-badOffsetPixelMask[darkOffset > darkOffsetRange[1]] = True
-#for y in np.arange(128):
-#    for x in np.arange(512):
-#        lineMediansOffset = np.median(darkOffset[y, x, ...], axis=1)
-#        tmp = np.median(lineMediansOffset)
-#        if tmp > darkOffsetRange[1] or tmp < darkOffsetRange[0]:
-#            badOffsetPixelMask[y, x, ...] = True
-#        else:
-#            for line in np.arange(11):
-#                if lineMediansOffset[line] > darkOffsetRange[1] or lineMediansOffset[line] < darkOffsetRange[0]:
-#                    badOffsetPixelMask[y, x, line, :] = True
 
-badDarkOffsetMask = badOffsetPixelMask.reshape((128, 512, 352)).transpose(2, 0, 1)
-badCellMask = np.logical_or.reduce((badCellMask, badDarkOffsetMask))
-print('\n\n dark offset percentage of masked cells: ', 100 * badCellMask.flatten().sum() / badCellMask.size)
+darkOffsetMask = np.zeros((128, 512, 11, 32), dtype=bool)
+dset_darkOffsetMask = subMasks.create_dataset("darkOffsetMask", shape=(352, 128, 512), dtype=bool)
 
+darkOffsetMask[darkOffset < darkOffsetRange[0]] = True
+darkOffsetMask[darkOffset > darkOffsetRange[1]] = True
+for y in np.arange(128):
+    for x in np.arange(512):
+        lineMediansOffset = np.median(darkOffset[y, x, ...], axis=1)
+        tmp = np.median(lineMediansOffset)
+        if tmp > darkOffsetRange[1] or tmp < darkOffsetRange[0]:
+            darkOffsetMask[y, x, ...] = True
+        else:
+            for line in np.arange(11):
+                if lineMediansOffset[line] > darkOffsetRange[1] or lineMediansOffset[line] < darkOffsetRange[0]:
+                    darkOffsetMask[y, x, line, :] = True
+
+darkOffsetMask = darkOffsetMask.reshape((128, 512, 352)).transpose(2, 0, 1)
+dset_darkOffsetMask[...] = darkOffsetMask
+badCellMask = np.logical_or.reduce((badCellMask, darkOffsetMask))
+print('\n\n dark offset percentage of masked cells: ', 100 * darkOffsetMask.flatten().sum() / darkOffsetMask.size)
+########################################################################
+
+
+########################################################################
 if not ('darkStandardDeviationRange' in locals()):
     darkStandardDeviationRange = np.zeros((2,))
     axes.clear()
@@ -145,24 +164,30 @@ if not ('darkStandardDeviationRange' in locals()):
 
 darkStandardDeviation = darkStandardDeviation.transpose(1, 2, 0)  # shape = (128, 512, 352)
 darkStandardDeviation = darkStandardDeviation.reshape([128, 512, 11, 32])
-badStdDevPixelMask = np.zeros((128, 512, 11, 32), dtype=bool)
-badStdDevPixelMask[darkStandardDeviation < darkStandardDeviationRange[0]] = True
-badStdDevPixelMask[darkStandardDeviation > darkStandardDeviationRange[1]] = True
+darkStdDevMask = np.zeros((128, 512, 11, 32), dtype=bool)
+dset_darkStdDevMask = subMasks.create_dataset("darkStdDevMask", shape=(352, 128, 512), dtype=bool)
+
+darkStdDevMask[darkStandardDeviation < darkStandardDeviationRange[0]] = True
+darkStdDevMask[darkStandardDeviation > darkStandardDeviationRange[1]] = True
 for y in np.arange(128):
     for x in np.arange(512):
         lineMediansStdDev = np.median(darkStandardDeviation[y, x, ...], axis=1)
         tmp = np.median(lineMediansStdDev)
         if tmp > darkStandardDeviationRange[1] or tmp < darkStandardDeviationRange[0]:
-            badStdDevPixelMask[y, x, ...] = True
+            darkStdDevMask[y, x, ...] = True
         else:
             for line in np.arange(11):
                 if lineMediansStdDev[line] > darkStandardDeviationRange[1] or lineMediansStdDev[line] < darkStandardDeviationRange[0]:
-                    badStdDevPixelMask[y, x, line, :] = True
+                    darkStdDevMask[y, x, line, :] = True
 
-badDarkStandardDeviationMask = badStdDevPixelMask.reshape((128, 512, 352)).transpose(2, 0, 1)
-badCellMask = np.logical_or.reduce((badCellMask, badDarkStandardDeviationMask))
-print('\n\n dark std percentage of masked cells: ', 100 * badCellMask.flatten().sum() / badCellMask.size)
+darkStdDevMask = darkStdDevMask.reshape((128, 512, 352)).transpose(2, 0, 1)
+dset_darkStdDevMask[...] = darkStdDevMask
+badCellMask = np.logical_or.reduce((badCellMask, darkStdDevMask))
+print('\n\n dark std percentage of masked cells: ', 100 * darkStdDevMask.flatten().sum() / darkStdDevMask.size)
+########################################################################
 
+
+########################################################################
 if not ('analogFitStdDevsRange' in locals()):
     analogFitStdDevsRange = np.zeros((3, 2))
     axes.hist(analogFitStdDevs[0, ~badCellMask], bins='sqrt')
@@ -177,16 +202,21 @@ if not ('analogFitStdDevsRange' in locals()):
     figure.canvas.draw()
     analogFitStdDevsRange[2, 1] = float(input('maximum low gain analogFitStdDevs = '))
 
-badanalogFitStdDevsMask = np.zeros((3, 352, 128, 512), dtype=bool)
-badanalogFitStdDevsMask[
+anaFitStdDevsMask = np.zeros((3, 352, 128, 512), dtype=bool)
+dset_anaFitStdDevMask = subMasks.create_dataset("anaFitStdDevMask", shape=(3, 352, 128, 512), dtype=bool)
+anaFitStdDevsMask[
     0, ~np.all((analogFitStdDevsRange[0, 0] <= analogFitStdDevs[0, ...], analogFitStdDevs[0, ...] <= analogFitStdDevsRange[0, 1]), axis=0)] = True
-badanalogFitStdDevsMask[
+anaFitStdDevsMask[
     1, ~np.all((analogFitStdDevsRange[1, 0] <= analogFitStdDevs[1, ...], analogFitStdDevs[1, ...] <= analogFitStdDevsRange[1, 1]), axis=0)] = True
-badanalogFitStdDevsMask[
+anaFitStdDevsMask[
     2, ~np.all((analogFitStdDevsRange[2, 0] <= analogFitStdDevs[2, ...], analogFitStdDevs[2, ...] <= analogFitStdDevsRange[2, 1]), axis=0)] = True
-badCellMask = np.logical_or.reduce((badCellMask, badanalogFitStdDevsMask[0, ...], badanalogFitStdDevsMask[1, ...], badanalogFitStdDevsMask[2, ...]))
-print('\n\n analog fit percentage of masked cells: ', 100 * badCellMask.flatten().sum() / badCellMask.size)
+dset_anaFitStdDevMask[...] = anaFitStdDevsMask
+badCellMask = np.logical_or.reduce((badCellMask, anaFitStdDevsMask[0, ...], anaFitStdDevsMask[1, ...], anaFitStdDevsMask[2, ...]))
+print('\n\n analog fit std dev percentage of masked cells: ', 100 * anaFitStdDevsMask.flatten().sum() / anaFitStdDevsMask.size)
+########################################################################
 
+
+########################################################################
 if not ('analogGainsRange' in locals()):
     analogGainsRange = np.zeros((3, 2))
     axes.clear()
@@ -205,13 +235,19 @@ if not ('analogGainsRange' in locals()):
     analogGainsRange[2, 0] = float(input('minimum low gain = '))
     analogGainsRange[2, 1] = float(input('maximum low gain = '))
 
-badAnalogGainsMask = np.zeros((3, 352, 128, 512), dtype=bool)
-badAnalogGainsMask[0, ~np.all((analogGainsRange[0, 0] <= analogGains[0, ...], analogGains[0, ...] <= analogGainsRange[0, 1]), axis=0)] = True
-badAnalogGainsMask[1, ~np.all((analogGainsRange[1, 0] <= analogGains[1, ...], analogGains[1, ...] <= analogGainsRange[1, 1]), axis=0)] = True
-badAnalogGainsMask[2, ~np.all((analogGainsRange[2, 0] <= analogGains[2, ...], analogGains[2, ...] <= analogGainsRange[2, 1]), axis=0)] = True
-#badCellMask = np.logical_or.reduce((badCellMask, badAnalogGainsMask[0, ...], badAnalogGainsMask[1, ...], badAnalogGainsMask[2, ...]))
-print('\n\n gain range percentage of masked cells: ', 100 * badCellMask.flatten().sum() / badCellMask.size)
+anaGainsMask = np.zeros((3, 352, 128, 512), dtype=bool)
+dset_anaGainsMask = subMasks.create_dataset("anaGainsMask", shape=(3, 352, 128, 512), dtype=bool)
+anaGainsMask[0, ~np.all((analogGainsRange[0, 0] <= analogGains[0, ...], analogGains[0, ...] <= analogGainsRange[0, 1]), axis=0)] = True
+anaGainsMask[1, ~np.all((analogGainsRange[1, 0] <= analogGains[1, ...], analogGains[1, ...] <= analogGainsRange[1, 1]), axis=0)] = True
+anaGainsMask[2, ~np.all((analogGainsRange[2, 0] <= analogGains[2, ...], analogGains[2, ...] <= analogGainsRange[2, 1]), axis=0)] = True
 
+dset_anaGainsMask[...] = anaGainsMask
+badCellMask = np.logical_or.reduce((badCellMask, anaGainsMask[0, ...], anaGainsMask[1, ...], anaGainsMask[2, ...]))
+print('\n\n gain range percentage of masked cells: ', 100 * anaGainsMask.flatten().sum() / anaGainsMask.size)
+########################################################################
+
+
+########################################################################
 if not ('analogLineOffsetsRange' in locals()):
     analogLineOffsetsRange = np.zeros((3, 2))
     axes.clear()
@@ -230,16 +266,22 @@ if not ('analogLineOffsetsRange' in locals()):
     analogLineOffsetsRange[2, 0] = float(input('minimum low gain lineOffset = '))
     analogLineOffsetsRange[2, 1] = float(input('maximum low gain lineOffset = '))
 
-badAnalogLineOffsetsMask = np.zeros((3, 352, 128, 512), dtype=bool)
-badAnalogLineOffsetsMask[
+anaOffsetMask = np.zeros((3, 352, 128, 512), dtype=bool)
+dset_anaOffsetMask = subMasks.create_dataset("anaOffsetMask", shape=(3, 352, 128, 512), dtype=bool)
+anaOffsetMask[
     0, ~np.all((analogLineOffsetsRange[0, 0] <= analogLineOffsets[0, ...], analogLineOffsets[0, ...] <= analogLineOffsetsRange[0, 1]), axis=0)] = True
-badAnalogLineOffsetsMask[
+anaOffsetMask[
     1, ~np.all((analogLineOffsetsRange[1, 0] <= analogLineOffsets[1, ...], analogLineOffsets[1, ...] <= analogLineOffsetsRange[1, 1]), axis=0)] = True
-badAnalogLineOffsetsMask[
+anaOffsetMask[
     2, ~np.all((analogLineOffsetsRange[2, 0] <= analogLineOffsets[2, ...], analogLineOffsets[2, ...] <= analogLineOffsetsRange[2, 1]), axis=0)] = True
-#badCellMask = np.logical_or.reduce((badCellMask, badAnalogLineOffsetsMask[0, ...], badAnalogLineOffsetsMask[1, ...], badAnalogLineOffsetsMask[2, ...]))
-print('\n\n gain offset percentage of masked cells: ', 100 * badCellMask.flatten().sum() / badCellMask.size)
 
+dset_anaOffsetMask[...] = anaOffsetMask
+badCellMask = np.logical_or.reduce((badCellMask, anaOffsetMask[0, ...], anaOffsetMask[1, ...], anaOffsetMask[2, ...]))
+print('\n\n gain offset percentage of masked cells: ', 100 * anaOffsetMask.flatten().sum() / anaOffsetMask.size)
+########################################################################
+
+
+########################################################################
 if not ('digitalStdDeviationsRange' in locals()):
     digitalStdDeviationsRange = np.zeros((3, 2))
     axes.clear()
@@ -255,19 +297,25 @@ if not ('digitalStdDeviationsRange' in locals()):
     figure.canvas.draw()
     digitalStdDeviationsRange[2, 1] = float(input('maximum low gain digitalStdDeviations = '))
 
-badDigitalStdDeviationsMask = np.zeros((3, 352, 128, 512), dtype=bool)
-badDigitalStdDeviationsMask[
+digStdDevMask = np.zeros((3, 352, 128, 512), dtype=bool)
+dset_digStdDevMask = subMasks.create_dataset("digStdDevMask", shape=(3, 352, 128, 512), dtype=bool)
+digStdDevMask[
     0, ~np.all((digitalStdDeviationsRange[0, 0] <= digitalStdDeviations[0, ...], digitalStdDeviations[0, ...] <= digitalStdDeviationsRange[0, 1]),
                axis=0)] = True
-badDigitalStdDeviationsMask[
+digStdDevMask[
     1, ~np.all((digitalStdDeviationsRange[1, 0] <= digitalStdDeviations[1, ...], digitalStdDeviations[1, ...] <= digitalStdDeviationsRange[1, 1]),
                axis=0)] = True
-badDigitalStdDeviationsMask[
+digStdDevMask[
     2, ~np.all((digitalStdDeviationsRange[2, 0] <= digitalStdDeviations[2, ...], digitalStdDeviations[2, ...] <= digitalStdDeviationsRange[2, 1]),
                axis=0)] = True
-#badCellMask = np.logical_or.reduce((badCellMask, badDigitalStdDeviationsMask[0, ...], badDigitalStdDeviationsMask[1, ...], badDigitalStdDeviationsMask[2, ...]))
-print('\n\n dig std percentage of masked cells: ', 100 * badCellMask.flatten().sum() / badCellMask.size)
 
+dset_digStdDevMask[...] = digStdDevMask
+badCellMask = np.logical_or.reduce((badCellMask, digStdDevMask[0, ...], digStdDevMask[1, ...], digStdDevMask[2, ...]))
+print('\n\n dig std percentage of masked cells: ', 100 * digStdDevMask.flatten().sum() / digStdDevMask.size)
+########################################################################
+
+
+########################################################################
 if not ('digitalSpacingsSafetyFactorsMin' in locals()):
     digitalSpacingsSafetyFactorsMin = np.zeros((2,))
     axes.clear()
@@ -279,12 +327,18 @@ if not ('digitalSpacingsSafetyFactorsMin' in locals()):
     figure.canvas.draw()
     digitalSpacingsSafetyFactorsMin[1] = float(input('minimum medium-low digitalSpacingsSafetyFactors = '))
 
-badDigitalSpacingsSafetyFactorsMask = np.zeros((2, 352, 128, 512), dtype=bool)
-badDigitalSpacingsSafetyFactorsMask[0, digitalSpacingsSafetyFactors[0, ...] < digitalSpacingsSafetyFactorsMin[0]] = True
-badDigitalSpacingsSafetyFactorsMask[1, digitalSpacingsSafetyFactors[1, ...] < digitalSpacingsSafetyFactorsMin[1]] = True
-#badCellMask = np.logical_or.reduce((badCellMask, badDigitalSpacingsSafetyFactorsMask[0, ...], badDigitalSpacingsSafetyFactorsMask[1, ...]))
-print('\n\n ph. spacing safety factor percentage of masked cells: ', 100 * badCellMask.flatten().sum() / badCellMask.size)
+digSpacingMask = np.zeros((2, 352, 128, 512), dtype=bool)
+dset_digSpacingMask = subMasks.create_dataset("digSpacingMask", shape=(2, 352, 128, 512), dtype=bool)
+digSpacingMask[0, digitalSpacingsSafetyFactors[0, ...] < digitalSpacingsSafetyFactorsMin[0]] = True
+digSpacingMask[1, digitalSpacingsSafetyFactors[1, ...] < digitalSpacingsSafetyFactorsMin[1]] = True
 
+dset_digSpacingMask[...] = digSpacingMask
+badCellMask = np.logical_or.reduce((badCellMask, digSpacingMask[0, ...], digSpacingMask[1, ...]))
+print('\n\n ph. spacing safety factor percentage of masked cells: ', 100 * digSpacingMask.flatten().sum() / digSpacingMask.size)
+########################################################################
+
+
+########################################################################
 if not ('digitalMeansRange' in locals()):
     digitalMeansRange = np.zeros((3, 2))
     axes.clear()
@@ -303,13 +357,19 @@ if not ('digitalMeansRange' in locals()):
     digitalMeansRange[2, 0] = float(input('minimum low gain digitalMeans = '))
     digitalMeansRange[2, 1] = float(input('maximum low gain digitalMeans = '))
 
-badDigitalMeansMask = np.zeros((3, 352, 128, 512), dtype=bool)
-badDigitalMeansMask[0, ~np.all((digitalMeansRange[0, 0] <= digitalMeans[0, ...], digitalMeans[0, ...] <= digitalMeansRange[0, 1]), axis=0)] = True
-badDigitalMeansMask[1, ~np.all((digitalMeansRange[1, 0] <= digitalMeans[1, ...], digitalMeans[1, ...] <= digitalMeansRange[1, 1]), axis=0)] = True
-badDigitalMeansMask[2, ~np.all((digitalMeansRange[2, 0] <= digitalMeans[2, ...], digitalMeans[2, ...] <= digitalMeansRange[2, 1]), axis=0)] = True
-#badCellMask = np.logical_or.reduce((badCellMask, badDigitalMeansMask[0, ...], badDigitalMeansMask[1, ...], badDigitalMeansMask[2, ...]))
-print('\n\n dig. means percentage of masked cells: ', 100 * badCellMask.flatten().sum() / badCellMask.size)
+digMeansMask = np.zeros((3, 352, 128, 512), dtype=bool)
+dset_digMeansMask = subMasks.create_dataset("digMeansMask", shape=(3, 352, 128, 512), dtype=bool)
+digMeansMask[0, ~np.all((digitalMeansRange[0, 0] <= digitalMeans[0, ...], digitalMeans[0, ...] <= digitalMeansRange[0, 1]), axis=0)] = True
+digMeansMask[1, ~np.all((digitalMeansRange[1, 0] <= digitalMeans[1, ...], digitalMeans[1, ...] <= digitalMeansRange[1, 1]), axis=0)] = True
+digMeansMask[2, ~np.all((digitalMeansRange[2, 0] <= digitalMeans[2, ...], digitalMeans[2, ...] <= digitalMeansRange[2, 1]), axis=0)] = True
 
+dset_digMeansMask[...] = digMeansMask
+badCellMask = np.logical_or.reduce((badCellMask, digMeansMask[0, ...], digMeansMask[1, ...], digMeansMask[2, ...]))
+print('\n\n dig. means percentage of masked cells: ', 100 * digMeansMask.flatten().sum() / digMeansMask.size)
+########################################################################
+
+
+########################################################################
 if not ('digitalThresholdsRange' in locals()):
     digitalThresholdsRange = np.zeros((2, 2))
     axes.clear()
@@ -323,14 +383,20 @@ if not ('digitalThresholdsRange' in locals()):
     digitalThresholdsRange[1, 0] = float(input('minimum medium-low digitalThresholds = '))
     digitalThresholdsRange[1, 1] = float(input('maximum medium-low digitalThresholds = '))
 
-badDigitalThresholdsMask = np.zeros((2, 352, 128, 512), dtype=bool)
-badDigitalThresholdsMask[
+digThreshMask = np.zeros((2, 352, 128, 512), dtype=bool)
+dset_digThreshMask = subMasks.create_dataset("digThreshMask", shape=(2, 352, 128, 512), dtype=bool)
+digThreshMask[
     0, ~np.all((digitalThresholdsRange[0, 0] <= digitalThresholds[0, ...], digitalThresholds[0, ...] <= digitalThresholdsRange[0, 1]), axis=0)] = True
-badDigitalThresholdsMask[
+digThreshMask[
     1, ~np.all((digitalThresholdsRange[1, 0] <= digitalThresholds[1, ...], digitalThresholds[1, ...] <= digitalThresholdsRange[1, 1]), axis=0)] = True
-#badCellMask = np.logical_or.reduce((badCellMask, badDigitalThresholdsMask[0, ...], badDigitalThresholdsMask[1, ...]))
-print('\n\n dig thresh percentage of masked cells: ', 100 * badCellMask.flatten().sum() / badCellMask.size)
 
+dset_digThreshMask[...] = digThreshMask
+badCellMask = np.logical_or.reduce((badCellMask, digThreshMask[0, ...], digThreshMask[1, ...]))
+print('\n\n dig thresh percentage of masked cells: ', 100 * digThreshMask.flatten().sum() / digThreshMask.size)
+########################################################################
+
+
+########################################################################
 if not ('photonSpacingRange' in locals()):
     photonSpacingRange = np.zeros((2,))
     axes.clear()
@@ -339,11 +405,17 @@ if not ('photonSpacingRange' in locals()):
     photonSpacingRange[0] = float(input('minimum photonSpacing = '))
     photonSpacingRange[1] = float(input('maximum photonSpacing = '))
 
-badPhotonSpacingMask = np.zeros((128, 512), dtype=bool)
-badPhotonSpacingMask[~np.all((photonSpacingRange[0] <= photonSpacing, photonSpacing <= photonSpacingRange[1]), axis=0)] = True
-badCellMask = np.logical_or(badCellMask, badPhotonSpacingMask)
-print('\n\n ph. spacing percentage of masked cells: ', 100 * badCellMask.flatten().sum() / badCellMask.size)
+photonSpacingMask = np.zeros((128, 512), dtype=bool)
+dset_photonSpacingMask = subMasks.create_dataset("photonSpacingMask", shape=(128, 512), dtype=bool)
+photonSpacingMask[~np.all((photonSpacingRange[0] <= photonSpacing, photonSpacing <= photonSpacingRange[1]), axis=0)] = True
 
+dset_photonSpacingMask[...] = photonSpacingMask
+badCellMask = np.logical_or(badCellMask, photonSpacingMask)
+print('\n\n ph. spacing percentage of masked cells: ', 100 * photonSpacingMask.flatten().sum() / photonSpacingMask.size)
+########################################################################
+
+
+########################################################################
 if not ('photonSpacingQualityMin' in locals()):
     photonSpacingQualityMin = 0
     axes.clear()
@@ -351,10 +423,15 @@ if not ('photonSpacingQualityMin' in locals()):
     figure.canvas.draw()
     photonSpacingQualityMin = float(input('minimum photonSpacingQuality = '))
 
-badPhotonSpacingQualityMask = np.zeros((128, 512), dtype=bool)
-badPhotonSpacingQualityMask[photonSpacingQuality <= photonSpacingQualityMin] = True
-badCellMask = np.logical_or(badCellMask, badPhotonSpacingQualityMask)
-print('\n\n ph. spacing quality percentage of masked cells: ', 100 * badCellMask.flatten().sum() / badCellMask.size)
+photonSpacingQualityMask = np.zeros((128, 512), dtype=bool)
+dset_photonSpacingQualityMask = subMasks.create_dataset("photonSpacingQualityMask", shape=(128, 512), dtype=bool)
+photonSpacingQualityMask[photonSpacingQuality <= photonSpacingQualityMin] = True
+
+dset_photonSpacingQualityMask[...] = photonSpacingQualityMask
+badCellMask = np.logical_or(badCellMask, photonSpacingQualityMask)
+print('\n\n ph. spacing quality percentage of masked cells: ', 100 * photonSpacingQualityMask.flatten().sum() / photonSpacingQualityMask.size)
+########################################################################
+
 
 dset_badCellMask[...] = badCellMask
 saveFile.flush()
