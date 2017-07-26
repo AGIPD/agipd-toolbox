@@ -66,15 +66,17 @@ class ParallelProcess():
             "medium": p_result["slope"]["individual"]["medium"].shape[-1],
             "low": p_result["slope"]["individual"]["low"].shape[-1]
         }
-        n_zero_region_stored = p_result["intervals"]["zero_regions"].shape[-2]
+        n_zero_region_stored = p_result["intervals"]["found_zero_regions"].shape[-2]
+        n_bins = p_result["collection"]["nbins"]
 
         #print("n_gain_stages", n_gain_stages)
         #print("n_intervals", n_intervals)
         #print("n_zero_region_stored", n_zero_region_stored)
+        #print("n_bins", n_bins)
 
         self.result = initiate_result(self.pixel_v_list, self.pixel_u_list,
                                       self.mem_cell_list, n_gain_stages,
-                                      n_intervals, n_zero_region_stored)
+                                      n_intervals, n_zero_region_stored, n_bins)
 
 
     def run(self):
@@ -117,66 +119,76 @@ class ParallelProcess():
         m_stop = mem_cell_list[-1] + 1
 
         for key in p_result["collection"]:
-            self.result["collection"][key] = p_result["collection"][key]
+            # do not do this for array time entries because otherwise it would
+            # overwrite self.results with a pointer to p_results
+            if key not in ["spread", "used_nbins"]:
+                self.result["collection"][key] = p_result["collection"][key]
 
-        # idx at start: individual, zero_regions, subintervals
+        # idx at start: individual, found_zero_regions, used_zero_regions,
+        # subintervals
+        idx = (slice(v_start, v_stop),
+               slice(u_start, u_stop),
+               slice(m_start, m_stop),
+               Ellipsis)
+
         for key in ["slope", "offset", "residuals"]:
             for gain in ["high", "medium", "low"]:
-                self.result[key]["individual"][gain][v_start:v_stop,
-                                                     u_start:u_stop,
-                                                     m_start:m_stop, ...] = (
-                    p_result[key]["individual"][gain][v_start:v_stop,
-                                                      u_start:u_stop,
-                                                      m_start:m_stop, ...])
-        self.result["intervals"]["zero_regions"][v_start:v_stop,
-                                                 u_start:u_stop,
-                                                 m_start:m_stop, ...] = (
-            p_result["intervals"]["zero_regions"][v_start:v_stop,
-                                                  u_start:u_stop,
-                                                  m_start:m_stop, ...])
+                self.result[key]["individual"][gain][idx] = (
+                    p_result[key]["individual"][gain][idx])
+
+        self.result["intervals"]["found_zero_regions"][idx] = (
+            p_result["intervals"]["found_zero_regions"][idx])
+        self.result["intervals"]["used_zero_regions"][idx] = (
+            p_result["intervals"]["used_zero_regions"][idx])
+
         for gain in ["high", "medium", "low"]:
-            self.result["intervals"]["subintervals"][gain][v_start:v_stop,
-                                                           u_start:u_stop,
-                                                           m_start:m_stop, ...] = (
-                p_result["intervals"]["subintervals"][gain][v_start:v_stop,
-                                                            u_start:u_stop,
-                                                            m_start:m_stop, ...])
+            self.result["intervals"]["subintervals"][gain][idx] = (
+                p_result["intervals"]["subintervals"][gain][idx])
 
         # idx at end: mean, medians, threshold
-        for key in ["slope", "offset", "residuals"]:
-            self.result[key]["mean"][..., v_start:v_stop,
-                                     u_start:u_stop, m_start:m_stop] = (
-                p_result[key]["mean"][..., v_start:v_stop,
-                                     u_start:u_stop, m_start:m_stop])
-        self.result["medians"][..., v_start:v_stop,
-                               u_start:u_stop, m_start:m_stop] = (
-            p_result["medians"][..., v_start:v_stop,
-                                u_start:u_stop, m_start:m_stop])
-        self.result["thresholds"][..., v_start:v_stop,
-                                  u_start:u_stop, m_start:m_stop] = (
-            p_result["thresholds"][..., v_start:v_stop,
-                                   u_start:u_stop, m_start:m_stop])
+        idx = (Ellipsis,
+               slice(v_start, v_stop),
+               slice(u_start, u_stop),
+               slice(m_start, m_stop))
 
-        # only idx: error_code, warning_code
-        self.result["error_code"][v_start:v_stop, u_start:u_stop,
-                                  m_start:m_stop] = (
-            p_result["error_code"][v_start:v_stop, u_start:u_stop,
-                                   m_start:m_stop])
-        self.result["warning_code"][v_start:v_stop, u_start:u_stop,
-                                    m_start:m_stop] = (
-            p_result["warning_code"][v_start:v_stop, u_start:u_stop,
-                                     m_start:m_stop])
+        for key in ["slope", "offset", "residuals"]:
+            self.result[key]["mean"][idx] = (
+                p_result[key]["mean"][idx])
+        self.result["medians"][idx] = (
+            p_result["medians"][idx])
+        self.result["thresholds"][idx] = (
+            p_result["thresholds"][idx])
+
+        # only idx: error_code, warning_code, spread, nbins
+        idx = (Ellipsis,
+               slice(v_start, v_stop),
+               slice(u_start, u_stop),
+               slice(m_start, m_stop))
+
+        for key in ["error_code", "warning_code"]:
+            self.result[key][idx] = p_result[key][idx]
+
+        for key in ["spread", "used_nbins"]:
+            try:
+                self.result["collection"][key][idx] = (
+                    p_result["collection"][key][idx])
+
+            except:
+                print(key, idx)
+                print(p_result["collection"][key][idx])
+                print(self.result["collection"][key][idx])
 
         # special: gain_stages
-        self.result["intervals"]["gain_stages"][..., v_start:v_stop,
-                                                u_start:u_stop,
-                                                m_start:m_stop, :] = (
-            p_result["intervals"]["gain_stages"][..., v_start:v_stop,
-                                                 u_start:u_stop,
-                                                 m_start:m_stop, :])
+        idx = (Ellipsis,
+               slice(v_start, v_stop),
+               slice(u_start, u_stop),
+               slice(m_start, m_stop),
+               slice(None))
+
+        self.result["intervals"]["gain_stages"][idx] = (
+            p_result["intervals"]["gain_stages"][idx])
 
     def write_data(self):
-
         if self.result is None:
             print("No results to write")
             return

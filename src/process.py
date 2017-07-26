@@ -63,7 +63,7 @@ def contiguous_regions(condition):
 
 # not defined inside the class to let other classes reuse this
 def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
-                    n_intervals, n_zero_region_stored):
+                    n_intervals, n_zero_region_stored, nbins):
 
     result = {
         "slope": {
@@ -91,12 +91,9 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
             }
         },
         "intervals": {
-            "zero_regions": None,
-            "gain_stages": {
-                "high" : None,
-                "medium": None,
-                "low": None
-            },
+            "found_zero_regions": None,
+            "used_zero_regions": None,
+            "gain_stages": None,
             "subintervals": {
                 "high" : None,
                 "medium": None,
@@ -118,7 +115,9 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
             "scaling_factor": None,
             "n_gain_stages": None,
             "fit_cutoff_left": None,
-            "fit_cutoff_right": None
+            "fit_cutoff_right": None,
+            "spread": None,
+            "used_nbins": None
         }
     }
 
@@ -146,11 +145,14 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
     # initiated with -1 to distinguish between code failures and catched errors
     result["error_code"] = -1 * np.ones(shape_tmp, np.int16)
     result["warning_code"] = np.zeros(shape_tmp, np.int16)
+    result["collection"]["spread"] = np.zeros(shape_tmp)
+    result["collection"]["used_nbins"] = nbins * np.ones(shape_tmp)
 
     # intiate intervals
     # interval consists of start and end point -> x2
     result["intervals"]["gain_stages"] = init_with_nan(shape + (2,))
-    result["intervals"]["zero_regions"] = (
+    result["intervals"]["used_zero_regions"] = init_with_nan(shape_tmp + (2,2))
+    result["intervals"]["found_zero_regions"] = (
         init_with_nan(shape_tmp + (n_zero_region_stored, 2)))
     for key in ["high", "medium", "low"]:
         result["intervals"]["subintervals"][key] = (
@@ -168,6 +170,11 @@ def init_with_nan(shape):
     obj[...] = np.NAN
 
     return obj
+
+# gives back to N biggest entries of a list
+# source: https://stackoverflow.com/questions/12787650/finding-the-index-of-n-biggest-elements-in-python-array-list-efficiently
+def biggest_entries(list_to_check, N):
+    return np.argsort(list_to_check)[::-1][:N]
 
 class ProcessDrscs():
     def __init__(self, asic, input_fname, output_fname=False,
@@ -190,6 +197,9 @@ class ProcessDrscs():
 
         self.percent = 10
         self.nbins = 30
+
+        self.hist = None
+        self.bins = None
 
         # threshold for regions which are concidered to containing no gain information
         self.thold_for_zero = 4
@@ -226,7 +236,7 @@ class ProcessDrscs():
 
         # temporarily results which can not be stored in the result directly
         self.res = {
-            "zero_regions": None,
+            "found_zero_regions": None,
             "thresholds": None
         }
 
@@ -238,7 +248,7 @@ class ProcessDrscs():
         # 3    Zero region: too many intervals
         #
         # warning_codes:
-        #
+        # 1    Use lesser nbins
         ###
 
 
@@ -313,7 +323,8 @@ class ProcessDrscs():
         self.result = initiate_result(self.pixel_v_list, self.pixel_u_list,
                                       self.mem_cell_list, self.n_gain_stages,
                                       self.n_intervals,
-                                      self.n_zero_region_stored)
+                                      self.n_zero_region_stored,
+                                      self.nbins)
 
         self.result["collection"]["nbins"] = self.nbins
         self.result["collection"]["thold_for_zero"] = self.thold_for_zero
@@ -322,6 +333,7 @@ class ProcessDrscs():
         self.result["collection"]["n_gain_stages"] = self.n_gain_stages
         self.result["collection"]["fit_cutoff_left"] = self.fit_cutoff_left
         self.result["collection"]["fit_cutoff_right"] = self.fit_cutoff_right
+        #spread and used_nbin is intiated in initiate_result
 
         for pixel_v in self.pixel_v_list:
             for pixel_u in self.pixel_u_list:
@@ -339,20 +351,21 @@ class ProcessDrscs():
 
                         # store current_idx dependent results in the final matrices
                         try:
-                            self.result["intervals"]["zero_regions"][self.current_idx] = (
-                                self.res["zero_regions"])
+                            self.result["intervals"]["found_zero_regions"][self.current_idx] = (
+                                self.res["found_zero_regions"])
                         except ValueError:
-                            # it is not fixed how many zero_regions are found
+                            # it is not fixed how many found_zero_regions are found
                             # but the size of np.arrays has to be fixed
-                            l = len(self.res["zero_regions"])
-                            zero_regions = self.result["intervals"]["zero_regions"][self.current_idx]
+                            l = len(self.res["found_zero_regions"])
+                            f_zero_regions = (
+                                self.result["intervals"]["found_zero_regions"][self.current_idx])
 
                             # fill up with found ones, rest of the array stays NAN
                             if l < self.n_zero_region_stored:
-                                zero_regions[:l] = self.res["zero_regions"]
+                                f_zero_regions[:l] = self.res["found_zero_regions"]
                             # more regions found than array can hold, only store the first part
                             else:
-                                zero_regions = self.res["zero_regions"][:n_zero_region_stored]
+                                f_zero_regions = self.res["found_zero_regions"][:n_zero_region_stored]
 
                         for gain in self.gain_idx:
                             l = self.fit_cutoff_left
@@ -395,7 +408,9 @@ class ProcessDrscs():
 
                             print("hist={}".format(self.hist))
                             print("bins={}".format(self.bins))
-                            print("zero_regions", self.res["zero_regions"])
+                            print("used_zero_regions",
+                                  self.result["intervals"]["used_zero_regions"][self.current_idx])
+                            print("found_zero_regions", self.res["found_zero_regions"])
                             print("thesholds={}".format(self.res["thresholds"]))
 
                         if create_error_plots:
@@ -420,9 +435,22 @@ class ProcessDrscs():
 
     def process_data_point(self, current_idx):
 
-        self.hist, self.bins = np.histogram(self.digital[current_idx[0], current_idx[1],
-                                                         current_idx[2], :],
-                                            bins=self.nbins)
+        data = self.digital[self.current_idx[0], self.current_idx[1], self.current_idx[2], :]
+
+        spread = int(np.linalg.norm(np.max(data) - np.min(data)))
+
+        if 0 < spread and spread < self.nbins:
+            nbins = spread
+            self.result["warning_code"][self.current_idx] = 1
+            print("[{}, {}], {}: Spread to lower than number of bins. Adjusting (new nbins={}, spread={})"
+                  .format(self.current_idx[0], self.current_idx[1], self.current_idx[2], nbins, spread))
+        else:
+            nbins = self.nbins
+
+        self.result["collection"]["spread"][self.current_idx] = spread
+        self.result["collection"]["used_nbins"][self.current_idx] = nbins
+
+        self.hist, self.bins = np.histogram(data, bins=nbins)
         #print("hist={}".format(self.hist))
         #print("bins={}".format(self.bins))
 
@@ -479,40 +507,50 @@ class ProcessDrscs():
             print("took time: {}".format(time.time() - t))
 
     def calc_thresholds(self):
-        self.res["zero_regions"] = (
+        self.res["found_zero_regions"] = (
             contiguous_regions(self.hist < self.thold_for_zero))
-        #print("zero_regions raw: {}".format(self.res["zero_regions"]))
+        #print("found_zero_regions raw: {}".format(self.res["found_zero_regions"]))
 
         # remove the first interval found if it starts with the first bin
-        if (self.res["zero_regions"].size != 0
-                and self.res["zero_regions"][0][0] == 0):
-            self.res["zero_regions"] = self.res["zero_regions"][1:]
+        if (self.res["found_zero_regions"].size != 0
+                and self.res["found_zero_regions"][0][0] == 0):
+            self.res["found_zero_regions"] = self.res["found_zero_regions"][1:]
 
         # remove the last interval found if it ends with the last bin
-        if (self.res["zero_regions"].size != 0
-                and self.res["zero_regions"][-1][1] == self.nbins):
-            self.res["zero_regions"] = self.res["zero_regions"][:-1]
+        if (self.res["found_zero_regions"].size != 0
+                and self.res["found_zero_regions"][-1][1] == self.nbins):
+            self.res["found_zero_regions"] = self.res["found_zero_regions"][:-1]
 
-        #print("zero_regions ends removed: {}".format(self.res["zero_regions"]))
+        #print("found_zero_regions ends removed: {}".format(self.res["found_zero_regions"]))
 
-        if len(self.res["zero_regions"]) < 2:
+        if len(self.res["found_zero_regions"]) < 2:
             #print("thold_for_zero={}".format(self.thold_for_zero))
-            #print("intervals={}".format(self.res["zero_regions"]))
+            #print("intervals={}".format(self.res["found_zero_regions"]))
             self.result["error_code"][self.current_idx] = 2
             raise IntervalError("Too few intervals")
-        if len(self.res["zero_regions"]) > 2:
+        if len(self.res["found_zero_regions"]) > 2:
             #print("thold_for_zero={}".format(self.thold_for_zero))
-            #print("intervals={}".format(self.res["zero_regions"]))
+            #print("intervals={}".format(self.res["found_zero_regions"]))
             self.result["error_code"][self.current_idx] = 3
             raise IntervalError("Too many intervals")
 
-        #print("zero_regions", self.res["zero_regions"])
+        #print("found_zero_regions", self.res["found_zero_regions"])
+        used_zero_regions = self.res["found_zero_regions"]
+        self.result["intervals"]["used_zero_regions"][self.current_idx] = used_zero_regions
 
-        mean_zero_region = np.mean(self.res["zero_regions"], axis=1).astype(int)
+
+        mean_zero_region = np.mean(used_zero_regions, axis=1).astype(int)
         #print("mean_zero_region={}".format(mean_zero_region))
 
         self.res["thresholds"] = self.bins[mean_zero_region]
         #print("thesholds={}".format(self.res["thresholds"]))
+
+    def rechoosing_fit_intervals(self):
+        #if multiple intervals were found, choose the biggest ones
+        interval_length = [region[1] - region[0]
+                           for region in self.res["found_zero_regions"]]
+
+        return biggest_entries(interval_length, 2)
 
     def determine_fit_interval(self, threshold_l, threshold_u):
         data_d = self.digital[self.current_idx[0], self.current_idx[1],
@@ -530,7 +568,6 @@ class ProcessDrscs():
             condition = data_d < threshold_u
             #print("condition = data_d < {}".format(threshold_u))
 
-        #print("condition value={}".format(condition))
         return contiguous_regions(condition)
 
     def split_interval(self, interval, nsplits):
@@ -948,6 +985,7 @@ if __name__ == "__main__":
     base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
 
     asic = 1
+    #asic = 11
     module = "M314"
     temperature = "temperature_m15C"
     current = "itestc150"
@@ -960,23 +998,29 @@ if __name__ == "__main__":
     plot_dir = os.path.join(base_dir, module, temperature, "drscs", "plots", current, "manu_test")
     plot_prefix = "{}_{}_asic{}".format(module, current, asic)
 
-    #pixel_v_list = np.arange(2,10)
-    #pixel_u_list = np.arange(64)
-    #mem_cell_list = np.arange(352)
-    pixel_v_list = np.arange(6, 7)
-    pixel_u_list = np.arange(63, 64)
-    mem_cell_list = np.arange(38, 39)
+    #pixel_v_list = np.arange(0, 64)
+    #pixel_u_list = np.arange(0, 64)
+    #mem_cell_list = np.arange(0, 352)
+    #pixel_v_list = np.arange(29, 30)
+    #pixel_u_list = np.arange(1, 2)
+    #mem_cell_list = np.arange(1, 2)
+    pixel_v_list = np.arange(10, 11)
+    pixel_u_list = np.arange(11, 12)
+    mem_cell_list = np.arange(30, 31)
 
     output_fname = False
+    #create_plots can be set to False, "data", "fit", "combined" or "all"
     create_plots = False
+    create_error_plots=True
     #create_plots=["data", "combined"]
 
-    #create_plots can be set to False, "data", "fit", "combined" or "all"
     cal = ProcessDrscs(asic, input_fname, output_fname=output_fname,
                        plot_prefix=plot_prefix, plot_dir=plot_dir,
                        create_plots=create_plots)
 
     print("\nRun processing")
     t = time.time()
-    cal.run(pixel_v_list, pixel_u_list, mem_cell_list, create_error_plots=True, create_colormaps=False)
+    cal.run(pixel_v_list, pixel_u_list, mem_cell_list,
+            create_error_plots=create_error_plots,
+            create_colormaps=False)
     print("Processing took time: {}".format(time.time() - t))
