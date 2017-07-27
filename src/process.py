@@ -9,6 +9,7 @@ import os
 import sys
 import time
 import traceback
+from characterization.create_plots import generate_data_plot, generate_fit_plot, generate_combined_plot, generate_all_plots
 
 
 class IntervalError(Exception):
@@ -253,29 +254,27 @@ class ProcessDrscs():
         ###
 
 
-        self.colormap_matrix = {
-            "slope": None,
-            "offset": None
-        }
-
         if plot_prefix:
-            self.plot_prefix = "{}{}".format(plot_prefix, str(asic).zfill(2))
+            print("plot_prefix", plot_prefix)
+            self.plot_file_prefix = "{}_asic{}".format(plot_prefix, str(asic).zfill(2))
             if plot_dir is not None:
-                plot_prefix = os.path.join(self.plot_dir, plot_prefix)
+                self.plot_file_prefix = os.path.join(self.plot_dir, self.plot_file_prefix)
+
+            self.plot_title_prefix = self.plot_file_prefix.rsplit("/", 1)[1]
+            print("plot_file_prefix", self.plot_file_prefix)
+            print("plot_title_prefix", self.plot_title_prefix)
 
             self.plot_name = {
-                "origin_data": Template(plot_prefix + "_${px}_${mc}_data"),
-                "fit": Template(plot_prefix + "_${px}_${mc}_fit"),
-                "combined": Template(plot_prefix + "_${px}_${mc}_combined"),
-                "colormap": Template(plot_prefix + "_${mc}_colormap"),
+                "origin_data": Template(self.plot_file_prefix + "_${px}_${mc}_data"),
+                "fit": Template(self.plot_file_prefix + "_${px}_${mc}_fit"),
+                "combined": Template(self.plot_file_prefix + "_${px}_${mc}_combined"),
             }
 
-            title_prefix = plot_prefix.rsplit("/", 1)[1]
+            title_prefix = self.plot_file_prefix.rsplit("/", 1)[1]
             self.plot_title = {
                 "origin_data": Template(title_prefix + "_${px}_${mc} data"),
                 "fit": Template(title_prefix + "_${px}_${mc} fit ${g}"),
                 "combined": Template(title_prefix + "_${px}_${mc} combined"),
-                "colormap": Template(title_prefix + "_${mc} colormap"),
             }
             self.plot_ending = ".png"
         else:
@@ -303,7 +302,7 @@ class ProcessDrscs():
         source_file.close()
 
     def run(self, pixel_v_list, pixel_u_list, mem_cell_list,
-            create_error_plots=False, create_colormaps=False):
+            create_error_plots=False):
 
         if len(pixel_v_list) == 0 or len(pixel_u_list) == 0:
             print("pixel_v_list", pixel_v_list)
@@ -313,7 +312,7 @@ class ProcessDrscs():
             print("mem_cell_list", mem_cell_list)
             raise Exception("No proper memory cell specified")
 
-        if (create_error_plots or create_colormaps) and self.plot_name is None:
+        if create_error_plots and self.plot_name is None:
             raise Exception("Plotting was not defined on initiation. Quitting.")
 
         self.pixel_v_list = pixel_v_list
@@ -416,20 +415,26 @@ class ProcessDrscs():
 
                         if create_error_plots:
                             try:
-                                self.generate_data_plot()
+                                idx = self.current_idx + (slice(None),)
+
+                                plot_title = "{} data".format(self.plot_title_prefix)
+                                plot_name = "{}_data{}".format(self.plot_file_prefix,
+                                                               self.plot_ending)
+
+                                generate_data_plot(self.current_idx,
+                                                   self.bins,
+                                                   self.hist,
+                                                   self.scaled_x_values,
+                                                   self.analog[idx],
+                                                   self.digital[idx],
+                                                   plot_title,
+                                                   plot_name)
                             except:
                                 print("Failed to generate plot")
                                 raise
 
                         #raise
                 #print("Process pixel {} took time: {}".format([pixel_v, pixel_u], time.time() - t))
-
-        if create_colormaps:
-            if type(create_colormaps) == list and "matrix" in create_colormaps:
-                self.generate_colormap_matrix()
-            else:
-                self.generate_colormap_matrix()
-                self.plot_colormap()
 
         if self.output_fname is not None:
             self.write_data()
@@ -486,26 +491,103 @@ class ProcessDrscs():
             print("\nGenerate plots")
             t = time.time()
 
+            idx = self.current_idx + (slice(None),)
+
+            plot_file_prefix = "{}_[{}, {}]_{}".format(self.plot_file_prefix,
+                                                       self.current_idx[0],
+                                                       self.current_idx[1],
+                                                       self.current_idx[2])
+            plot_title_prefix = "{}_[{}, {}]_{}".format(self.plot_title_prefix,
+                                                        self.current_idx[0],
+                                                        self.current_idx[1],
+                                                        self.current_idx[2])
+
             if type(self.create_plot_type) == list:
                 print("plot type", self.create_plot_type)
 
                 if "all" in self.create_plot_type:
-                    self.generate_all_plots()
+                    generate_all_plots(self.current_idx,
+                                   self.bins,
+                                   self.hist,
+                                   self.scaled_x_values,
+                                   self.analog[idx],
+                                   self.digital[idx],
+                                   self.x_values,
+                                   self.data_to_fit,
+                                   self.result["slope"]["individual"],
+                                   self.result["offset"]["individual"],
+                                   self.n_intervals,
+                                   self.fit_cutoff_left,
+                                   self.fit_cutoff_right,
+                                   plot_title_prefix,
+                                   plot_file_prefix,
+                                   self.plot_ending)
+
                 else:
                     if "data" in self.create_plot_type:
                         print("data plot")
-                        self.generate_data_plot()
+                        plot_title = "{} data".format(plot_title_prefix)
+                        plot_name = "{}_data{}".format(plot_file_prefix,
+                                                       self.plot_ending)
+
+                        generate_data_plot(self.current_idx,
+                                           self.bins,
+                                           self.hist,
+                                           self.scaled_x_values,
+                                           self.analog[idx],
+                                           self.digital[idx],
+                                           plot_title,
+                                           plot_name)
 
                     if "fit" in self.create_plot_type:
-                        self.generate_fit_plot("high")
-                        self.generate_fit_plot("medium")
-                        self.generate_fit_plot("low")
+                        print("fit plots")
+
+                        for gain in ["high", "medium", "low"]:
+                            plot_title = "{} fit {}".format(plot_title_prefix, gain)
+                            plot_name = "{}_fit_{}{}".format(plot_file_prefix, gain,
+                                                             self.plot_ending)
+
+                            generate_fit_plot(self.current_idx,
+                                              self.x_values[gain],
+                                              self.data_to_fit[gain],
+                                              self.result["slope"]["individual"][gain],
+                                              self.result["offset"]["individual"][gain],
+                                              self.n_intervals[gain],
+                                              plot_title,
+                                              plot_name)
 
                     if "combined" in self.create_plot_type:
                         print("combined plot")
-                        self.generate_combined_plot()
+                        plot_title = "{} combined".format(plot_title_prefix)
+                        plot_name = "{}_combined{}".format(plot_file_prefix,
+                                                           self.plot_ending)
+                        generate_combined_plot(self.current_idx,
+                                               self.scaled_x_values,
+                                               self.analog[idx],
+                                               self.digital[idx],
+                                               self.fit_cutoff_left,
+                                               self.fit_cutoff_right,
+                                               self.x_values,
+                                               self.result["slope"]["individual"],
+                                               self.result["offset"]["individual"],
+                                               plot_title, plot_name)
             else:
-                self.generate_all_plots()
+                generate_all_plots(self.current_idx,
+                                   self.bins,
+                                   self.hist,
+                                   self.scaled_x_values,
+                                   self.analog[idx],
+                                   self.digital[idx],
+                                   self.x_values,
+                                   self.data_to_fit,
+                                   self.result["slope"]["individual"],
+                                   self.result["offset"]["individual"],
+                                   self.n_intervals,
+                                   self.fit_cutoff_left,
+                                   self.fit_cutoff_right,
+                                   plot_title_prefix,
+                                   plot_file_prefix,
+                                   self.plot_ending)
 
             print("took time: {}".format(time.time() - t))
 
@@ -753,258 +835,10 @@ class ProcessDrscs():
                                 save_file.create_dataset("/{}/{}/{}".format(key, subkey, gain),
                                                          data=self.result[key][subkey][gain])
 
-            for key in self.colormap_matrix:
-                if self.colormap_matrix[key] is not None:
-                    save_file.create_dataset("/colormap_matrix/{}".format(key),
-                                             data=self.colormap_matrix[key])
-
             save_file.flush()
             print("took time: {}".format(time.time() - t))
         finally:
             save_file.close()
-
-    ################
-    ### Plotting ###
-    ################
-
-    def generate_data_plot(self):
-
-        width = 0.7 * (self.bins[1] - self.bins[0])
-        center = (self.bins[:-1] + self.bins[1:]) / 2
-
-        # plot data
-        fig = plt.figure(figsize=(13, 5))
-        ax = fig.add_subplot(121)
-        ax.bar(center, self.hist, align="center", width=width, label="hist digital")
-        ax.legend()
-
-        ax = fig.add_subplot(122)
-        ax.plot(self.scaled_x_values,
-                self.analog[self.current_idx[0], self.current_idx[1],
-                            self.current_idx[2], :],
-                ".", markersize=0.5, label="analog")
-        ax.plot(self.scaled_x_values,
-                self.digital[self.current_idx[0], self.current_idx[1], self.current_idx[2], :],
-                ".", markersize=0.5, label="digital")
-
-        ax.legend()
-        prefix = self.plot_name["origin_data"].substitute(px=[self.current_idx[0], self.current_idx[1]],
-                                                          # fill number to be of 3 digits
-                                                          mc=str(self.current_idx[2]).zfill(3))
-        title = self.plot_title["origin_data"].substitute(px=[self.current_idx[0], self.current_idx[1]],
-                                                          # fill number to be of 3 digits
-                                                          mc=str(self.current_idx[2]).zfill(3))
-        fig.suptitle(title)
-        fig.savefig("{}{}".format(prefix, self.plot_ending))
-        fig.clf()
-        plt.close(fig)
-
-    def remove_legend_dubplicates(self):
-        # Remove duplicates in legend
-        # https://stackoverflow.com/questions/26337493/pyplot-combine-multiple-line-labels-in-legend
-        handles, labels = plt.gca().get_legend_handles_labels()
-        i =1
-        while i<len(labels):
-            if labels[i] in labels[:i]:
-                del(labels[i])
-                del(handles[i])
-            else:
-                i +=1
-
-        return handles, labels
-
-    def generate_fit_plot(self, gain):
-
-        fig = plt.figure(figsize=None)
-        for i in np.arange(len(self.x_values[gain])):
-            array_idx = self.current_idx + (i,)
-
-            slope = self.result["slope"]["individual"][gain][array_idx]
-            x_values = self.x_values[gain][i]
-            offset = self.result["offset"]["individual"][gain][array_idx]
-
-            plt.plot(x_values, self.data_to_fit[gain][i],
-                     'o', color="C0", label="Original data", markersize=1)
-
-            plt.plot(x_values, slope * x_values + offset,
-                     "r", label="Fitted line ({} intervals)".format(self.n_intervals[gain]))
-
-        handles, labels = self.remove_legend_dubplicates()
-        plt.legend(handles, labels)
-
-        prefix = self.plot_name["fit"].substitute(px=[self.current_idx[0], self.current_idx[1]],
-                                                  # fill number to be of 3 digits
-                                                  mc=str(self.current_idx[2]).zfill(3))
-        title = self.plot_title["fit"].substitute(px=[self.current_idx[0], self.current_idx[1]],
-                                                  # fill number to be of 3 digits
-                                                  mc=str(self.current_idx[2]).zfill(3),
-                                                  g=gain)
-        fig.suptitle(title)
-        fig.savefig("{}_{}{}".format(prefix, gain, self.plot_ending))
-        fig.clf()
-        plt.close(fig)
-
-    def generate_combined_plot(self):
-        idx = (self.current_idx[0],
-               self.current_idx[1],
-               self.current_idx[2],
-               slice(None))
-
-        fig = plt.figure(figsize=None)
-        plt.plot(self.scaled_x_values,
-                 self.analog[idx],
-                 ".", markersize=0.5, label="analog")
-
-        plt.plot(self.scaled_x_values,
-                 self.digital[idx],
-                 ".", markersize=0.5, label="digital")
-
-        for gain in ["high", "medium", "low"]:
-            # if there are multiple sub-fits some are cut off
-            if len(self.x_values[gain]) >= self.fit_cutoff_left + self.fit_cutoff_right + 1:
-                # display the cut off fits on the left side
-                for i in np.arange(self.fit_cutoff_left):
-                    array_idx = self.current_idx + (i,)
-
-                    slope = self.result["slope"]["individual"][gain][array_idx]
-                    x_values = self.x_values[gain][i]
-                    offset = self.result["offset"]["individual"][gain][array_idx]
-
-                    plt.plot(x_values, slope * x_values + offset,
-                             "r", alpha=0.3, label="Fitted line (unused)")
-                # display the used fits
-                for i in np.arange(self.fit_cutoff_left, len(self.x_values[gain]) - self.fit_cutoff_right):
-                    array_idx = self.current_idx + (i,)
-
-                    slope = self.result["slope"]["individual"][gain][array_idx]
-                    x_values = self.x_values[gain][i]
-                    offset = self.result["offset"]["individual"][gain][array_idx]
-
-                    plt.plot(x_values, slope * x_values + offset,
-                             "r", label="Fitted line")
-                # display the cut off fits on the right side
-                for i in np.arange(len(self.x_values[gain]) - self.fit_cutoff_right,
-                                   len(self.x_values[gain])):
-                    array_idx = self.current_idx + (i,)
-
-                    slope = self.result["slope"]["individual"][gain][array_idx]
-                    x_values = self.x_values[gain][i]
-                    offset = self.result["offset"]["individual"][gain][array_idx]
-
-                    plt.plot(x_values, slope * x_values + offset,
-                             "r", alpha=0.3, label="Fitted line (unused)")
-            else:
-                # display all fits
-                for i in np.arange(len(self.x_values[gain])):
-                    array_idx = self.current_idx + (i,)
-
-                    slope = self.result["slope"]["individual"][gain][array_idx]
-                    x_values = self.x_values[gain][i]
-                    offset = self.result["offset"]["individual"][gain][array_idx]
-
-                    plt.plot(x_values, slope * x_values + offset,
-                             "r", label="Fitted line")
-
-        handles, labels = self.remove_legend_dubplicates()
-        plt.legend(handles, labels)
-
-        prefix = self.plot_name["combined"].substitute(px=[self.current_idx[0], self.current_idx[1]],
-                                                       # fill number to be of 3 digits
-                                                       mc=str(self.current_idx[2]).zfill(3))
-        title = self.plot_title["combined"].substitute(px=[self.current_idx[0], self.current_idx[1]],
-                                                       # fill number to be of 3 digits
-                                                       mc=str(self.current_idx[2]).zfill(3))
-        fig.suptitle(title)
-        fig.savefig("{}{}".format(prefix, self.plot_ending))
-        fig.clf()
-        plt.close(fig)
-
-    def generate_all_plots(self):
-
-        self.generate_data_plot()
-
-        self.generate_fit_plot("high")
-        self.generate_fit_plot("medium")
-        self.generate_fit_plot("low")
-
-        self.generate_combined_plot()
-
-    def generate_colormap_matrix(self):
-        """
-        generate map for low gain
-        """
-        gain = 2
-        gain_name = "low"
-
-        l = self.fit_cutoff_left
-        r = self.fit_cutoff_right
-        n_used_fits = self.n_intervals[gain_name] - l - r
-
-        # gain, pixel_v, pixel_u, mem_cell
-        n_pixel_v, n_pixel_u, n_mem_cell = self.result["slope"]["mean"].shape[1:]
-
-        for key in self.colormap_matrix:
-            # create array
-            self.colormap_matrix[key] = np.empty((n_pixel_v, n_pixel_u, n_mem_cell))
-            # intiate with nan
-            self.colormap_matrix[key][:, :, :] = np.NAN
-
-        for v in self.pixel_v_list:
-            for u in pixel_u_list:
-                for mem_cell in self.mem_cell_list:
-                    #print("pixel [{},{}], mem_cell {}".format(v, u, mem_cell))
-
-                    mean = self.result["slope"]["mean"][gain, v, u, mem_cell]
-                    values = self.result["slope"]["individual"][gain_name][v, u, mem_cell][l:-r]
-                    #print("slope")
-                    #print("mean={}, values={}".format(mean, values))
-
-                    try:
-                        if mean != 0:
-                            self.colormap_matrix["slope"][v, u, mem_cell] = (
-                                np.linalg.norm(values - mean)/(n_used_fits * mean))
-                    except:
-                        print("pixel {}, mem_cell {}".format(mem_cell, v, u))
-                        print("slope")
-                        print("mean={}".format(mean))
-                        print("values={}".format(values))
-
-
-                    mean = self.result["slope"]["mean"][gain, v, u, mem_cell]
-                    values = self.result["offset"]["individual"][gain_name][v, u, mem_cell][l:-r]
-
-                    try:
-                        if mean != 0:
-                            self.colormap_matrix["offset"][v, u, mem_cell] = (
-                                np.linalg.norm(values - mean)/(n_used_fits * mean))
-                    except:
-                        print("pixel {}, mem_cell {}".format(v, u, mem_cell))
-                        print("slope")
-                        print("mean={}".format(mean))
-                        print("values={}".format(values))
-
-                    #print("colormap_matrix_slopes={}".format(self.colormap_matrix_slopes[v, u]))
-
-        #print("colormap")
-        #print(colormap_matrix_slopes)
-
-    def plot_colormap(self, mem_cell_list=False):
-        if not mem_cell_list:
-            mem_cell_list = self.mem_cell_list
-
-        for mem_cell in mem_cell_list:
-            # fill number to be of 3 digits
-            prefix = self.plot_name["colormap"].substitute(mc=str(mem_cell).zfill(3))
-
-            for key in self.colormap_matrix:
-                fig = plt.figure(figsize=None)
-                plt.imshow(self.colormap_matrix[key][..., mem_cell])
-                plt.colorbar()
-
-                fig.savefig("{}_{}_{}{}".format(prefix, "low", key, self.plot_ending))
-                fig.clf()
-                plt.close(fig)
-
 
 if __name__ == "__main__":
 
@@ -1022,21 +856,18 @@ if __name__ == "__main__":
                                "{}_drscs_{}_asic{}_processed.h5".format(module, current, str(asic).zfill(2)))
     #plot_dir = os.path.join(base_dir, "M314/temperature_m15C/drscs/plots/itestc150/manu_test")
     plot_dir = os.path.join(base_dir, module, temperature, "drscs", "plots", current, "manu_test")
-    plot_prefix = "{}_{}_asic{}".format(module, current, asic)
+    plot_prefix = "{}_{}".format(module, current)
 
-    #pixel_v_list = np.arange(0, 64)
-    #pixel_u_list = np.arange(0, 64)
-    #mem_cell_list = np.arange(0, 352)
-    #pixel_v_list = np.arange(29, 30)
-    #pixel_u_list = np.arange(1, 2)
-    #mem_cell_list = np.arange(1, 2)
-    pixel_v_list = np.arange(10, 11)
-    pixel_u_list = np.arange(11, 12)
-    mem_cell_list = np.arange(30, 31)
+    #pixel_v_list = np.arange(10, 11)
+    #pixel_u_list = np.arange(11, 12)
+    #mem_cell_list = np.arange(30, 31)
+    pixel_v_list = np.arange(33, 34)
+    pixel_u_list = np.arange(62, 63)
+    mem_cell_list = np.arange(252, 253)
 
     output_fname = False
     #create_plots can be set to False, "data", "fit", "combined" or "all"
-    create_plots = False
+    create_plots = True
     create_error_plots=True
     #create_plots=["data", "combined"]
 
@@ -1047,6 +878,5 @@ if __name__ == "__main__":
     print("\nRun processing")
     t = time.time()
     cal.run(pixel_v_list, pixel_u_list, mem_cell_list,
-            create_error_plots=create_error_plots,
-            create_colormaps=False)
+            create_error_plots=create_error_plots)
     print("Processing took time: {}".format(time.time() - t))
