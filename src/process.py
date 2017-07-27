@@ -172,9 +172,9 @@ def init_with_nan(shape):
     return obj
 
 # gives back to N biggest entries of a list
-# source: https://stackoverflow.com/questions/12787650/finding-the-index-of-n-biggest-elements-in-python-array-list-efficiently
+# modification of: https://stackoverflow.com/questions/12787650/finding-the-index-of-n-biggest-elements-in-python-array-list-efficiently
 def biggest_entries(list_to_check, N):
-    return np.argsort(list_to_check)[::-1][:N]
+    return np.argsort(list_to_check)[-N:]
 
 class ProcessDrscs():
     def __init__(self, asic, input_fname, output_fname=False,
@@ -241,14 +241,15 @@ class ProcessDrscs():
         }
 
         ###
-        # error_codes:
+        # error_code:
         # -1   Not handled (something went wrong)
         # 1    Unknown error
         # 2    Zero region: too few intervals
         # 3    Zero region: too many intervals
         #
-        # warning_codes:
+        # warning_code:
         # 1    Use lesser nbins
+        # 2    Use then two biggest intervals
         ###
 
 
@@ -442,8 +443,10 @@ class ProcessDrscs():
         if 0 < spread and spread < self.nbins:
             nbins = spread
             self.result["warning_code"][self.current_idx] = 1
-            print("[{}, {}], {}: Spread to lower than number of bins. Adjusting (new nbins={}, spread={})"
-                  .format(self.current_idx[0], self.current_idx[1], self.current_idx[2], nbins, spread))
+            #print("[{}, {}], {}: Spread to lower than number of bins. "
+            #      "Adjusting (new nbins={}, spread={})"
+            #      .format(self.current_idx[0], self.current_idx[1],
+            #              self.current_idx[2], nbins, spread))
         else:
             nbins = self.nbins
 
@@ -522,6 +525,7 @@ class ProcessDrscs():
             self.res["found_zero_regions"] = self.res["found_zero_regions"][:-1]
 
         #print("found_zero_regions ends removed: {}".format(self.res["found_zero_regions"]))
+        used_zero_regions = self.res["found_zero_regions"]
 
         if len(self.res["found_zero_regions"]) < 2:
             #print("thold_for_zero={}".format(self.thold_for_zero))
@@ -531,13 +535,15 @@ class ProcessDrscs():
         if len(self.res["found_zero_regions"]) > 2:
             #print("thold_for_zero={}".format(self.thold_for_zero))
             #print("intervals={}".format(self.res["found_zero_regions"]))
-            self.result["error_code"][self.current_idx] = 3
-            raise IntervalError("Too many intervals")
+            if True:
+                used_zero_regions = self.rechoosing_fit_intervals()
+                self.result["warning_code"][self.current_idx] = 2
+            else:
+                self.result["error_code"][self.current_idx] = 3
+                raise IntervalError("Too many intervals")
 
-        #print("found_zero_regions", self.res["found_zero_regions"])
-        used_zero_regions = self.res["found_zero_regions"]
+        #print("used_zero_regions", used_zero_regions)
         self.result["intervals"]["used_zero_regions"][self.current_idx] = used_zero_regions
-
 
         mean_zero_region = np.mean(used_zero_regions, axis=1).astype(int)
         #print("mean_zero_region={}".format(mean_zero_region))
@@ -546,11 +552,31 @@ class ProcessDrscs():
         #print("thesholds={}".format(self.res["thresholds"]))
 
     def rechoosing_fit_intervals(self):
-        #if multiple intervals were found, choose the biggest ones
-        interval_length = [region[1] - region[0]
-                           for region in self.res["found_zero_regions"]]
+        # if multiple intervals were found, choose the biggest ones
 
-        return biggest_entries(interval_length, 2)
+        # determine the length of the intervals
+        length = [region[1] - region[0]
+                  for region in self.res["found_zero_regions"]]
+
+        # finds the indices of the biggest intervals
+        idxs = biggest_entries(length, 2)
+
+        # gets the biggest intervals (convert tuple into list)
+        big_intervals = [list(self.res["found_zero_regions"][idxs[0]]),
+                         list(self.res["found_zero_regions"][idxs[1]])]
+        print("big_intervals", big_intervals)
+
+        # the order is important for the gain stages
+        #np.sort(big_intervals, axis=0)
+        #print("big_intervals after sort", big_intervals)
+
+        print("[{}, {}], {}: Readjusting used zero intervals from {} to {}"
+              .format(self.current_idx[0], self.current_idx[1],
+                      self.current_idx[2],
+                      self.res["found_zero_regions"], big_intervals))
+        print("Length: {}, Found indices: {}".format(length, idxs))
+
+        return big_intervals
 
     def determine_fit_interval(self, threshold_l, threshold_u):
         data_d = self.digital[self.current_idx[0], self.current_idx[1],
