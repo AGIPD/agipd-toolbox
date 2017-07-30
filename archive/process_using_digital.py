@@ -21,12 +21,6 @@ class FitError(Exception):
 class IntervalSplitError(Exception):
     pass
 
-class GainStageNumberError(Exception):
-    pass
-
-class ThresholdNumberError(Exception):
-    pass
-
 def check_file_exist(file_name):
     print("save_file = {}".format(file_name))
     if os.path.exists(file_name):
@@ -70,7 +64,7 @@ def contiguous_regions(condition):
 
 # not defined inside the class to let other classes reuse this
 def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
-                    n_intervals, nbins):
+                    n_intervals, n_zero_region_stored, nbins):
 
     result = {
         "slope": {
@@ -98,6 +92,8 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
             }
         },
         "intervals": {
+            "found_zero_regions": None,
+            "used_zero_regions": None,
             "gain_stages": None,
             "subintervals": {
                 "high" : None,
@@ -155,19 +151,22 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
 
     # intiate intervals
     # interval consists of start and end point -> x2
-    result["intervals"]["gain_stages"] = init_with_nan(shape + (2,), np.int)
+    result["intervals"]["gain_stages"] = init_with_nan(shape + (2,))
+    result["intervals"]["used_zero_regions"] = init_with_nan(shape_tmp + (2,2))
+    result["intervals"]["found_zero_regions"] = (
+        init_with_nan(shape_tmp + (n_zero_region_stored, 2)))
     for key in ["high", "medium", "low"]:
         result["intervals"]["subintervals"][key] = (
-            init_with_nan(shape_tmp + (n_intervals[key], 2), np.int))
+            init_with_nan(shape_tmp + (n_intervals[key], 2)))
 
     # initiate thresholds
     result["thresholds"] = np.zeros(threshold_shape, np.float32)
 
     return result
 
-def init_with_nan(shape, dtype):
+def init_with_nan(shape):
     # create array
-    obj = np.empty(shape, dtype=dtype)
+    obj = np.empty(shape)
     # intiate with nan
     obj[...] = np.NAN
 
@@ -216,10 +215,9 @@ class ProcessDrscs():
             "medium": 1,
             "low": 5
         }
+        self.n_zero_region_stored = 5
         self.fit_cutoff_left = 1
         self.fit_cutoff_right = 1
-
-        self.use_digital = False
 
         self.gain_idx = None
         self.scaled_x_values = None
@@ -235,6 +233,12 @@ class ProcessDrscs():
             "high" : [[] for _ in np.arange(self.n_intervals["high"])],
             "medium": [[] for _ in np.arange(self.n_intervals["medium"])],
             "low": [[] for _ in np.arange(self.n_intervals["low"])]
+        }
+
+        # temporarily results which can not be stored in the result directly
+        self.res = {
+            "found_zero_regions": None,
+            "thresholds": None
         }
 
         ###
@@ -319,6 +323,7 @@ class ProcessDrscs():
         self.result = initiate_result(self.pixel_v_list, self.pixel_u_list,
                                       self.mem_cell_list, self.n_gain_stages,
                                       self.n_intervals,
+                                      self.n_zero_region_stored,
                                       self.nbins)
 
         self.result["collection"]["nbins"] = self.nbins
@@ -344,6 +349,24 @@ class ProcessDrscs():
 
                         self.process_data_point(self.current_idx)
 
+                        # store current_idx dependent results in the final matrices
+                        try:
+                            self.result["intervals"]["found_zero_regions"][self.current_idx] = (
+                                self.res["found_zero_regions"])
+                        except ValueError:
+                            # it is not fixed how many found_zero_regions are found
+                            # but the size of np.arrays has to be fixed
+                            l = len(self.res["found_zero_regions"])
+                            f_zero_regions = (
+                                self.result["intervals"]["found_zero_regions"][self.current_idx])
+
+                            # fill up with found ones, rest of the array stays NAN
+                            if l < self.n_zero_region_stored:
+                                f_zero_regions[:l] = self.res["found_zero_regions"]
+                            # more regions found than array can hold, only store the first part
+                            else:
+                                f_zero_regions = self.res["found_zero_regions"][:n_zero_region_stored]
+
                         for gain in self.gain_idx:
                             l = self.fit_cutoff_left
                             r = self.fit_cutoff_right
@@ -355,6 +378,10 @@ class ProcessDrscs():
                                 for t in ["slope", "offset", "residuals"]:
                                     self.result[t]["mean"][self.gain_idx[gain]] = (
                                         np.mean(self.result[t]["individual"][gain][self.current_idx]))
+
+                        # store the thresholds
+                        for i in np.arange(len(self.res["thresholds"])):
+                            self.result["thresholds"][(i, ) + self.current_idx] = self.res["thresholds"][i]
 
                         if self.result["error_code"][self.current_idx] < 0:
                             self.result["error_code"][self.current_idx] = 0
@@ -368,8 +395,8 @@ class ProcessDrscs():
                         elif type(e) == IntervalSplitError:
                             #print("IntervalSplitError")
                             pass
-                        elif type(e) == GainStageNumberError:
-                            print("GainStageNumberError")
+                        elif type(e) == IntervalSplitError:
+                            #print("IntervalSplitError")
                             pass
                         else:
                             print("Failed to run for pixel [{}, {}] and mem_cell {}"
@@ -379,25 +406,19 @@ class ProcessDrscs():
                             if self.result["error_code"][self.current_idx] <= 0:
                                 self.result["error_code"][self.current_idx] = 1
 
-                            #print("hist={}".format(self.hist))
-                            #print("bins={}".format(self.bins))
+                            print("hist={}".format(self.hist))
+                            print("bins={}".format(self.bins))
+                            print("used_zero_regions",
+                                  self.result["intervals"]["used_zero_regions"][self.current_idx])
+                            print("found_zero_regions", self.res["found_zero_regions"])
+                            print("thesholds={}".format(self.res["thresholds"]))
 
                         if create_error_plots:
                             try:
                                 idx = self.current_idx + (slice(None),)
 
-                                plot_file_prefix = ("{}_[{}, {}]_{}"
-                                                    .format(self.plot_file_prefix,
-                                                            self.current_idx[0],
-                                                            self.current_idx[1],
-                                                            str(self.current_idx[2]).zfill(3)))
-                                plot_title_prefix = ("{}_[{}, {}]_{}"
-                                                     .format(self.plot_title_prefix,
-                                                             self.current_idx[0],
-                                                             self.current_idx[1],
-                                                             str(self.current_idx[2]).zfill(3)))
-                                plot_title = "{} data".format(plot_title_prefix)
-                                plot_name = "{}_data{}".format(plot_file_prefix,
+                                plot_title = "{} data".format(self.plot_title_prefix)
+                                plot_name = "{}_data{}".format(self.plot_file_prefix,
                                                                self.plot_ending)
 
                                 generate_data_plot(self.current_idx,
@@ -441,152 +462,221 @@ class ProcessDrscs():
         #print("hist={}".format(self.hist))
         #print("bins={}".format(self.bins))
 
-        self.calc_gain_regions()
+        self.calc_thresholds()
 
-        self.result["intervals"]["subintervals"]["high"][self.current_idx] = (
+        (self.result["intervals"]["gain_stages"][self.gain_idx["high"]],
+         self.result["intervals"]["subintervals"]["high"][self.current_idx])= (
             self.fit_gain("high",
-                          self.result["intervals"]["gain_stages"][self.gain_idx["high"]],
+                          0,
+                          self.res["thresholds"][0],
                           cut_off_ends=False))
 
-        self.result["intervals"]["subintervals"]["medium"][self.current_idx] = (
+        (self.result["intervals"]["gain_stages"][self.gain_idx["medium"]],
+         self.result["intervals"]["subintervals"]["medium"][self.current_idx]) = (
             self.fit_gain("medium",
-                          self.result["intervals"]["gain_stages"][self.gain_idx["medium"]],
+                          self.res["thresholds"][0],
+                          self.res["thresholds"][1],
                           cut_off_ends=False))
 
-        self.result["intervals"]["subintervals"]["low"][self.current_idx] = (
+        (self.result["intervals"]["gain_stages"][self.gain_idx["low"]],
+         self.result["intervals"]["subintervals"]["low"][self.current_idx]) = (
             self.fit_gain("low",
-                          self.result["intervals"]["gain_stages"][self.gain_idx["low"]],
+                          self.res["thresholds"][1],
+                          None,
                           cut_off_ends=False))
 
         self.calc_gain_median()
-        self.calc_thresholds()
 
         if self.create_plot_type:
             print("\nGenerate plots")
             t = time.time()
 
-            self.create_plots()
+            idx = self.current_idx + (slice(None),)
+
+            plot_file_prefix = "{}_[{}, {}]_{}".format(self.plot_file_prefix,
+                                                       self.current_idx[0],
+                                                       self.current_idx[1],
+                                                       self.current_idx[2])
+            plot_title_prefix = "{}_[{}, {}]_{}".format(self.plot_title_prefix,
+                                                        self.current_idx[0],
+                                                        self.current_idx[1],
+                                                        self.current_idx[2])
+
+            if type(self.create_plot_type) == list:
+                print("plot type", self.create_plot_type)
+
+                if "all" in self.create_plot_type:
+                    generate_all_plots(self.current_idx,
+                                   self.bins,
+                                   self.hist,
+                                   self.scaled_x_values,
+                                   self.analog[idx],
+                                   self.digital[idx],
+                                   self.x_values,
+                                   self.data_to_fit,
+                                   self.result["slope"]["individual"],
+                                   self.result["offset"]["individual"],
+                                   self.n_intervals,
+                                   self.fit_cutoff_left,
+                                   self.fit_cutoff_right,
+                                   plot_title_prefix,
+                                   plot_file_prefix,
+                                   self.plot_ending)
+
+                else:
+                    if "data" in self.create_plot_type:
+                        print("data plot")
+                        plot_title = "{} data".format(plot_title_prefix)
+                        plot_name = "{}_data{}".format(plot_file_prefix,
+                                                       self.plot_ending)
+
+                        generate_data_plot(self.current_idx,
+                                           self.bins,
+                                           self.hist,
+                                           self.scaled_x_values,
+                                           self.analog[idx],
+                                           self.digital[idx],
+                                           plot_title,
+                                           plot_name)
+
+                    if "fit" in self.create_plot_type:
+                        print("fit plots")
+
+                        for gain in ["high", "medium", "low"]:
+                            plot_title = "{} fit {}".format(plot_title_prefix, gain)
+                            plot_name = "{}_fit_{}{}".format(plot_file_prefix, gain,
+                                                             self.plot_ending)
+
+                            generate_fit_plot(self.current_idx,
+                                              self.x_values[gain],
+                                              self.data_to_fit[gain],
+                                              self.result["slope"]["individual"][gain],
+                                              self.result["offset"]["individual"][gain],
+                                              self.n_intervals[gain],
+                                              plot_title,
+                                              plot_name)
+
+                    if "combined" in self.create_plot_type:
+                        print("combined plot")
+                        plot_title = "{} combined".format(plot_title_prefix)
+                        plot_name = "{}_combined{}".format(plot_file_prefix,
+                                                           self.plot_ending)
+                        generate_combined_plot(self.current_idx,
+                                               self.scaled_x_values,
+                                               self.analog[idx],
+                                               self.digital[idx],
+                                               self.fit_cutoff_left,
+                                               self.fit_cutoff_right,
+                                               self.x_values,
+                                               self.result["slope"]["individual"],
+                                               self.result["offset"]["individual"],
+                                               plot_title, plot_name)
+            else:
+                generate_all_plots(self.current_idx,
+                                   self.bins,
+                                   self.hist,
+                                   self.scaled_x_values,
+                                   self.analog[idx],
+                                   self.digital[idx],
+                                   self.x_values,
+                                   self.data_to_fit,
+                                   self.result["slope"]["individual"],
+                                   self.result["offset"]["individual"],
+                                   self.n_intervals,
+                                   self.fit_cutoff_left,
+                                   self.fit_cutoff_right,
+                                   plot_title_prefix,
+                                   plot_file_prefix,
+                                   self.plot_ending)
 
             print("took time: {}".format(time.time() - t))
 
-    def calc_gain_regions(self):
-        self.diff_threshold = -100
-        self.region_range = 20
-        self.safty_factor = 1000
+    def calc_thresholds(self):
+        self.res["found_zero_regions"] = (
+            contiguous_regions(self.hist < self.thold_for_zero))
+        #print("found_zero_regions raw: {}".format(self.res["found_zero_regions"]))
 
-        data_a = self.analog[self.current_idx[0], self.current_idx[1], self.current_idx[2], :]
+        # remove the first interval found if it starts with the first bin
+        if (self.res["found_zero_regions"].size != 0
+                and self.res["found_zero_regions"][0][0] == 0):
+            self.res["found_zero_regions"] = self.res["found_zero_regions"][1:]
 
-        # calculates the difference between neighboring elements
-        self.diff = np.diff(data_a)
+        # remove the last interval found if it ends with the last bin
+        if (self.res["found_zero_regions"].size != 0
+                and self.res["found_zero_regions"][-1][1] == self.nbins):
+            self.res["found_zero_regions"] = self.res["found_zero_regions"][:-1]
 
-        self.diff_changes_idx = np.where(self.diff < self.diff_threshold)[0]
+        #print("found_zero_regions ends removed: {}".format(self.res["found_zero_regions"]))
+        used_zero_regions = self.res["found_zero_regions"]
 
-        gain_intervals = [[0, 0]]
-
-        #TODO check if diff_changes_idx has to many entries
-
-        #for i in np.arange(len(self.diff_changes_idx)):
-        i = 0
-        prev_stop = 0
-        pot_start = 0
-        set_start_flag = True
-        set_stop_flag = True
-        while i < len(self.diff_changes_idx):
-
-            if set_stop_flag:
-                #print("setting prev_stop")
-                prev_stop = self.diff_changes_idx[i]
-            # exclude the found point
-            pot_start = self.diff_changes_idx[i] + 1
-
-            #print("prev_stop", prev_stop)
-            #print("pot_start", pot_start)
-
-            # determine the region before the potention gain stage change
-            start_before = prev_stop - self.region_range
-            if start_before < 0:
-                region_of_interest_before = data_a[0:prev_stop]
-            else:
-                region_of_interest_before = data_a[start_before:prev_stop]
-            #print("region_of_interest_before", region_of_interest_before)
-
-            # determine the region after the potention gain stage change
-            stop_after = pot_start + self.region_range
-            if stop_after > self.diff.size:
-                region_of_interest_after = data_a[pot_start:self.diff.size]
-            else:
-                region_of_interest_after = data_a[pot_start:stop_after]
-            #print("region_of_interest_after", region_of_interest_after)
-
-            # check if the following idx is contained in region_of_interest_before
-            near_matches_before = np.where(start_before < self.diff_changes_idx[:i])
-            # np.where returns a tuple (array, type)
-            near_matches_before = near_matches_before[0]
-
-            # check if the following idx is contained in region_of_interest_after
-            near_matches_after = np.where(self.diff_changes_idx[i + 1:] < stop_after)
-            # np.where returns a tuple (array, type)
-            near_matches_after = near_matches_after[0]
-
-            #print("near match before", near_matches_before)
-            #print("near match after", near_matches_after)
-            if near_matches_before.size == 0 and near_matches_after.size == 0:
-                mean_before = np.mean(region_of_interest_before)
-                mean_after = np.mean(region_of_interest_after)
-                #print("mean_before", mean_before)
-                #print("mean_after", mean_after)
-
-                if mean_before > mean_after + self.safty_factor:
-                    # a stage change was found
-                    gain_intervals[-1][1] = prev_stop
-                    gain_intervals.append([pot_start, 0])
-
-                i += 1
-                set_stop_flag = True
-            else:
-                if near_matches_before.size == 0:
-
-                    gain_intervals[-1][1] = prev_stop
-
-                    # because near_matches_after starts with 0
-                    i += 1 + near_matches_after[-1]
-                    set_stop_flag = False
-
-                else:
-                    if not set_stop_flag:
-                        set_stop_flag = True
-
-                    gain_intervals.append([pot_start, 0])
-                    i += 1
-            #print()
-
-        gain_intervals[-1][1] = self.diff.size + 1
-        #print("found gain intervals", gain_intervals)
-        #print("len gain intervals", len(gain_intervals))
-
-        if len(gain_intervals) > 3:
-            raise GainStageNumberError("Too many gain stages found: {}"
-                                     .format(gain_intervals))
-            self.result["error_code"][self.current_idx] = 1
-
-        if len(gain_intervals) < 3:
-            raise GainStageNumberError("Not enough founs: {}"
-                                     .format(gain_intervals))
+        if len(self.res["found_zero_regions"]) < 2:
+            #print("thold_for_zero={}".format(self.thold_for_zero))
+            #print("intervals={}".format(self.res["found_zero_regions"]))
             self.result["error_code"][self.current_idx] = 2
+            raise IntervalError("Too few intervals")
+        if len(self.res["found_zero_regions"]) > 2:
+            #print("thold_for_zero={}".format(self.thold_for_zero))
+            #print("intervals={}".format(self.res["found_zero_regions"]))
+            if True:
+                used_zero_regions = self.rechoosing_fit_intervals()
+                self.result["warning_code"][self.current_idx] = 2
+            else:
+                self.result["error_code"][self.current_idx] = 3
+                raise IntervalError("Too many intervals")
 
-        self.result["intervals"]["gain_stages"][self.gain_idx["high"]] = gain_intervals[0]
-        self.result["intervals"]["gain_stages"][self.gain_idx["medium"]] = gain_intervals[1]
-        self.result["intervals"]["gain_stages"][self.gain_idx["low"]] = gain_intervals[2]
+        #print("used_zero_regions", used_zero_regions)
+        self.result["intervals"]["used_zero_regions"][self.current_idx] = used_zero_regions
 
-    def fit_gain(self, gain, interval, cut_off_ends):
+        mean_zero_region = np.mean(used_zero_regions, axis=1).astype(int)
+        #print("mean_zero_region={}".format(mean_zero_region))
 
-        # the interval is splitted into sub-intervals
-        intervals = self.split_interval(interval, self.n_intervals[gain])
+        self.res["thresholds"] = self.bins[mean_zero_region]
+        #print("thesholds={}".format(self.res["thresholds"]))
 
-        for i in np.arange(len(intervals)):
-            self.fit_data(gain, intervals[i], i, cut_off_ends=cut_off_ends)
+    def rechoosing_fit_intervals(self):
+        # if multiple intervals were found, choose the biggest ones
 
-        return intervals
+        # determine the length of the intervals
+        length = [region[1] - region[0]
+                  for region in self.res["found_zero_regions"]]
+
+        # finds the indices of the biggest intervals
+        idxs = biggest_entries(length, 2)
+
+        # gets the biggest intervals (convert tuple into list)
+        big_intervals = [list(self.res["found_zero_regions"][idxs[0]]),
+                         list(self.res["found_zero_regions"][idxs[1]])]
+        print("big_intervals", big_intervals)
+
+        # the order is important for the gain stages
+        #np.sort(big_intervals, axis=0)
+        #print("big_intervals after sort", big_intervals)
+
+        print("[{}, {}], {}: Readjusting used zero intervals from {} to {}"
+              .format(self.current_idx[0], self.current_idx[1],
+                      self.current_idx[2],
+                      self.res["found_zero_regions"], big_intervals))
+        print("Length: {}, Found indices: {}".format(length, idxs))
+
+        return big_intervals
+
+    def determine_fit_interval(self, threshold_l, threshold_u):
+        data_d = self.digital[self.current_idx[0], self.current_idx[1],
+                              self.current_idx[2], :]
+
+        # determine condition
+        if threshold_l is not None and threshold_u is not None:
+            # the & will give you an elementwise and (the parentheses are necessary).
+            condition = (threshold_l < data_d) & (data_d < threshold_u)
+            #print("condition = ({} < data_d) & (data_d < {})".format(threshold_l, threshold_u))
+        elif threshold_l is not None:
+            condition = threshold_l < data_d
+            #print("condition = {} < data_d".format(threshold_l))
+        elif threshold_u is not None:
+            condition = data_d < threshold_u
+            #print("condition = data_d < {}".format(threshold_u))
+
+        return contiguous_regions(condition)
 
     def split_interval(self, interval, nsplits):
         """
@@ -614,6 +704,32 @@ class ProcessDrscs():
         #print("splitted_intervals={}".format(splitted_intervals))
 
         return splitted_intervals
+
+    def calc_gain_median(self):
+        for gain in ["high", "medium", "low"]:
+            idx = (self.current_idx[0],
+                   self.current_idx[1],
+                   self.current_idx[2],
+                   slice(self.result["intervals"]["gain_stages"][self.gain_idx[gain]][0],
+                         self.result["intervals"]["gain_stages"][self.gain_idx[gain]][1]))
+
+            self.result["medians"][self.gain_idx[gain]] = np.median(self.digital[idx])
+
+    def fit_gain(self, gain, threshold_l, threshold_u, cut_off_ends):
+        #print("\nfitting {} gain with threshholds ({}, {})".format(gain, threshold_l, threshold_u))
+        interval_tmp = self.determine_fit_interval(threshold_l, threshold_u)
+        #TODO: verify if this is really the right approach
+        # sometimes there is more than one interval returned, e.g. [[ 370,  372],[ 373, 1300]]
+        # combine it
+        interval = [interval_tmp[0][0], interval_tmp[-1][-1]]
+
+        # the interval is splitted into sub-intervals
+        intervals = self.split_interval(interval, self.n_intervals[gain])
+
+        for i in np.arange(len(intervals)):
+            self.fit_data(gain, intervals[i], i, cut_off_ends=cut_off_ends)
+
+        return interval, intervals
 
     def fit_data(self, gain, interval, interval_idx, cut_off_ends=False):
 
@@ -681,27 +797,6 @@ class ProcessDrscs():
         #print("found slope: {}".format(self.result["slope"]["individual"][gain]))
         #print("found offset: {}".format(self.result["offset"]["individual"][gain]))
 
-    def calc_gain_median(self):
-        for gain in ["high", "medium", "low"]:
-            idx = (self.current_idx[0],
-                   self.current_idx[1],
-                   self.current_idx[2],
-                   slice(self.result["intervals"]["gain_stages"][self.gain_idx[gain]][0],
-                         self.result["intervals"]["gain_stages"][self.gain_idx[gain]][1]))
-
-            self.result["medians"][self.gain_idx[gain]] = np.median(self.digital[idx])
-
-    def calc_thresholds(self):
-        # threshold between high and medium
-        self.result["thresholds"][(0, ) + self.current_idx] = np.mean([
-                self.result["medians"][self.gain_idx["high"]],
-                self.result["medians"][self.gain_idx["medium"]]])
-
-        # threshold between medium and low
-        self.result["thresholds"][(1, ) + self.current_idx] = np.mean([
-                self.result["medians"][self.gain_idx["medium"]],
-                self.result["medians"][self.gain_idx["low"]]])
-
     def scale_full_x_axis(self):
         lower  = np.arange(self.scaling_point)
         upper = (np.arange(self.scaling_point, self.digital.shape[3])
@@ -745,101 +840,6 @@ class ProcessDrscs():
         finally:
             save_file.close()
 
-    def create_plots(self):
-        idx = self.current_idx + (slice(None),)
-
-        plot_file_prefix = "{}_[{}, {}]_{}".format(self.plot_file_prefix,
-                                                   self.current_idx[0],
-                                                   self.current_idx[1],
-                                                   str(self.current_idx[2]).zfill(3))
-        plot_title_prefix = "{}_[{}, {}]_{}".format(self.plot_title_prefix,
-                                                    self.current_idx[0],
-                                                    self.current_idx[1],
-                                                    str(self.current_idx[2]).zfill(3))
-
-        if type(self.create_plot_type) == list:
-
-            if "all" in self.create_plot_type:
-                generate_all_plots(self.current_idx,
-                               self.bins,
-                               self.hist,
-                               self.scaled_x_values,
-                               self.analog[idx],
-                               self.digital[idx],
-                               self.x_values,
-                               self.data_to_fit,
-                               self.result["slope"]["individual"],
-                               self.result["offset"]["individual"],
-                               self.n_intervals,
-                               self.fit_cutoff_left,
-                               self.fit_cutoff_right,
-                               plot_title_prefix,
-                               plot_file_prefix,
-                               self.plot_ending)
-
-            else:
-                if "data" in self.create_plot_type:
-                    plot_title = "{} data".format(plot_title_prefix)
-                    plot_name = "{}_data{}".format(plot_file_prefix,
-                                                   self.plot_ending)
-
-                    generate_data_plot(self.current_idx,
-                                       self.bins,
-                                       self.hist,
-                                       self.scaled_x_values,
-                                       self.analog[idx],
-                                       self.digital[idx],
-                                       plot_title,
-                                       plot_name)
-
-                if "fit" in self.create_plot_type:
-
-                    for gain in ["high", "medium", "low"]:
-                        plot_title = "{} fit {}".format(plot_title_prefix, gain)
-                        plot_name = "{}_fit_{}{}".format(plot_file_prefix, gain,
-                                                         self.plot_ending)
-
-                        generate_fit_plot(self.current_idx,
-                                          self.x_values[gain],
-                                          self.data_to_fit[gain],
-                                          self.result["slope"]["individual"][gain],
-                                          self.result["offset"]["individual"][gain],
-                                          self.n_intervals[gain],
-                                          plot_title,
-                                          plot_name)
-
-                if "combined" in self.create_plot_type:
-                    plot_title = "{} combined".format(plot_title_prefix)
-                    plot_name = "{}_combined{}".format(plot_file_prefix,
-                                                       self.plot_ending)
-                    generate_combined_plot(self.current_idx,
-                                           self.scaled_x_values,
-                                           self.analog[idx],
-                                           self.digital[idx],
-                                           self.fit_cutoff_left,
-                                           self.fit_cutoff_right,
-                                           self.x_values,
-                                           self.result["slope"]["individual"],
-                                           self.result["offset"]["individual"],
-                                           plot_title, plot_name)
-        else:
-            generate_all_plots(self.current_idx,
-                               self.bins,
-                               self.hist,
-                               self.scaled_x_values,
-                               self.analog[idx],
-                               self.digital[idx],
-                               self.x_values,
-                               self.data_to_fit,
-                               self.result["slope"]["individual"],
-                               self.result["offset"]["individual"],
-                               self.n_intervals,
-                               self.fit_cutoff_left,
-                               self.fit_cutoff_right,
-                               plot_title_prefix,
-                               plot_file_prefix,
-                               self.plot_ending)
-
 if __name__ == "__main__":
 
     base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
@@ -854,29 +854,21 @@ if __name__ == "__main__":
                               "{}_drscs_{}_asic{}.h5".format(module, current, str(asic).zfill(2)))
     output_fname = os.path.join(base_dir, module, temperature, "drscs", current, "process",
                                "{}_drscs_{}_asic{}_processed.h5".format(module, current, str(asic).zfill(2)))
-    plot_dir = os.path.join(base_dir, module, temperature, "drscs", "plots", current, "manu_test") #, "asic02_[42, 42]")
-    #plot_dir = os.path.join(base_dir, module, temperature, "drscs", "plots", current, "asic_{}".format(asic))
+    #plot_dir = os.path.join(base_dir, "M314/temperature_m15C/drscs/plots/itestc150/manu_test")
+    plot_dir = os.path.join(base_dir, module, temperature, "drscs", "plots", current, "manu_test")
     plot_prefix = "{}_{}".format(module, current)
 
-    pixel_v_list = np.arange(64)
-    pixel_u_list = np.arange(64)
-    mem_cell_list = np.arange(352)
-
-    #pixel_v_list = np.arange(29, 30)
-    #pixel_u_list = np.arange(1, 2)
-    #mem_cell_list = np.arange(196, 197)
-
-    #pixel_v_list = np.arange(33, 34)
-    #pixel_u_list = np.arange(62, 63)
-    #mem_cell_list = np.arange(42, 43)
-
-    #mem_cell_list = np.arange(1, 2)
-    #mem_cell_list = np.arange(252, 253)
+    #pixel_v_list = np.arange(10, 11)
+    #pixel_u_list = np.arange(11, 12)
+    #mem_cell_list = np.arange(30, 31)
+    pixel_v_list = np.arange(33, 34)
+    pixel_u_list = np.arange(62, 63)
+    mem_cell_list = np.arange(252, 253)
 
     output_fname = False
     #create_plots can be set to False, "data", "fit", "combined" or "all"
-    create_plots = False #["combined"]
-    create_error_plots = False
+    create_plots = True
+    create_error_plots=True
     #create_plots=["data", "combined"]
 
     cal = ProcessDrscs(asic, input_fname, output_fname=output_fname,
