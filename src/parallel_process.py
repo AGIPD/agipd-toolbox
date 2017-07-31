@@ -8,10 +8,17 @@ import h5py
 from process import ProcessDrscs, initiate_result, check_file_exist
 
 
-def exec_process(asic, input_file, pixel_v_list, pixel_u_list, mem_cell_list):
+def exec_process(asic, input_file, analog, digital, pixel_v_list, pixel_u_list, mem_cell_list):
 
-    cal = ProcessDrscs(asic, input_file)
-    cal.run(pixel_v_list, pixel_u_list, mem_cell_list)
+    #plot_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/M314/temperature_m15C/drscs/plots/itestc150/manu_test/asic01_failed/"
+    #plot_prefix = "M314_itestc150"
+    #create_error_plots=True
+    create_error_plots=False
+
+    #cal = ProcessDrscs(asic, analog=analog, digital=digital)
+    cal = ProcessDrscs(asic, input_file)#,
+    #                   plot_prefix=plot_prefix, plot_dir=plot_dir, create_plots=False)
+    cal.run(pixel_v_list, pixel_u_list, mem_cell_list, create_error_plots=create_error_plots)
 
     return cal.result, pixel_v_list, pixel_u_list, mem_cell_list
 
@@ -33,9 +40,18 @@ class ParallelProcess():
         self.output_fname = output_fname
         self.result = None
 
+        self.digital_path = "/entry/instrument/detector/data_digital"
+        self.analog_path = "/entry/instrument/detector/data"
+
+        self.analog = None
+        self.digital = None
+
         check_file_exist(self.output_fname)
 
         self.generate_process_lists()
+
+        #self.load_data()
+
         self.run()
 
     def generate_process_lists(self):
@@ -66,18 +82,26 @@ class ParallelProcess():
             "medium": p_result["slope"]["individual"]["medium"].shape[-1],
             "low": p_result["slope"]["individual"]["low"].shape[-1]
         }
-        n_zero_region_stored = p_result["intervals"]["found_zero_regions"].shape[-2]
-        n_bins = p_result["collection"]["nbins"]
+        n_diff_changes_stored = p_result["collection"]["n_diff_changes_stored"]
 
         #print("n_gain_stages", n_gain_stages)
         #print("n_intervals", n_intervals)
-        #print("n_zero_region_stored", n_zero_region_stored)
         #print("n_bins", n_bins)
 
         self.result = initiate_result(self.pixel_v_list, self.pixel_u_list,
                                       self.mem_cell_list, n_gain_stages,
-                                      n_intervals, n_zero_region_stored, n_bins)
+                                      n_intervals, n_diff_changes_stored)
 
+    def load_data(self):
+
+        source_file = h5py.File(self.input_fname, "r")
+
+        # origin data is written as int16 which results in a integer overflow
+        # when handling the scaling
+        self.analog = source_file[self.analog_path][()].astype("int32")
+        self.digital = source_file[self.digital_path][()].astype("int32")
+
+        source_file.close()
 
     def run(self):
         # start 4 worker processes
@@ -92,6 +116,7 @@ class ParallelProcess():
                 result_list.append(
                     pool.apply_async(exec_process,
                                      (self.asic, self.input_fname,
+                                      self.analog, self.digital,
                                       pixel_v_sublist, self.pixel_u_list,
                                       self.mem_cell_list)))
 
@@ -121,10 +146,10 @@ class ParallelProcess():
         for key in p_result["collection"]:
             # do not do this for array time entries because otherwise it would
             # overwrite self.results with a pointer to p_results
-            if key not in ["spread", "used_nbins"]:
+            if key not in ["diff_changes_idx"]:
                 self.result["collection"][key] = p_result["collection"][key]
 
-        # idx at start: individual, found_zero_regions, used_zero_regions,
+        # idx at start: individual
         # subintervals
         idx = (slice(v_start, v_stop),
                slice(u_start, u_stop),
@@ -136,14 +161,18 @@ class ParallelProcess():
                 self.result[key]["individual"][gain][idx] = (
                     p_result[key]["individual"][gain][idx])
 
-        self.result["intervals"]["found_zero_regions"][idx] = (
-            p_result["intervals"]["found_zero_regions"][idx])
-        self.result["intervals"]["used_zero_regions"][idx] = (
-            p_result["intervals"]["used_zero_regions"][idx])
-
         for gain in ["high", "medium", "low"]:
             self.result["intervals"]["subintervals"][gain][idx] = (
                 p_result["intervals"]["subintervals"][gain][idx])
+
+        for key in ["diff_changes_idx"]:
+            try:
+                self.result["collection"][key][idx] = (
+                    p_result["collection"][key][idx])
+            except:
+                print(key, idx)
+                print(p_result["collection"][key][idx])
+                print(self.result["collection"][key][idx])
 
         # idx at end: mean, medians, threshold
         idx = (Ellipsis,
@@ -159,7 +188,7 @@ class ParallelProcess():
         self.result["thresholds"][idx] = (
             p_result["thresholds"][idx])
 
-        # only idx: error_code, warning_code, spread, nbins
+        # only idx: error_code, warning_code
         idx = (Ellipsis,
                slice(v_start, v_stop),
                slice(u_start, u_stop),
@@ -167,16 +196,6 @@ class ParallelProcess():
 
         for key in ["error_code", "warning_code"]:
             self.result[key][idx] = p_result[key][idx]
-
-        for key in ["spread", "used_nbins"]:
-            try:
-                self.result["collection"][key][idx] = (
-                    p_result["collection"][key][idx])
-
-            except:
-                print(key, idx)
-                print(p_result["collection"][key][idx])
-                print(self.result["collection"][key][idx])
 
         # special: gain_stages
         idx = (Ellipsis,
