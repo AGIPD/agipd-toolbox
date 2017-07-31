@@ -70,7 +70,7 @@ def contiguous_regions(condition):
 
 # not defined inside the class to let other classes reuse this
 def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
-                    n_intervals, nbins):
+                    n_intervals, n_diff_changes_stored):
 
     result = {
         "slope": {
@@ -114,15 +114,14 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
         "error_code": None,
         "warning_code": None,
         "collection": {
-            "nbins": None,
-            "thold_for_zero": None,
+            "diff_threshold": None,
+            "region_range": None,
+            "safty_factor" : None,
             "scaling_point": None,
             "scaling_factor": None,
             "n_gain_stages": None,
             "fit_cutoff_left": None,
             "fit_cutoff_right": None,
-            "spread": None,
-            "used_nbins": None
         }
     }
 
@@ -150,8 +149,6 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
     # initiated with -1 to distinguish between code failures and catched errors
     result["error_code"] = -1 * np.ones(shape_tmp, np.int16)
     result["warning_code"] = np.zeros(shape_tmp, np.int16)
-    result["collection"]["spread"] = np.zeros(shape_tmp)
-    result["collection"]["used_nbins"] = nbins * np.ones(shape_tmp)
 
     # intiate intervals
     # interval consists of start and end point -> x2
@@ -162,6 +159,9 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
 
     # initiate thresholds
     result["thresholds"] = np.zeros(threshold_shape, np.float32)
+
+    result["collection"]["diff_changes_idx"] = init_with_nan(
+        shape_tmp + (n_diff_changes_stored,), np.int)
 
     return result
 
@@ -179,10 +179,19 @@ def biggest_entries(list_to_check, N):
     return np.argsort(list_to_check)[-N:]
 
 class ProcessDrscs():
-    def __init__(self, asic, input_fname, output_fname=False,
+    def __init__(self, asic, input_fname=False, output_fname=False,
+                 analog=None, digital=None,
                  plot_prefix=None, plot_dir=None, create_plots=False):
 
-        self.input_fname = input_fname
+        if input_fname:
+            self.input_fname = input_fname
+            self.analog = None
+            self.digital = None
+        else:
+            self.input_fname = None
+            self.analog = analog
+            self.digital = digital
+
         if output_fname:
             self.output_fname = output_fname
         else:
@@ -194,17 +203,13 @@ class ProcessDrscs():
         self.create_plot_type = create_plots
         self.plot_dir = plot_dir
 
-        self.digital = None
-        self.analog = None
-
         self.percent = 10
-        self.nbins = 30
 
-        self.hist = None
-        self.bins = None
+        self.diff_threshold = -100
+        self.region_range = 10
+        self.safty_factor = 1000
+        self.n_diff_changes_stored = 10
 
-        # threshold for regions which are concidered to containing no gain information
-        self.thold_for_zero = 4
 
         self.scaling_point = 200
         self.scaling_factor = 10
@@ -223,8 +228,6 @@ class ProcessDrscs():
 
         self.gain_idx = None
         self.scaled_x_values = None
-        self.hist = None
-        self.bin = None
         self.coefficient_matrix = None
         self.x_values = {
             "high" : [[] for _ in np.arange(self.n_intervals["high"])],
@@ -241,11 +244,10 @@ class ProcessDrscs():
         # error_code:
         # -1   Not handled (something went wrong)
         # 1    Unknown error
-        # 2    Zero region: too few intervals
-        # 3    Zero region: too many intervals
+        # 2    Too many gain stages found
+        # 3    Not enough gain stages found
         #
         # warning_code:
-        # 1    Use lesser nbins
         # 2    Use then two biggest intervals
         ###
 
@@ -280,10 +282,12 @@ class ProcessDrscs():
         if self.output_fname is not None:
             check_file_exist(self.output_fname)
 
-        print("Load data")
-        t = time.time()
-        self.load_data()
-        print("took time: {}".format(time.time() - t))
+        if self.input_fname is not None:
+            print("Load data")
+            t = time.time()
+            self.load_data()
+            print("took time: {}".format(time.time() - t))
+
         self.scale_full_x_axis()
 
     def load_data(self):
@@ -318,17 +322,17 @@ class ProcessDrscs():
         # initiate
         self.result = initiate_result(self.pixel_v_list, self.pixel_u_list,
                                       self.mem_cell_list, self.n_gain_stages,
-                                      self.n_intervals,
-                                      self.nbins)
+                                      self.n_intervals, self.n_diff_changes_stored)
 
-        self.result["collection"]["nbins"] = self.nbins
-        self.result["collection"]["thold_for_zero"] = self.thold_for_zero
+        self.result["collection"]["diff_threshold"] = self.diff_threshold
+        self.result["collection"]["region_range"] = self.region_range
+        self.result["collection"]["safty_factor"] = self.safty_factor
+        self.result["collection"]["n_diff_changes_stored"] = self.n_diff_changes_stored
         self.result["collection"]["scaling_point"] = self.scaling_point
         self.result["collection"]["scaling_factor"] = self.scaling_factor
         self.result["collection"]["n_gain_stages"] = self.n_gain_stages
         self.result["collection"]["fit_cutoff_left"] = self.fit_cutoff_left
         self.result["collection"]["fit_cutoff_right"] = self.fit_cutoff_right
-        #spread and used_nbin is intiated in initiate_result
 
         for pixel_v in self.pixel_v_list:
             for pixel_u in self.pixel_u_list:
@@ -369,8 +373,8 @@ class ProcessDrscs():
                             #print("IntervalSplitError")
                             pass
                         elif type(e) == GainStageNumberError:
-                            print("GainStageNumberError")
-                            pass
+                            print("{}: GainStageNumberError".format(self.current_idx))
+                            print("found number of diff_changes_idx={}".format(len(self.diff_changes_idx)))
                         else:
                             print("Failed to run for pixel [{}, {}] and mem_cell {}"
                                   .format(self.current_idx[0], self.current_idx[1], self.current_idx[2]))
@@ -378,9 +382,6 @@ class ProcessDrscs():
 
                             if self.result["error_code"][self.current_idx] <= 0:
                                 self.result["error_code"][self.current_idx] = 1
-
-                            #print("hist={}".format(self.hist))
-                            #print("bins={}".format(self.bins))
 
                         if create_error_plots:
                             try:
@@ -401,8 +402,6 @@ class ProcessDrscs():
                                                                self.plot_ending)
 
                                 generate_data_plot(self.current_idx,
-                                                   self.bins,
-                                                   self.hist,
                                                    self.scaled_x_values,
                                                    self.analog[idx],
                                                    self.digital[idx],
@@ -421,25 +420,6 @@ class ProcessDrscs():
     def process_data_point(self, current_idx):
 
         data = self.digital[self.current_idx[0], self.current_idx[1], self.current_idx[2], :]
-
-        spread = int(np.linalg.norm(np.max(data) - np.min(data)))
-
-        if 0 < spread and spread < self.nbins:
-            nbins = spread
-            self.result["warning_code"][self.current_idx] = 1
-            #print("[{}, {}], {}: Spread to lower than number of bins. "
-            #      "Adjusting (new nbins={}, spread={})"
-            #      .format(self.current_idx[0], self.current_idx[1],
-            #              self.current_idx[2], nbins, spread))
-        else:
-            nbins = self.nbins
-
-        self.result["collection"]["spread"][self.current_idx] = spread
-        self.result["collection"]["used_nbins"][self.current_idx] = nbins
-
-        self.hist, self.bins = np.histogram(data, bins=nbins)
-        #print("hist={}".format(self.hist))
-        #print("bins={}".format(self.bins))
 
         self.calc_gain_regions()
 
@@ -470,10 +450,6 @@ class ProcessDrscs():
             print("took time: {}".format(time.time() - t))
 
     def calc_gain_regions(self):
-        self.diff_threshold = -100
-        self.region_range = 20
-        self.safty_factor = 1000
-
         data_a = self.analog[self.current_idx[0], self.current_idx[1], self.current_idx[2], :]
 
         # calculates the difference between neighboring elements
@@ -484,13 +460,17 @@ class ProcessDrscs():
         gain_intervals = [[0, 0]]
 
         #TODO check if diff_changes_idx has to many entries
+        #print("current idx: {}", self.current_idx)
+        #print(self.diff_changes_idx)
+        #print(self.diff[1000:])
+        #print(data_a[1000:])
 
-        #for i in np.arange(len(self.diff_changes_idx)):
         i = 0
         prev_stop = 0
         pot_start = 0
         set_start_flag = True
         set_stop_flag = True
+        ignore_idx = []
         while i < len(self.diff_changes_idx):
 
             if set_stop_flag:
@@ -499,6 +479,7 @@ class ProcessDrscs():
             # exclude the found point
             pot_start = self.diff_changes_idx[i] + 1
 
+            #print("gain intervals", gain_intervals)
             #print("prev_stop", prev_stop)
             #print("pot_start", pot_start)
 
@@ -527,15 +508,22 @@ class ProcessDrscs():
             near_matches_after = np.where(self.diff_changes_idx[i + 1:] < stop_after)
             # np.where returns a tuple (array, type)
             near_matches_after = near_matches_after[0]
+            #print("near match before", near_matches_before, self.diff_changes_idx[:i][near_matches_before])
+            #print("near match after", near_matches_after, self.diff_changes_idx[i + 1:][near_matches_after])
 
-            #print("near match before", near_matches_before)
-            #print("near match after", near_matches_after)
-            if near_matches_before.size == 0 and near_matches_after.size == 0:
+            if region_of_interest_before.size == 0:
+                mean_before = data_a[prev_stop]
+            else:
                 mean_before = np.mean(region_of_interest_before)
-                mean_after = np.mean(region_of_interest_after)
-                #print("mean_before", mean_before)
-                #print("mean_after", mean_after)
 
+            if region_of_interest_after.size == 0:
+                mean_after = data_a[pot_start]
+            else:
+                mean_after = np.mean(region_of_interest_after)
+            #print("mean_before", mean_before)
+            #print("mean_after", mean_after)
+
+            if near_matches_before.size == 0 and near_matches_after.size == 0:
                 if mean_before > mean_after + self.safty_factor:
                     # a stage change was found
                     gain_intervals[-1][1] = prev_stop
@@ -545,18 +533,66 @@ class ProcessDrscs():
                 set_stop_flag = True
             else:
                 if near_matches_before.size == 0:
+                    if mean_before > mean_after + self.safty_factor:
+                        gain_intervals[-1][1] = prev_stop
 
-                    gain_intervals[-1][1] = prev_stop
-
-                    # because near_matches_after starts with 0
-                    i += 1 + near_matches_after[-1]
-                    set_stop_flag = False
+                        # because near_matches_after starts with 0
+                        i += 1 + near_matches_after[-1]
+                        set_stop_flag = False
+                    else:
+                        i +=1
 
                 else:
-                    if not set_stop_flag:
-                        set_stop_flag = True
+                    if gain_intervals[-1][1] == 0:
+                        #print("gain intervals last entry == 0")
+                        region_start = gain_intervals[-1][0]
+                        #print("region_start", region_start)
+                        if region_start < start_before:
+                            region_start = start_before
+                            #print("region_start adjusted", region_start)
+                        #region_start = start_before
+                        #print("region_start", region_start)
 
-                    gain_intervals.append([pot_start, 0])
+                        # determine the region before the potention gain stage change
+                        region_of_interest_before = data_a[region_start:prev_stop]
+                        #print("region_of_interest_before", region_of_interest_before)
+
+
+                        if region_of_interest_before.size == 0:
+                            mean_before = data_a[prev_stop]
+                        else:
+                            mean_before = np.mean(region_of_interest_before)
+
+                        #print("mean_before", mean_before)
+
+                        #if prev_stop == 58:
+                        #    sys.exit(1)
+                        if mean_before > mean_after + self.safty_factor:
+                            gain_intervals[-1][1] = prev_stop
+                            #set_stop_flag = False
+                            #i += near_matches_after[-1]
+                            continue
+
+                    else:
+                        region_start = gain_intervals [-1][1]
+                        #print("region_start", region_start)
+
+                        # determine the region before the potention gain stage change
+                        region_of_interest_before = data_a[region_start:prev_stop]
+                        #print("region_of_interest_before", region_of_interest_before)
+
+                        if region_of_interest_before.size == 0:
+                            mean_before = data_a[prev_stop]
+                        else:
+                            mean_before = np.mean(region_of_interest_before)
+
+                        #print("mean_before", mean_before)
+
+                        if mean_before > mean_after + self.safty_factor:
+                            if not set_stop_flag:
+                                set_stop_flag = True
+
+                            gain_intervals.append([pot_start, 0])
                     i += 1
             #print()
 
@@ -565,14 +601,33 @@ class ProcessDrscs():
         #print("len gain intervals", len(gain_intervals))
 
         if len(gain_intervals) > 3:
+            self.result["error_code"][self.current_idx] = 2
             raise GainStageNumberError("Too many gain stages found: {}"
                                      .format(gain_intervals))
-            self.result["error_code"][self.current_idx] = 1
 
         if len(gain_intervals) < 3:
-            raise GainStageNumberError("Not enough founs: {}"
+            self.result["error_code"][self.current_idx] = 3
+            raise GainStageNumberError("Not enough gain stages found: {}"
                                      .format(gain_intervals))
-            self.result["error_code"][self.current_idx] = 2
+
+        # store current_idx dependent results in the final matrices
+        try:
+            self.result["collection"]["diff_changes_idx"][self.current_idx] = (
+                self.diff_changes_idx)
+        except ValueError:
+            # it is not fixed how many diff_changes indices are found
+            # but the size of np.arrays has to be fixed
+            l = len(self.diff_changes_idx)
+            f_diff_changes_idx = (
+                self.result["collection"]["diff_changes_idx"][self.current_idx])
+
+            # fill up with found ones, rest of the array stays NAN
+            if l < self.n_diff_changes_stored:
+                f_diff_changes_idx[:l] = self.diff_changes_idx
+            # more regions found than array can hold, only store the first part
+            else:
+                f_diff_changes_idx = self.diff_changes_idx[:self.n_diff_changes_stored]
+
 
         self.result["intervals"]["gain_stages"][self.gain_idx["high"]] = gain_intervals[0]
         self.result["intervals"]["gain_stages"][self.gain_idx["medium"]] = gain_intervals[1]
@@ -761,8 +816,6 @@ class ProcessDrscs():
 
             if "all" in self.create_plot_type:
                 generate_all_plots(self.current_idx,
-                               self.bins,
-                               self.hist,
                                self.scaled_x_values,
                                self.analog[idx],
                                self.digital[idx],
@@ -784,8 +837,6 @@ class ProcessDrscs():
                                                    self.plot_ending)
 
                     generate_data_plot(self.current_idx,
-                                       self.bins,
-                                       self.hist,
                                        self.scaled_x_values,
                                        self.analog[idx],
                                        self.digital[idx],
@@ -824,8 +875,6 @@ class ProcessDrscs():
                                            plot_title, plot_name)
         else:
             generate_all_plots(self.current_idx,
-                               self.bins,
-                               self.hist,
                                self.scaled_x_values,
                                self.analog[idx],
                                self.digital[idx],
@@ -854,13 +903,21 @@ if __name__ == "__main__":
                               "{}_drscs_{}_asic{}.h5".format(module, current, str(asic).zfill(2)))
     output_fname = os.path.join(base_dir, module, temperature, "drscs", current, "process",
                                "{}_drscs_{}_asic{}_processed.h5".format(module, current, str(asic).zfill(2)))
-    plot_dir = os.path.join(base_dir, module, temperature, "drscs", "plots", current, "manu_test") #, "asic02_[42, 42]")
+    plot_dir = os.path.join(base_dir, module, temperature, "drscs", "plots", current, "manu_test")
     #plot_dir = os.path.join(base_dir, module, temperature, "drscs", "plots", current, "asic_{}".format(asic))
     plot_prefix = "{}_{}".format(module, current)
 
-    pixel_v_list = np.arange(64)
-    pixel_u_list = np.arange(64)
-    mem_cell_list = np.arange(352)
+    #pixel_v_list = np.arange(64)
+    #pixel_u_list = np.arange(64)
+    #mem_cell_list = np.arange(352)
+
+    #pixel_v_list = np.arange(2,3)
+    #pixel_u_list = np.arange(24,25)
+    #mem_cell_list = np.arange(32, 33)
+
+    pixel_v_list = np.arange(14, 15)
+    pixel_u_list = np.arange(24, 25)
+    mem_cell_list = np.arange(40, 41)
 
     #pixel_v_list = np.arange(29, 30)
     #pixel_u_list = np.arange(1, 2)
@@ -873,10 +930,10 @@ if __name__ == "__main__":
     #mem_cell_list = np.arange(1, 2)
     #mem_cell_list = np.arange(252, 253)
 
-    output_fname = False
+    #output_fname = False
     #create_plots can be set to False, "data", "fit", "combined" or "all"
     create_plots = False #["combined"]
-    create_error_plots = False
+    create_error_plots = False#True
     #create_plots=["data", "combined"]
 
     cal = ProcessDrscs(asic, input_fname, output_fname=output_fname,
