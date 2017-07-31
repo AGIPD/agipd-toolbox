@@ -57,6 +57,9 @@ dataCountPerFile = int(f[dataPathInFile].shape[0] / 2 / 352) #how many per file
 dataCount = dataCountPerFile * nParts # times nParts files for total
 f.close()
 
+#analog = np.zeros((dataCount, 352, 128, 512), dtype='int16')
+digital = np.zeros((dataCount, 352, 128, 512), dtype='int16')
+
 # Loop over all nParts files, read in data
 for j in np.arange(nParts):
     if j <= 9:
@@ -66,12 +69,21 @@ for j in np.arange(nParts):
     print('start loading', dataPathInFile, 'from', fDark_j)
     f = h5py.File(fDark_j, 'r')
     rawData = f[dataPathInFile][..., 0:128, 0:512]
-    f.close()
     print('loading done')
 
-print(rawData.shape) 
-rawData.shape = (-1, 352, 2, 128, 512) # Dark data contains analog and digital
-darkGain = rawData[:, :, 1, :, :] # only take digital for gain bit
+    print('start reshaping')
+    rawData.shape = (dataCountPerFile, 352, 2, 128, 512)
+    # only need digital data for clamped gain (gain bit)
+    #analog[j * dataCountPerFile:(j + 1)* dataCountPerFile, :, :, :] = rawData[:, :, 0, :, :]
+    digital[j * dataCountPerFile:(j + 1)* dataCountPerFile, :, :, :] = rawData[:, :, 1, :, :]
+    print('finished reshaping')
+
+    f.close()
+    print('finished loading all data')
+
+#print(rawData.shape) 
+#rawData.shape = (-1, 352, 2, 128, 512) # Dark data contains analog and digital
+darkGain = digital[...] # only take digital for gain bit
 
 
 # Med gain from clamped gain
