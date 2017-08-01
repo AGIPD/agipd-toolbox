@@ -10,12 +10,12 @@ def computePhotonSpacingOnePixel(analog, linearIndex, perMillInterval):
     localityRadius = 800
     samplePointsCount = 1000
 
-    (photonSpacing, quality, peakStdDevs) = getOnePhotonAdcCountsXRayTubeData(analog, localityRadius, samplePointsCount)
+    (photonSpacing, quality, peakStdDevs, peakErrors, spacingError) = getOnePhotonAdcCountsXRayTubeData(analog, localityRadius, samplePointsCount)
 
     # if np.mod(linearIndex, perMillInterval) == 0:
     #     print(0.1 * linearIndex / perMillInterval, '%')
 
-    return (photonSpacing, quality, peakStdDevs)
+    return (photonSpacing, quality, peakStdDevs, peakErrors, spacingError)
 
 
 if __name__ == '__main__':
@@ -33,6 +33,8 @@ if __name__ == '__main__':
     dset_photonSpacing = saveFile.create_dataset("photonSpacing", shape=(128, 512), dtype='int16')
     dset_quality = saveFile.create_dataset("quality", shape=(128, 512), dtype='int16')
     dset_peakStdDevs = saveFile.create_dataset("peakStdDevs", shape=(128, 512, 2), dtype='int16')
+    dset_peakErrors = saveFile.create_dataset("peakErrors", shape=(128, 512, 2), dtype='float32')
+    dset_spacingError = saveFile.create_dataset("spacingError", shape=(128, 512), dtype='float32')
 
     totalTime = time.time()
 
@@ -70,14 +72,18 @@ if __name__ == '__main__':
     photonSpacing = np.zeros((128, 512))
     quality = np.zeros((128, 512))
     peakStdDevs = np.zeros((128, 512, 2))
+    peakErrors = np.zeros((128, 512, 2))
+    spacingError = np.zeros((128, 512))
     for i in np.arange(linearIndices.size):
-        (photonSpacing[matrixIndexY[i], matrixIndexX[i]], quality[matrixIndexY[i], matrixIndexX[i]], peakStdDevs[matrixIndexY[i], matrixIndexX[i], :]) = \
+        (photonSpacing[matrixIndexY[i], matrixIndexX[i]], quality[matrixIndexY[i], matrixIndexX[i]], peakStdDevs[matrixIndexY[i], matrixIndexX[i], :], peakErrors[matrixIndexY[i], matrixIndexX[i], :], spacingError[matrixIndexY[i], matrixIndexX[i]]) = \
         parallelResult[i]
     print('start saving results at', saveFileName)
 
     dset_photonSpacing[...] = photonSpacing
     dset_quality[...] = quality
     dset_peakStdDevs[...] = peakStdDevs
+    dset_peakErrors[...] = peakErrors
+    dset_spacingError[...] = spacingError
 
     print('saved')
 

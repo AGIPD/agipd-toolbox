@@ -81,12 +81,16 @@ def manual_gaussian_fit(x, y):
         '''
 
     initial = [np.max(y), x[0], (x[1] - x[0]) * 5]
+    pcov = np.zeros((3,3))
     try:
         params, pcov = curve_fit(peakutils.peak.gaussian, x, y, initial)
     except:
-        return (0, 0)
+        return (0, 0), pcov
 
-    return (params[1], params[2])
+    #print("params: ", params)
+    #print("pcov: ", pcov)
+
+    return (params[1], params[2]), pcov
 
 
 def indexes_peakutilsManuallyAdjusted(y, thres=0.3, min_dist=1):
@@ -168,11 +172,18 @@ def interpolate_peakutilsManuallyAdjusted(x, y, ind, width, func):
     '''
 
     out = []
+    pcov = []
     for slice_ in (slice(max((0, i - width)), min((x.size, i + width))) for i in ind):  # Addition by yaroslav.gevorkov@desy.de: added border checking
-        fit = func(x[slice_], y[slice_])
+        fit, pcov_slice = func(x[slice_], y[slice_])
+        #print("fit: ", fit)
+        #print("pcov_slice: ", pcov_slice)
         out.append(fit)
+        pcov.append(pcov_slice)
+    
+    #print("out: ", out)
+    #print("pcov2: ", pcov)
 
-    return np.array(out)
+    return np.array(out), np.array(pcov)
 
 
 # apply lowpass, if temperature drift available:
@@ -204,13 +215,15 @@ def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=
 
     # use regions around maxima to estimate the real peak positions by fitting a gaussian to them
     peakWidth = 31
+    pcov = np.zeros((3,3))
     try:
-        interpolatedPeakParameters = interpolate_peakutilsManuallyAdjusted(x, y, ind=roughPeakLocations, width=peakWidth, func=manual_gaussian_fit)
+        interpolatedPeakParameters, pcov = interpolate_peakutilsManuallyAdjusted(x, y, ind=roughPeakLocations, width=peakWidth, func=manual_gaussian_fit)
     except:
-        return (0, 0, (0, 0))
+        return (0, 0, (0, 0), (0, 0), 0)
     if interpolatedPeakParameters.size < 2:
-        return (0, 0, (0, 0))
+        return (0, 0, (0, 0), (0, 0), 0)
 
+    #print("interpolatedPeakParameters: ", interpolatedPeakParameters)
     (interpolatedPeakLocations, peakStdDev) = zip(*interpolatedPeakParameters)
 
     peakLocations = np.clip(interpolatedPeakLocations, 0, len(photonHistoramValues) - 1)
@@ -221,9 +234,10 @@ def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=
     validIndices = np.abs(peakLocations - roughPeakLocations) <= maxPeakRelocation
     peakLocations = peakLocations[validIndices]
     peakStdDev = peakStdDev[validIndices]
+    realPeakPcov = pcov[validIndices]
 
     if peakLocations.size < 2:
-        return (0, 0, (0, 0))
+        return (0, 0, (0, 0), (0, 0), 0)
 
     peakIndices = np.round(peakLocations).astype(int)
 
@@ -233,18 +247,26 @@ def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=
     sizeSortedPeakLocations = peakLocations[sizeSortIndices]
     sizeSortedPeakIndices = peakIndices[sizeSortIndices]
     sizeSortPeakSizes = peakSizes[sizeSortIndices]
-
+    sizeSortedPcov = realPeakPcov[sizeSortIndices]
     peakSizeSortedPeakStdDev = peakStdDev[sizeSortIndices]
+
+    #print("sizeSortedPcov: ", sizeSortedPcov)
 
     # take biggest peak and second biggest peak to compute the photon spacing
     onePhotonAdcCounts = np.abs(sizeSortedPeakLocations[1] - sizeSortedPeakLocations[0])
-
+    #print("diag: ", np.diag(sizeSortedPcov[0]))
+    errors = (np.sqrt(np.diag(sizeSortedPcov[0])), np.sqrt(np.diag(sizeSortedPcov[1]))) #errors for all peaks all parameters = sqrt( diag(cov. matrix) )
+    #print("errors: ", errors)
+    peakErrors = (errors[0][1], errors[1][1])
+    #print("peak errors: ", peakErrors)
+    spacingError = np.sqrt(peakErrors[0]**2 + peakErrors[1]**2)
+    #print("spacing error: ", spacingError)
     if onePhotonAdcCounts <= 20:
-        return (0, 0, (0, 0))
+        return (0, 0, (0, 0), (0, 0), 0)
 
     indicesBetweenPeaks = np.sort(sizeSortedPeakIndices[0:2])
     valleyDepthBetweenPeaks = sizeSortPeakSizes[1] - np.min(photonHistogramValuesSmooth[indicesBetweenPeaks[0]:indicesBetweenPeaks[1]])
 
     photonPeaksStdDev = peakSizeSortedPeakStdDev[0:2]
 
-    return (onePhotonAdcCounts, valleyDepthBetweenPeaks, photonPeaksStdDev)
+    return (onePhotonAdcCounts, valleyDepthBetweenPeaks, photonPeaksStdDev, peakErrors, spacingError)
