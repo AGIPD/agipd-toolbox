@@ -5,7 +5,7 @@ import numpy as np
 import os
 import time
 import h5py
-from process import ProcessDrscs, initiate_result, check_file_exist
+from process import ProcessDrscs, initiate_result, check_file_exists
 
 
 def exec_process(asic, input_file, analog, digital, pixel_v_list, pixel_u_list, mem_cell_list):
@@ -46,7 +46,7 @@ class ParallelProcess():
         self.analog = None
         self.digital = None
 
-        check_file_exist(self.output_fname)
+        check_file_exists(self.output_fname)
 
         self.generate_process_lists()
 

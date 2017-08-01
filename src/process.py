@@ -27,46 +27,13 @@ class GainStageNumberError(Exception):
 class ThresholdNumberError(Exception):
     pass
 
-def check_file_exist(file_name):
+def check_file_exists(file_name):
     print("save_file = {}".format(file_name))
     if os.path.exists(file_name):
         print("Output file already exists")
         sys.exit(1)
     else:
         print("Output file: ok")
-
-# from Joe Kington's answer here https://stackoverflow.com/a/4495197/3751373
-def contiguous_regions(condition):
-    """Finds contiguous True regions of the boolean array "condition". Returns
-    a 2D array where the first column is the start index of the region and the
-    second column is the end index."""
-
-    # Find the indicies of changes in "condition"
-    d = np.diff(condition, n=1)
-#    print("d", d)
-    idx = d.nonzero()[0]
-#    print("idx", idx)
-
-    # output of np.nonzero is tuple -> convert to np.array
-    # We need to start things after the change in "condition". Therefore,
-    # we'll shift the index by 1 to the right. -JK
-    idx += 1
-#    print("idx", idx)
-
-    if condition[0]:
-        # If the start of condition is True prepend a 0
-        idx = np.r_[0, idx]
-#    print("start of cond: idx", idx)
-
-    if condition[-1]:
-        # If the end of condition is True, append the length of the array
-        idx = np.r_[idx, condition.size] # Edit
-#    print("end of cond: idx", idx)
-
-    # Reshape the result into two columns
-    idx.shape = (-1,2)
-#    print("idx", idx)
-    return idx
 
 # not defined inside the class to let other classes reuse this
 def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
@@ -280,7 +247,7 @@ class ProcessDrscs():
             self.plot_ending = None
 
         if self.output_fname is not None:
-            check_file_exist(self.output_fname)
+            check_file_exists(self.output_fname)
 
         if self.input_fname is not None:
             print("Load data")
@@ -373,8 +340,9 @@ class ProcessDrscs():
                             #print("IntervalSplitError")
                             pass
                         elif type(e) == GainStageNumberError:
-                            print("{}: GainStageNumberError".format(self.current_idx))
-                            print("found number of diff_changes_idx={}".format(len(self.diff_changes_idx)))
+                            #print("{}: GainStageNumberError".format(self.current_idx))
+                            #print("found number of diff_changes_idx={}".format(len(self.diff_changes_idx)))
+                            pass
                         else:
                             print("Failed to run for pixel [{}, {}] and mem_cell {}"
                                   .format(self.current_idx[0], self.current_idx[1], self.current_idx[2]))
