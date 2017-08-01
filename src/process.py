@@ -64,6 +64,14 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
                 "low": None
             }
         },
+        "fit_error": {
+            "mean": None,
+            "individual": {
+                "high" : None,
+                "medium": None,
+                "low": None
+            }
+        },
         "intervals": {
             "gain_stages": None,
             "subintervals": {
@@ -105,7 +113,7 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
     print("threshold shape: {}".format(threshold_shape))
 
     # initiate fit results
-    for key in ["slope", "offset", "residuals"]:
+    for key in ["slope", "offset", "residuals", "fit_error"]:
         result[key]["mean"] = np.zeros(shape, np.float32)
         result[key]["individual"] = {
             "high": np.zeros(shape_tmp + (n_intervals["high"],)),
@@ -319,11 +327,11 @@ class ProcessDrscs():
                             l = self.fit_cutoff_left
                             r = self.fit_cutoff_right
                             if len(self.result["slope"]["individual"][gain][self.current_idx]) >= l + r + 1:
-                                for t in ["slope", "offset", "residuals"]:
+                                for t in ["slope", "offset", "residuals", "fit_error"]:
                                     self.result[t]["mean"][self.gain_idx[gain]] = (
                                         np.mean(self.result[t]["individual"][gain][self.current_idx][l:-r]))
                             else:
-                                for t in ["slope", "offset", "residuals"]:
+                                for t in ["slope", "offset", "residuals", "fit_error"]:
                                     self.result[t]["mean"][self.gain_idx[gain]] = (
                                         np.mean(self.result[t]["individual"][gain][self.current_idx]))
 
@@ -350,6 +358,8 @@ class ProcessDrscs():
 
                             if self.result["error_code"][self.current_idx] <= 0:
                                 self.result["error_code"][self.current_idx] = 1
+
+                            raise
 
                         if create_error_plots:
                             try:
@@ -379,7 +389,6 @@ class ProcessDrscs():
                                 print("Failed to generate plot")
                                 raise
 
-                        #raise
                 #print("Process pixel {} took time: {}".format([pixel_v, pixel_u], time.time() - t))
 
         if self.output_fname is not None:
@@ -430,11 +439,12 @@ class ProcessDrscs():
         #TODO check if diff_changes_idx has to many entries
         #print("current idx: {}", self.current_idx)
         #print(self.diff_changes_idx)
-        #print(self.diff[1000:])
-        #print(data_a[1000:])
+        #for i in self.diff_changes_idx:
+        #    print(i, ":", data_a[i:i+2])
 
         i = 0
         prev_stop = 0
+        prev_stop_idx = 0
         pot_start = 0
         set_start_flag = True
         set_stop_flag = True
@@ -444,6 +454,7 @@ class ProcessDrscs():
             if set_stop_flag:
                 #print("setting prev_stop")
                 prev_stop = self.diff_changes_idx[i]
+                prev_stop_idx = i
             # exclude the found point
             pot_start = self.diff_changes_idx[i] + 1
 
@@ -468,7 +479,7 @@ class ProcessDrscs():
             #print("region_of_interest_after", region_of_interest_after)
 
             # check if the following idx is contained in region_of_interest_before
-            near_matches_before = np.where(start_before < self.diff_changes_idx[:i])
+            near_matches_before = np.where(start_before < self.diff_changes_idx[:prev_stop_idx])
             # np.where returns a tuple (array, type)
             near_matches_before = near_matches_before[0]
 
@@ -476,7 +487,7 @@ class ProcessDrscs():
             near_matches_after = np.where(self.diff_changes_idx[i + 1:] < stop_after)
             # np.where returns a tuple (array, type)
             near_matches_after = near_matches_after[0]
-            #print("near match before", near_matches_before, self.diff_changes_idx[:i][near_matches_before])
+            #print("near match before", near_matches_before, self.diff_changes_idx[:prev_stop_idx][near_matches_before])
             #print("near match after", near_matches_after, self.diff_changes_idx[i + 1:][near_matches_after])
 
             if region_of_interest_before.size == 0:
@@ -500,6 +511,34 @@ class ProcessDrscs():
                 i += 1
                 set_stop_flag = True
             else:
+                if near_matches_before.size != 0:
+                    #print("near_matches_before is not emtpy")
+                    region_start = self.diff_changes_idx[:prev_stop_idx][near_matches_before[-1]] + 1
+                    #print("region_start", region_start)
+
+                    region_of_interest_before = data_a[region_start:prev_stop]
+                    #print("region_of_interest_before", region_of_interest_before)
+
+                    if region_of_interest_before.size == 0:
+                        mean_before = data_a[prev_stop]
+                    else:
+                        mean_before = np.mean(region_of_interest_before)
+                    #print("mean_before", mean_before)
+
+                if near_matches_after.size != 0:
+                    #print("near_matches_after is not emtpy")
+                    region_stop = self.diff_changes_idx[i + 1:][near_matches_after[0]]
+                    #print("region_stop", region_stop)
+
+                    region_of_interest_after = data_a[pot_start:region_stop]
+                    #print("region_of_interest_after", region_of_interest_after)
+
+                    if region_of_interest_after.size == 0:
+                        mean_after = data_a[pot_start]
+                    else:
+                        mean_after = np.mean(region_of_interest_after)
+                    #print("mean_after", mean_after)
+
                 if near_matches_before.size == 0:
                     if mean_before > mean_after + self.safty_factor:
                         gain_intervals[-1][1] = prev_stop
@@ -513,58 +552,28 @@ class ProcessDrscs():
                 else:
                     if gain_intervals[-1][1] == 0:
                         #print("gain intervals last entry == 0")
-                        region_start = gain_intervals[-1][0]
-                        #print("region_start", region_start)
-                        if region_start < start_before:
-                            region_start = start_before
-                            #print("region_start adjusted", region_start)
-                        #region_start = start_before
-                        #print("region_start", region_start)
 
-                        # determine the region before the potention gain stage change
-                        region_of_interest_before = data_a[region_start:prev_stop]
-                        #print("region_of_interest_before", region_of_interest_before)
-
-
-                        if region_of_interest_before.size == 0:
-                            mean_before = data_a[prev_stop]
-                        else:
-                            mean_before = np.mean(region_of_interest_before)
-
-                        #print("mean_before", mean_before)
-
-                        #if prev_stop == 58:
-                        #    sys.exit(1)
                         if mean_before > mean_after + self.safty_factor:
                             gain_intervals[-1][1] = prev_stop
-                            #set_stop_flag = False
-                            #i += near_matches_after[-1]
-                            continue
+
+                            if near_matches_after.size != 0:
+                                # because near_matches_after starts with 0
+                                i += 1 + near_matches_after[-1]
+                                set_stop_flag = False
+                                continue
 
                     else:
-                        region_start = gain_intervals [-1][1]
-                        #print("region_start", region_start)
-
-                        # determine the region before the potention gain stage change
-                        region_of_interest_before = data_a[region_start:prev_stop]
-                        #print("region_of_interest_before", region_of_interest_before)
-
-                        if region_of_interest_before.size == 0:
-                            mean_before = data_a[prev_stop]
-                        else:
-                            mean_before = np.mean(region_of_interest_before)
-
-                        #print("mean_before", mean_before)
-
                         if mean_before > mean_after + self.safty_factor:
                             if not set_stop_flag:
                                 set_stop_flag = True
 
                             gain_intervals.append([pot_start, 0])
                     i += 1
-            #print()
 
-        gain_intervals[-1][1] = self.diff.size + 1
+        if gain_intervals[-1][1] == 0:
+            gain_intervals[-1][1] = self.diff.size + 1
+        else:
+            gain_intervals.append([pot_start, self.diff.size + 1])
         #print("found gain intervals", gain_intervals)
         #print("len gain intervals", len(gain_intervals))
 
@@ -660,13 +669,16 @@ class ProcessDrscs():
                                                            lower_border:upper_border]
 
         self.x_values[gain][interval_idx] = np.arange(lower_border, upper_border)
+        #TODO check that size of inteval is not to small, i.e. < 3
+
+        number_of_points = len(self.x_values[gain][interval_idx])
 
         # scaling
         self.scale_x_interval(gain, interval_idx)
 
         # .T means transposed
         self.coefficient_matrix = np.vstack([self.x_values[gain][interval_idx],
-                                             np.ones(len(self.x_values[gain][interval_idx]))]).T
+                                             np.ones(number_of_points)]).T
 
         # fit the data
         # reason to use numpy lstsq:
@@ -679,6 +691,8 @@ class ProcessDrscs():
             self.result["slope"]["individual"][gain][array_idx] = res[0][0]
             self.result["offset"]["individual"][gain][array_idx] = res[0][1]
             self.result["residuals"]["individual"][gain][array_idx] = res[1]
+            self.result["fit_error"]["individual"][gain][array_idx] = np.sqrt(res[1] / number_of_points)
+            #print("fit_error", self.result["fit_error"]["individual"][gain][array_idx])
         except:
             if res is None:
                 print("interval\n{}".format(interval))
@@ -861,7 +875,8 @@ if __name__ == "__main__":
 
     base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
 
-    asic = 1
+    asic = 2
+    #asic = 1
     #asic = 11
     module = "M314"
     temperature = "temperature_m15C"
@@ -883,9 +898,14 @@ if __name__ == "__main__":
     #pixel_u_list = np.arange(24,25)
     #mem_cell_list = np.arange(32, 33)
 
-    pixel_v_list = np.arange(14, 15)
-    pixel_u_list = np.arange(24, 25)
-    mem_cell_list = np.arange(40, 41)
+    pixel_v_list = np.array([0])
+    pixel_u_list = np.array([10])
+    #mem_cell_list = np.array([52])
+    mem_cell_list = np.array([222])
+
+    #pixel_v_list = np.arange(0, 1)
+    #pixel_u_list = np.arange(1,2)
+    #mem_cell_list = np.arange(1)
 
     #pixel_v_list = np.arange(29, 30)
     #pixel_u_list = np.arange(1, 2)
@@ -898,10 +918,10 @@ if __name__ == "__main__":
     #mem_cell_list = np.arange(1, 2)
     #mem_cell_list = np.arange(252, 253)
 
-    #output_fname = False
+    output_fname = False
     #create_plots can be set to False, "data", "fit", "combined" or "all"
     create_plots = False #["combined"]
-    create_error_plots = False#True
+    create_error_plots = False #True
     #create_plots=["data", "combined"]
 
     cal = ProcessDrscs(asic, input_fname, output_fname=output_fname,
