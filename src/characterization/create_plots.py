@@ -2,8 +2,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def generate_data_plot(current_idx, bins, hist, scaled_x_values, analog,
-                       digital, plot_title, plot_name):
+def gerenate_data_hist(current_idx, scaled_x_values, digital,
+                       plot_title, plot_name):
+
+    nbins = 30
+
+    spread = int(np.linalg.norm(np.max(digital) - np.min(digital)))
+
+    if 0 < spread and spread < nbins:
+        nbins = spread
+    else:
+        nbins = nbins
+
+    hist, bins = np.histogram(data, bins=nbins)
 
     width = 0.7 * (bins[1] - bins[0])
     center = (bins[:-1] + bins[1:]) / 2
@@ -21,6 +32,22 @@ def generate_data_plot(current_idx, bins, hist, scaled_x_values, analog,
     ax.plot(scaled_x_values, digital, ".", markersize=0.5, label="digital")
 
     ax.legend()
+    fig.suptitle(plot_title)
+    fig.savefig(plot_name)
+    fig.clf()
+    plt.close(fig)
+
+
+def generate_data_plot(current_idx, scaled_x_values, analog,
+                       digital, plot_title, plot_name):
+
+    idx = current_idx + (slice(None),)
+
+    fig = plt.figure(figsize=None)
+    plt.plot(scaled_x_values, analog, ".", markersize=0.5, label="analog")
+    plt.plot(scaled_x_values, digital, ".", markersize=0.5, label="digital")
+
+    plt.legend()
     fig.suptitle(plot_title)
     fig.savefig(plot_name)
     fig.clf()
@@ -127,7 +154,7 @@ def generate_combined_plot(current_idx, scaled_x_values, analog, digital,
     plt.close(fig)
 
 
-def generate_all_plots(current_idx, bins, hist, scaled_x_values, analog,
+def generate_all_plots(current_idx, scaled_x_values, analog,
                        digital, x_values, data_to_fit, slopes, offsets,
                        n_intervals, fit_cutoff_left, fit_cutoff_right,
                        plot_title_prefix, plot_name_prefix, plot_ending):
@@ -135,8 +162,6 @@ def generate_all_plots(current_idx, bins, hist, scaled_x_values, analog,
     plot_title = "{} data".format(plot_title_prefix)
     plot_name = "{}_data{}".format(plot_name_prefix, plot_ending)
     generate_data_plot(current_idx,
-                       bins,
-                       hist,
                        scaled_x_values,
                        analog,
                        digital,
