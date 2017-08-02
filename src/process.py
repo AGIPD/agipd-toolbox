@@ -9,7 +9,7 @@ import os
 import sys
 import time
 import traceback
-from characterization.create_plots import generate_data_plot, generate_fit_plot, generate_combined_plot, generate_all_plots
+from characterization.plotting import generate_data_plot, generate_fit_plot, generate_combined_plot, generate_all_plots
 
 
 class IntervalError(Exception):
