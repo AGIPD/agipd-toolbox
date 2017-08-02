@@ -92,6 +92,8 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
             "diff_threshold": None,
             "region_range": None,
             "safty_factor" : None,
+            "diff_changes_idx": None,
+            "len_diff_changes_idx": None,
             "scaling_point": None,
             "scaling_factor": None,
             "n_gain_stages": None,
@@ -137,6 +139,7 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
 
     result["collection"]["diff_changes_idx"] = init_with_nan(
         shape_tmp + (n_diff_changes_stored,), np.int)
+    result["collection"]["len_diff_changes_idx"] = np.zeros(shape_tmp, np.int)
 
     return result
 
@@ -393,6 +396,7 @@ class ProcessDrscs():
                 #print("Process pixel {} took time: {}".format([pixel_v, pixel_u], time.time() - t))
 
         if self.output_fname is not None:
+            print("writing data")
             self.write_data()
 
     def process_data_point(self, current_idx):
@@ -624,6 +628,8 @@ class ProcessDrscs():
             else:
                 f_diff_changes_idx = self.diff_changes_idx[:self.n_diff_changes_stored]
 
+        self.result["collection"]["len_diff_changes_idx"][self.current_idx] = (
+            len(self.diff_changes_idx))
 
         self.result["intervals"]["gain_stages"][self.gain_idx["high"]] = gain_intervals[0]
         self.result["intervals"]["gain_stages"][self.gain_idx["medium"]] = gain_intervals[1]
@@ -914,13 +920,13 @@ if __name__ == "__main__":
     #pixel_u_list = np.arange(64)
     #mem_cell_list = np.arange(352)
 
-    #pixel_v_list = np.arange(0,1)
-    #pixel_u_list = np.arange(0,10)
-    #mem_cell_list = np.arange(1, 2)
+    pixel_v_list = np.arange(0,1)
+    pixel_u_list = np.arange(0,1)
+    mem_cell_list = np.arange(0, 1)
 
-    pixel_v_list = np.array([2])
-    pixel_u_list = np.array([22])
-    mem_cell_list = np.array([1])
+    #pixel_v_list = np.array([2])
+    #pixel_u_list = np.array([22])
+    #mem_cell_list = np.array([1])
 
     #pixel_v_list = np.array([0])
     #pixel_u_list = np.array([10])

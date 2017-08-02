@@ -146,17 +146,17 @@ class ParallelProcess():
         for key in p_result["collection"]:
             # do not do this for array time entries because otherwise it would
             # overwrite self.results with a pointer to p_results
-            if key not in ["diff_changes_idx"]:
+            if key not in ["diff_changes_idx", "len_diff_changes_idx"]:
                 self.result["collection"][key] = p_result["collection"][key]
 
-        # idx at start: individual
+        # idx at start: individual, diff_changes_idx
         # subintervals
         idx = (slice(v_start, v_stop),
                slice(u_start, u_stop),
                slice(m_start, m_stop),
                Ellipsis)
 
-        for key in ["slope", "offset", "residuals"]:
+        for key in ["slope", "offset", "residuals", "fit_error"]:
             for gain in ["high", "medium", "low"]:
                 self.result[key]["individual"][gain][idx] = (
                     p_result[key]["individual"][gain][idx])
@@ -180,7 +180,7 @@ class ParallelProcess():
                slice(u_start, u_stop),
                slice(m_start, m_stop))
 
-        for key in ["slope", "offset", "residuals"]:
+        for key in ["slope", "offset", "residuals", "fit_error"]:
             self.result[key]["mean"][idx] = (
                 p_result[key]["mean"][idx])
         self.result["medians"][idx] = (
@@ -188,7 +188,7 @@ class ParallelProcess():
         self.result["thresholds"][idx] = (
             p_result["thresholds"][idx])
 
-        # only idx: error_code, warning_code
+        # only idx: error_code, warning_code, len_diff_changes_idx
         idx = (Ellipsis,
                slice(v_start, v_stop),
                slice(u_start, u_stop),
@@ -196,6 +196,15 @@ class ParallelProcess():
 
         for key in ["error_code", "warning_code"]:
             self.result[key][idx] = p_result[key][idx]
+
+        for key in ["len_diff_changes_idx"]:
+            try:
+                self.result["collection"][key][idx] = (
+                    p_result["collection"][key][idx])
+            except:
+                print(key, idx)
+                print(p_result["collection"][key][idx])
+                print(self.result["collection"][key][idx])
 
         # special: gain_stages
         idx = (Ellipsis,
@@ -240,6 +249,7 @@ if __name__ == "__main__":
 
     base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
 
+    #asic = 2
     asic = 1
     module = "M314"
     temperature = "temperature_m15C"
@@ -253,9 +263,9 @@ if __name__ == "__main__":
     pixel_v_list = np.arange(64)
     pixel_u_list = np.arange(64)
     mem_cell_list = np.arange(352)
-    #pixel_v_list = np.arange(1, 3)
-    #pixel_u_list = np.arange(0, 2)
-    #mem_cell_list = np.arange(0, 2)
+    #pixel_v_list = np.arange(0, 2)
+    #pixel_u_list = np.arange(0, 1)
+    #mem_cell_list = np.arange(0, 1)
 
     n_processes = 10
 
