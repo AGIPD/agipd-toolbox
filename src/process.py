@@ -542,20 +542,6 @@ class ProcessDrscs():
                             mean_before = np.mean(region_of_interest_before)
                         #print("mean_before", mean_before)
 
-                    if near_matches_after.size != 0:
-                        #print("near_matches_after is not emtpy")
-                        region_stop = self.diff_changes_idx[i + 1:][near_matches_after[0]]
-                        #print("region_stop", region_stop)
-
-                        region_of_interest_after = data_a[pot_start:region_stop]
-                        #print("region_of_interest_after", region_of_interest_after)
-
-                        if region_of_interest_after.size == 0:
-                            mean_after = data_a[pot_start]
-                        else:
-                            mean_after = np.mean(region_of_interest_after)
-                        #print("mean_after", mean_after)
-
                     if near_matches_before.size == 0:
                         if mean_before > mean_after + self.safty_factor:
                             gain_intervals[-1][1] = prev_stop
@@ -563,8 +549,28 @@ class ProcessDrscs():
                             i += near_matches_after[-1]
                             set_stop_flag = False
                             continue
-                        else:
-                            i +=1
+                        # for diff changes where there is a jump right after (down, up, stay, stay, jump,...)
+                        # cut off the area after the jump and try again
+                        elif near_matches_after.size != 0:
+                            #print("near_matches_after is not emtpy")
+                            region_stop = self.diff_changes_idx[i + 1:][near_matches_after[0]]
+                            #print("region_stop", region_stop)
+
+                            region_of_interest_after = data_a[pot_start:region_stop]
+                            #print("region_of_interest_after", region_of_interest_after)
+
+                            if region_of_interest_after.size == 0:
+                                mean_after = data_a[pot_start]
+                            else:
+                                mean_after = np.mean(region_of_interest_after)
+                            #print("mean_after", mean_after)
+
+                            if mean_before > mean_after + self.safty_factor:
+                                gain_intervals[-1][1] = prev_stop
+
+                                i += near_matches_after[-1]
+                                set_stop_flag = False
+                                continue
                     else:
                         if mean_before > mean_after + self.safty_factor:
                             gain_intervals[-1][1] = prev_stop
@@ -922,7 +928,7 @@ if __name__ == "__main__":
 
     pixel_v_list = np.arange(0,1)
     pixel_u_list = np.arange(0,1)
-    mem_cell_list = np.arange(0, 1)
+    mem_cell_list = np.arange(10)
 
     #pixel_v_list = np.array([2])
     #pixel_u_list = np.array([22])
@@ -932,6 +938,10 @@ if __name__ == "__main__":
     #pixel_u_list = np.array([10])
     #mem_cell_list = np.array([52])
     #mem_cell_list = np.array([222])
+
+    #pixel_v_list = np.array([0])
+    #pixel_u_list = np.array([12])
+    #mem_cell_list = np.array([211])
 
     #pixel_v_list = np.array([0])
     #pixel_u_list = np.array([48])
@@ -967,7 +977,7 @@ if __name__ == "__main__":
     output_fname = False
     #create_plots can be set to False, "data", "fit", "combined" or "all"
     create_plots = False#["combined"]
-    create_error_plots = False#True
+    create_error_plots = False #True
     #create_plots=["data", "combined"]
 
     cal = ProcessDrscs(asic, input_fname, output_fname=output_fname,
