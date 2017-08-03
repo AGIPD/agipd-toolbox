@@ -21,6 +21,11 @@ def get_arguments():
                         required=True,
                         help="Config file name to get config parameters from")
 
+    parser.add_argument("--run_type",
+                        type=str,
+                        choices = ["gather", "process"],
+                        help="Run type of the analysis")
+
     args = parser.parse_args()
 
     return args
@@ -44,24 +49,27 @@ class SubmitJobs():
             print("Non ini file found")
             sys.exit(1)
 
-        mail_address=config["general"]["mail_address"]
+        self.mail_address=config["general"]["mail_address"]
         run_type=config["general"]["run_type"]
 
-        module = config["general"]["module"]
-        temperature = config["general"]["temperature"]
-        measurement = config["general"]["measurement"]
+        # console parameters overwrite the config file ones
+        self.run_type = args.run_type or run_type
+
+        self.module = config["general"]["module"]
+        self.temperature = config["general"]["temperature"]
+        self.measurement = config["general"]["measurement"]
         current = config["general"]["current"]
 
-        n_jobs = int(config[run_type]["n_jobs"])
-        n_processes = config[run_type]["n_processes"]
+        self.n_jobs = int(config[run_type]["n_jobs"])
+        self.n_processes = config[run_type]["n_processes"]
 
-        input_dir = config[run_type]["input_dir"]
-        time_limit = config[run_type]["time_limit"]
-        output_dir = config[run_type]["output_dir"]
+        self.input_dir = config[run_type]["input_dir"]
+        self.time_limit = config[run_type]["time_limit"]
+        self.output_dir = config[run_type]["output_dir"]
 
         ### Needed for gather ###
-        max_part = config["gather"]["max_part"]
-        column_spec = config["gather"]["column_spec"]
+        self.max_part = config["gather"]["max_part"]
+        self.column_spec = config["gather"]["column_spec"]
 
         # convert str into list
         asic_set = config["general"]["asic_set"][1:-1].split(", ")
@@ -69,46 +77,47 @@ class SubmitJobs():
         asic_set = list(map(int, asic_set))
 
         self.asic_lists = None
-        self.generate_asic_lists(asic_set, n_jobs)
+        self.generate_asic_lists(asic_set, self.n_jobs)
 
-        work_dir = os.path.join(output_dir, module, temperature, "sbatch_out")
+        work_dir = os.path.join(self.output_dir, self.module, self.temperature, "sbatch_out")
         if not os.path.exists(work_dir):
             os.makedirs(work_dir)
             print("Creating sbatch working dir: {}\n".format(work_dir))
 
-        # getting date and time
-        now = datetime.datetime.now()
-        dt = now.strftime("%Y-%m-%d_%H:%M:%S")
-
         self.sbatch_params = [
             "--partition", "all",
-            "--time", time_limit,
+            "--time", self.time_limit,
             "--nodes", "1",
             "--mail-type", "END",
-            "--mail-user", mail_address,
+            "--mail-user", self.mail_address,
             "--workdir", work_dir,
-            "--job-name", "{}_{}_{}".format(run_type, measurement, module),
-            "--output", "{}_{}_{}_{}_%j.out".format(run_type, measurement, module, dt),
-            "--error", "{}_{}_{}_{}_%j.err".format(run_type, measurement, module, dt)
         ]
 
-        self.script_params = [
+        script_params = [
             "--script_base_dir", script_base_dir,
-            "--run_type", run_type,
-            "--measurement", measurement,
-            "--input_dir", input_dir,
-            "--output_dir", output_dir,
-            "--n_processes", n_processes,
-            "--module", module,
-            "--temperature", temperature,
-            "--current", current
+            "--run_type", self.run_type,
+            "--measurement", self.measurement,
+            "--input_dir", self.input_dir,
+            "--output_dir", self.output_dir,
+            "--n_processes", self.n_processes,
+            "--module", self.module,
+            "--temperature", self.temperature,
         ]
 
-        if run_type == "gather":
-            self.script_params += ["--max_part", max_part,
-                                   "--column_spec", column_spec]
+        if self.run_type == "gather":
+            script_params += ["--max_part", self.max_part,
+                              "--column_spec", self.column_spec]
 
-        self.run()
+
+        #comma seperated string into into list
+        current_list = [c.split()[0] for c in current.split(",")]
+
+        for current in current_list:
+            self.script_params = script_params + \
+                                 ["--current", current]
+
+            print("run:", current)
+            self.run()
 
     def generate_asic_lists(self, asic_set, n_jobs):
 
@@ -131,11 +140,32 @@ class SubmitJobs():
     def run(self):
         global batch_job_dir
 
+        # getting date and time
+        now = datetime.datetime.now()
+        dt = now.strftime("%Y-%m-%d_%H:%M:%S")
+
         print("run", self.asic_lists)
         for asic_set in self.asic_lists:
             # map to string to be able to call shell script
             asic_set = " ".join(map(str, asic_set))
             print("Starting job for asics {}\n".format(asic_set))
+
+            self.sbatch_params += [
+                "--job-name", "{}_{}_{}_{}".format(self.run_type,
+                                                   self.measurement,
+                                                   self.module,
+                                                   asic_set),
+                "--output", "{}_{}_{}_{}_{}_%j.out".format(self.run_type,
+                                                           self.measurement,
+                                                           self.module,
+                                                           asic_set,
+                                                           dt),
+                "--error", "{}_{}_{}_{}_{}_%j.err".format(self.run_type,
+                                                          self.measurement,
+                                                          self.module,
+                                                          asic_set,
+                                                          dt)
+            ]
 
             shell_script = os.path.join(batch_job_dir, "analyse.sh")
 
@@ -144,7 +174,6 @@ class SubmitJobs():
             cmd = [shell_script] + self.script_params + \
                   [asic_set]
             cmd = ["sbatch"] + self.sbatch_params + cmd
-            #print("command", cmd)
 
             subprocess.call(cmd)
 
