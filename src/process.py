@@ -573,12 +573,32 @@ class ProcessDrscs():
                             if mean_before > mean_after + self.safty_factor:
                                 gain_intervals[-1][1] = prev_stop
 
+                                # prevent an infinite loop
+                                if last_iteration_borders == [prev_stop, pot_start]:
+                                    if iteration_check >= 10:
+                                        self.result["error_code"][self.current_idx] = 4
+                                        raise InfiniteLoopNumberError("Breaking infinite loop")
+                                    iteration_check += 1
+                                else:
+                                    last_iteration_borders = [prev_stop, pot_start]
+                                    iteration_check = 0
+
                                 i += near_matches_after[-1]
                                 set_stop_flag = False
                                 continue
                     else:
                         if mean_before > mean_after + self.safty_factor:
                             gain_intervals[-1][1] = prev_stop
+
+                            # prevent an infinite loop
+                            if last_iteration_borders == [prev_stop, pot_start]:
+                                if iteration_check >= 10:
+                                    self.result["error_code"][self.current_idx] = 4
+                                    raise InfiniteLoopNumberError("Breaking infinite loop")
+                                iteration_check += 1
+                            else:
+                                last_iteration_borders = [prev_stop, pot_start]
+                                iteration_check = 0
 
                             if near_matches_after.size != 0:
                                 # do not add +1 here (like it is done if the
