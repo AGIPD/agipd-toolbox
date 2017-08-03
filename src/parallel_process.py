@@ -10,10 +10,11 @@ from process import ProcessDrscs, initiate_result, check_file_exists
 
 def exec_process(asic, input_file, analog, digital, pixel_v_list, pixel_u_list, mem_cell_list):
 
+    create_error_plots=False
+
     #plot_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/M314/temperature_m15C/drscs/plots/itestc150/manu_test/asic01_failed/"
     #plot_prefix = "M314_itestc150"
     #create_error_plots=True
-    create_error_plots=False
 
     #cal = ProcessDrscs(asic, analog=analog, digital=digital)
     cal = ProcessDrscs(asic, input_file)#,
@@ -156,7 +157,7 @@ class ParallelProcess():
                slice(m_start, m_stop),
                Ellipsis)
 
-        for key in ["slope", "offset", "residuals", "fit_error"]:
+        for key in ["slope", "offset", "residuals", "average_residual"]:
             for gain in ["high", "medium", "low"]:
                 self.result[key]["individual"][gain][idx] = (
                     p_result[key]["individual"][gain][idx])
@@ -180,7 +181,7 @@ class ParallelProcess():
                slice(u_start, u_stop),
                slice(m_start, m_stop))
 
-        for key in ["slope", "offset", "residuals", "fit_error"]:
+        for key in ["slope", "offset", "residuals", "average_residual"]:
             self.result[key]["mean"][idx] = (
                 p_result[key]["mean"][idx])
         self.result["medians"][idx] = (
@@ -194,8 +195,11 @@ class ParallelProcess():
                slice(u_start, u_stop),
                slice(m_start, m_stop))
 
+        print("p_result", p_result["error_code"][idx])
+        print("self.result", self.result["error_code"][idx])
         for key in ["error_code", "warning_code"]:
             self.result[key][idx] = p_result[key][idx]
+        print("self.result", self.result["error_code"][idx])
 
         for key in ["len_diff_changes_idx"]:
             try:
@@ -249,6 +253,7 @@ if __name__ == "__main__":
 
     base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
 
+    #asic = 10
     #asic = 2
     asic = 1
     module = "M314"

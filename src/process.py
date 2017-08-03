@@ -27,6 +27,9 @@ class GainStageNumberError(Exception):
 class ThresholdNumberError(Exception):
     pass
 
+class InfiniteLoopNumberError(Exception):
+    pass
+
 def check_file_exists(file_name):
     print("save_file = {}".format(file_name))
     if os.path.exists(file_name):
@@ -64,7 +67,7 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
                 "low": None
             }
         },
-        "fit_error": {
+        "average_residual": {
             "mean": None,
             "individual": {
                 "high" : None,
@@ -115,7 +118,7 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
     print("threshold shape: {}".format(threshold_shape))
 
     # initiate fit results
-    for key in ["slope", "offset", "residuals", "fit_error"]:
+    for key in ["slope", "offset", "residuals", "average_residual"]:
         result[key]["mean"] = np.zeros(shape, np.float32)
         result[key]["individual"] = {
             "high": np.zeros(shape_tmp + (n_intervals["high"],)),
@@ -224,6 +227,7 @@ class ProcessDrscs():
         # 1    Unknown error
         # 2    Too many gain stages found
         # 3    Not enough gain stages found
+        # 4    Breaking infinite loop
         #
         # warning_code:
         # 2    Use then two biggest intervals
@@ -240,21 +244,10 @@ class ProcessDrscs():
             print("plot_file_prefix", self.plot_file_prefix)
             print("plot_title_prefix", self.plot_title_prefix)
 
-            self.plot_name = {
-                "origin_data": Template(self.plot_file_prefix + "_${px}_${mc}_data"),
-                "fit": Template(self.plot_file_prefix + "_${px}_${mc}_fit"),
-                "combined": Template(self.plot_file_prefix + "_${px}_${mc}_combined"),
-            }
-
-            title_prefix = self.plot_file_prefix.rsplit("/", 1)[1]
-            self.plot_title = {
-                "origin_data": Template(title_prefix + "_${px}_${mc} data"),
-                "fit": Template(title_prefix + "_${px}_${mc} fit ${g}"),
-                "combined": Template(title_prefix + "_${px}_${mc} combined"),
-            }
             self.plot_ending = ".png"
         else:
-            self.plot_name = None
+            self.plot_file_prefix = None
+            self.plot_title_prefix = None
             self.plot_ending = None
 
         if self.output_fname is not None:
@@ -290,7 +283,7 @@ class ProcessDrscs():
             print("mem_cell_list", mem_cell_list)
             raise Exception("No proper memory cell specified")
 
-        if create_error_plots and self.plot_name is None:
+        if create_error_plots and self.plot_title_prefix is None:
             raise Exception("Plotting was not defined on initiation. Quitting.")
 
         self.pixel_v_list = pixel_v_list
@@ -330,11 +323,11 @@ class ProcessDrscs():
                             l = self.fit_cutoff_left
                             r = self.fit_cutoff_right
                             if len(self.result["slope"]["individual"][gain][self.current_idx]) >= l + r + 1:
-                                for t in ["slope", "offset", "residuals", "fit_error"]:
+                                for t in ["slope", "offset", "residuals", "average_residual"]:
                                     self.result[t]["mean"][self.gain_idx[gain]] = (
                                         np.mean(self.result[t]["individual"][gain][self.current_idx][l:-r]))
                             else:
-                                for t in ["slope", "offset", "residuals", "fit_error"]:
+                                for t in ["slope", "offset", "residuals", "average_residual"]:
                                     self.result[t]["mean"][self.gain_idx[gain]] = (
                                         np.mean(self.result[t]["individual"][gain][self.current_idx]))
 
@@ -451,9 +444,9 @@ class ProcessDrscs():
         prev_stop = 0
         prev_stop_idx = 0
         pot_start = 0
-        set_start_flag = True
         set_stop_flag = True
-        ignore_idx = []
+        iteration_check = 0
+        last_iteration_borders = []
         while i < len(self.diff_changes_idx):
 
             if set_stop_flag:
@@ -543,8 +536,20 @@ class ProcessDrscs():
                         #print("mean_before", mean_before)
 
                     if near_matches_before.size == 0:
+                        #print("near_matches_before.size == 0")
                         if mean_before > mean_after + self.safty_factor:
+                            #print("mean check")
                             gain_intervals[-1][1] = prev_stop
+
+                            # prevent an infinite loop
+                            if last_iteration_borders == [prev_stop, pot_start]:
+                                if iteration_check >= 10:
+                                    self.result["error_code"][self.current_idx] = 4
+                                    raise InfiniteLoopNumberError("Breaking infinite loop")
+                                iteration_check += 1
+                            else:
+                                last_iteration_borders = [prev_stop, pot_start]
+                                iteration_check = 0
 
                             i += near_matches_after[-1]
                             set_stop_flag = False
@@ -723,8 +728,9 @@ class ProcessDrscs():
             self.result["slope"]["individual"][gain][array_idx] = res[0][0]
             self.result["offset"]["individual"][gain][array_idx] = res[0][1]
             self.result["residuals"]["individual"][gain][array_idx] = res[1]
-            self.result["fit_error"]["individual"][gain][array_idx] = np.sqrt(res[1] / number_of_points)
-            #print("fit_error", self.result["fit_error"]["individual"][gain][array_idx])
+            self.result["average_residual"]["individual"][gain][array_idx] = (
+                np.sqrt(res[1] / number_of_points))
+            #print("average_residual", self.result["average_residual"]["individual"][gain][array_idx])
         except:
             if res is None:
                 print("interval\n{}".format(interval))
@@ -907,8 +913,9 @@ if __name__ == "__main__":
 
     base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
 
+    asic = 10
     #asic = 2
-    asic = 1
+    #asic = 1
     #asic = 11
     module = "M314"
     temperature = "temperature_m15C"
@@ -926,55 +933,11 @@ if __name__ == "__main__":
     #pixel_u_list = np.arange(64)
     #mem_cell_list = np.arange(352)
 
-    pixel_v_list = np.arange(0,1)
-    pixel_u_list = np.arange(0,1)
-    mem_cell_list = np.arange(10)
+    pixel_v_list = np.array([48])
+    pixel_u_list = np.array([59])
+    mem_cell_list = np.arange(0,1)
 
-    #pixel_v_list = np.array([2])
-    #pixel_u_list = np.array([22])
-    #mem_cell_list = np.array([1])
-
-    #pixel_v_list = np.array([0])
-    #pixel_u_list = np.array([10])
-    #mem_cell_list = np.array([52])
-    #mem_cell_list = np.array([222])
-
-    #pixel_v_list = np.array([0])
-    #pixel_u_list = np.array([12])
-    #mem_cell_list = np.array([211])
-
-    #pixel_v_list = np.array([0])
-    #pixel_u_list = np.array([48])
-    #mem_cell_list = np.array([23])
-
-    #pixel_v_list = np.array([0])
-    #pixel_u_list = np.array([0])
-    #mem_cell_list = np.array([2])
-
-    #pixel_v_list = np.array([46])
-    #pixel_u_list = np.array([40])
-    #mem_cell_list = np.array([41])
-
-    #pixel_v_list = np.array([62])
-    #pixel_u_list = np.array([6])
-    #mem_cell_list = np.array([11])
-
-    #pixel_v_list = np.arange(64)
-    #pixel_u_list = np.arange(64)
-    #mem_cell_list = np.arange(352)
-
-    #pixel_v_list = np.arange(29, 30)
-    #pixel_u_list = np.arange(1, 2)
-    #mem_cell_list = np.arange(196, 197)
-
-    #pixel_v_list = np.arange(33, 34)
-    #pixel_u_list = np.arange(62, 63)
-    #mem_cell_list = np.arange(42, 43)
-
-    #mem_cell_list = np.arange(1, 2)
-    #mem_cell_list = np.arange(252, 253)
-
-    output_fname = False
+    #output_fname = False
     #create_plots can be set to False, "data", "fit", "combined" or "all"
     create_plots = False#["combined"]
     create_error_plots = False #True
