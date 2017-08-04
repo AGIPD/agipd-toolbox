@@ -195,11 +195,8 @@ class ParallelProcess():
                slice(u_start, u_stop),
                slice(m_start, m_stop))
 
-        print("p_result", p_result["error_code"][idx])
-        print("self.result", self.result["error_code"][idx])
         for key in ["error_code", "warning_code"]:
             self.result[key][idx] = p_result[key][idx]
-        print("self.result", self.result["error_code"][idx])
 
         for key in ["len_diff_changes_idx"]:
             try:
@@ -253,12 +250,12 @@ if __name__ == "__main__":
 
     base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
 
-    #asic = 10
-    #asic = 2
-    asic = 1
+    asic = 15
+    #asic = 1
     module = "M314"
     temperature = "temperature_m15C"
-    current = "itestc150"
+    #current = "itestc150"
+    current = "itestc80"
 
     input_fname = os.path.join(base_dir, module, temperature, "drscs", current, "gather",
                               "{}_drscs_{}_asic{}.h5".format(module, current, str(asic).zfill(2)))
