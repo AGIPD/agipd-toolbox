@@ -61,12 +61,12 @@ class SubmitJobs():
         current = config["general"]["current"]
         self.current = None
 
-        self.n_jobs = int(config[run_type]["n_jobs"])
-        self.n_processes = config[run_type]["n_processes"]
+        self.n_jobs = int(config[self.run_type]["n_jobs"])
+        self.n_processes = config[self.run_type]["n_processes"]
 
-        self.input_dir = config[run_type]["input_dir"]
-        self.time_limit = config[run_type]["time_limit"]
-        self.output_dir = config[run_type]["output_dir"]
+        self.input_dir = config[self.run_type]["input_dir"]
+        self.time_limit = config[self.run_type]["time_limit"]
+        self.output_dir = config[self.run_type]["output_dir"]
 
         ### Needed for gather ###
         try:

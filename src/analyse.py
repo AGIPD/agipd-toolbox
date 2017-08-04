@@ -196,7 +196,7 @@ class Analyse():
         if self.run_type == "gather":
             self.run_gather()
         else:
-            self.process()
+            self.run_process()
 
         print("\nFinished at", str(datetime.datetime.now()))
         print("took time: ", time.time() - t)
