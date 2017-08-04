@@ -537,6 +537,8 @@ class GatherData():
         # (no elements in between these blocks)
         self.source_index = [[0, 0]]
         stop = 0
+        stop_full_size = 0
+        stop_source = 0
         for i in np.arange(len(self.seq_number)):
 
             # a gap in the numbering occured
