@@ -59,6 +59,7 @@ class SubmitJobs():
         self.temperature = config["general"]["temperature"]
         self.measurement = config["general"]["measurement"]
         current = config["general"]["current"]
+        self.current = none
 
         self.n_jobs = int(config[run_type]["n_jobs"])
         self.n_processes = config[run_type]["n_processes"]
@@ -122,6 +123,7 @@ class SubmitJobs():
         current_list = [c.split()[0] for c in current.split(",")]
 
         for current in current_list:
+            self.current = current
             self.script_params = script_params + \
                                  ["--current", current]
 
