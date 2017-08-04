@@ -68,8 +68,14 @@ class SubmitJobs():
         self.output_dir = config[run_type]["output_dir"]
 
         ### Needed for gather ###
-        self.max_part = config["gather"]["max_part"]
-        self.column_spec = config["gather"]["column_spec"]
+        try:
+            self.max_part = config["gather"]["max_part"]
+        except KeyError:
+            self.max_part = False
+        try:
+            self.column_spec = config["gather"]["column_spec"]
+        except KeyError:
+            self.column_spec = False
 
         # convert str into list
         asic_set = config["general"]["asic_set"][1:-1].split(", ")
@@ -105,8 +111,11 @@ class SubmitJobs():
         ]
 
         if self.run_type == "gather":
-            script_params += ["--max_part", self.max_part,
-                              "--column_spec", self.column_spec]
+            if self.max_part:
+                script_params += ["--max_part", self.max_part]
+
+            if self.column_spec:
+                script_params += ["--column_spec", self.column_spec]
 
 
         #comma seperated string into into list
@@ -151,28 +160,40 @@ class SubmitJobs():
             print("Starting job for asics {}\n".format(asic_set))
 
             self.sbatch_params += [
-                "--job-name", "{}_{}_{}_{}".format(self.run_type,
+                "--job-name", "{}_{}_{}_{}_{}_{}".format(self.run_type,
                                                    self.measurement,
                                                    self.module,
+                                                   self.temperature,
+                                                   self.current,
                                                    asic_set),
-                "--output", "{}_{}_{}_{}_{}_%j.out".format(self.run_type,
+                "--output", "{}_{}_{}_{}_{}_{}_{}_%j.out".format(self.run_type,
                                                            self.measurement,
                                                            self.module,
+                                                           self.temperature,
+                                                           self.current,
                                                            asic_set,
                                                            dt),
-                "--error", "{}_{}_{}_{}_{}_%j.err".format(self.run_type,
+                "--error", "{}_{}_{}_{}_{}_{}_{}_%j.err".format(self.run_type,
                                                           self.measurement,
                                                           self.module,
+                                                          self.temperature,
+                                                          self.current,
                                                           asic_set,
                                                           dt)
             ]
 
-            shell_script = os.path.join(batch_job_dir, "analyse.sh")
+#            #shell_script = os.path.join(batch_job_dir, "analyse.sh")
 
             # split of the cmd is unneccessary but easier for debugging
             # (e.g. no job should be launched)
-            cmd = [shell_script] + self.script_params + \
-                  [asic_set]
+#            cmd = [shell_script] + self.script_params + \
+#                  [asic_set]
+
+
+            shell_script = os.path.join(batch_job_dir, "start_analyse.sh")
+            cmd = [shell_script, batch_job_dir] + self.script_params + \
+                  ["--asic_list", asic_set]
+
             cmd = ["sbatch"] + self.sbatch_params + cmd
 
             subprocess.call(cmd)
