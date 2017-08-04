@@ -21,13 +21,14 @@ if __name__ == "__main__":
 
     base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
 
-    asic = 9
+    asic = 15
     module = "M314"
     temperature = "temperature_m15C"
-    current = "itestc150"
+    current = "itestc80"
+    #current = "itestc150"
 
-    plot_subdir = "asic{}_failed".format(str(asic).zfill(2))
-    #plot_subdir = "manu_test"
+    #plot_subdir = "asic{}_failed".format(str(asic).zfill(2))
+    plot_subdir = "manu_test"
 
     n_processes = 10
 
@@ -44,8 +45,11 @@ if __name__ == "__main__":
 
     obj = GeneratePlots(asic, gather_fname, plot_prefix, plot_dir, n_processes)
 
-    #idx = (3,60,1)
-    #idx = (62, 6, 1)
-    #obj.run_idx(idx)
+    idx = None
 
-    obj.run_condition(process_fname, condition_function)
+    idx = (2,38,99)
+
+    if idx is not None:
+        obj.run_idx(idx)
+    else:
+        obj.run_condition(process_fname, condition_function)
