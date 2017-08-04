@@ -182,20 +182,14 @@ class GatherData():
         print (indices)
 
     def check_file_number(self):
-        len_col15 = len(self.files[0])
-        len_col26 = len(self.files[1])
-        len_col37 = len(self.files[2])
-        len_col48 = len(self.files[3])
 
-        if any(len(file_list) != len_col15 for file_list in self.files):
+        if any(len(file_list) != len(self.files[0]) for file_list in self.files):
             print("Number of files does not match")
-            print("file for col15", len_col15)
-            print("file for col26", len_col26)
-            print("file for col37", len_col37)
-            print("file for col48", len_col48)
+            for i in len(self.files):
+                print("file[{}]: {}".format(i, len(self.files[0])))
             sys.exit(1)
         else:
-            self.number_of_files = len_col15
+            self.number_of_files = len(self.files[0])
             print("{} file parts found".format(self.number_of_files))
 
     def get_charges(self):
@@ -732,14 +726,21 @@ class GatherData():
                 raise
 
 if __name__ == "__main__":
-    rel_file_path = "311-312-301-300-310-234/temperature_m20C/drscs/itestc150"
-    file_base_name = "M234_m8_drscs_itestc150"
-    #file_base_name = "M301_m3_drscs_itestc150"
-    output_file = "/gpfs/cfel/fsds/labs/processed/kuhnm/currentSource_chunked.h5"
 
-    #column_specs = [15, 26, 37, 48]
-    column_specs = [[15, 1], [26, 2], [37, 3], [48, 4]]
+    meas_type = "drscs"
+    asic = 1
+
+    input_file_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/raw/temp_dep_drscs/temperature_12C/drscs/itestc80"
+    input_file_name = "M312*_drscs_itestc80"
+    input_file = os.path.join(input_file_dir, input_file_name)
+
+    output_file_name = "M312_drscs_itestc80_asic01.h5"
+    output_file_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/M312/temperature_12C/drscs/itestc80/gather"
+    output_fname = os.path.join(output_file_dir, output_file_name)
+
+    column_specs = [15, 26, 37, 48]
+    #column_specs = [[15, 1], [26, 2], [37, 3], [48, 4]]
 
     max_part = False
-    asic = 7
-    GatherData(asic, rel_file_path, file_base_name, output_file, column_specs, max_part)
+
+    GatherData(asic, input_file, output_file_name, meas_type, max_part, column_specs)
