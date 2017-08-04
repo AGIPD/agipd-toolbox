@@ -59,7 +59,7 @@ class SubmitJobs():
         self.temperature = config["general"]["temperature"]
         self.measurement = config["general"]["measurement"]
         current = config["general"]["current"]
-        self.current = none
+        self.current = None
 
         self.n_jobs = int(config[run_type]["n_jobs"])
         self.n_processes = config[run_type]["n_processes"]
