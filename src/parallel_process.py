@@ -150,8 +150,7 @@ class ParallelProcess():
             if key not in ["diff_changes_idx", "len_diff_changes_idx"]:
                 self.result["collection"][key] = p_result["collection"][key]
 
-        # idx at start: individual, diff_changes_idx
-        # subintervals
+        # idx at start: individual, subintervals, diff_changes_idx, saturation
         idx = (slice(v_start, v_stop),
                slice(u_start, u_stop),
                slice(m_start, m_stop),
@@ -174,6 +173,9 @@ class ParallelProcess():
                 print(key, idx)
                 print(p_result["collection"][key][idx])
                 print(self.result["collection"][key][idx])
+
+        self.result["intervals"]["saturation"][idx] = (
+            p_result["intervals"]["saturation"][idx])
 
         # idx at end: mean, medians, threshold
         idx = (Ellipsis,

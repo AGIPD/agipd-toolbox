@@ -97,6 +97,7 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
             "safty_factor" : None,
             "diff_changes_idx": None,
             "len_diff_changes_idx": None,
+            "saturation_threshold": None,
             "scaling_point": None,
             "scaling_factor": None,
             "n_gain_stages": None,
@@ -136,6 +137,7 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
     for key in ["high", "medium", "low"]:
         result["intervals"]["subintervals"][key] = (
             init_with_nan(shape_tmp + (n_intervals[key], 2), np.int))
+    result["intervals"]["saturation"] = init_with_nan(shape_tmp + (2,), np.int)
 
     # initiate thresholds
     result["thresholds"] = np.zeros(threshold_shape, np.float32)
@@ -190,7 +192,7 @@ class ProcessDrscs():
         self.region_range = 10
         self.safty_factor = 1000
         self.n_diff_changes_stored = 10
-
+        self.saturation_threshold = 30
 
         self.scaling_point = 200
         self.scaling_factor = 10
@@ -304,6 +306,7 @@ class ProcessDrscs():
         self.result["collection"]["n_gain_stages"] = self.n_gain_stages
         self.result["collection"]["fit_cutoff_left"] = self.fit_cutoff_left
         self.result["collection"]["fit_cutoff_right"] = self.fit_cutoff_right
+        self.result["collection"]["saturation_threshold"] = self.saturation_threshold
 
         for pixel_v in self.pixel_v_list:
             for pixel_u in self.pixel_u_list:
@@ -664,7 +667,31 @@ class ProcessDrscs():
 
         self.result["intervals"]["gain_stages"][self.gain_idx["high"]] = gain_intervals[0]
         self.result["intervals"]["gain_stages"][self.gain_idx["medium"]] = gain_intervals[1]
-        self.result["intervals"]["gain_stages"][self.gain_idx["low"]] = gain_intervals[2]
+
+        new_gain_stage = self.detect_saturation(gain_intervals[2])
+        #print("new_gain_stage", new_gain_stage)
+        self.result["intervals"]["gain_stages"][self.gain_idx["low"]] = new_gain_stage
+
+
+    def detect_saturation(self,interval):
+        diff_det_interval = self.diff[interval[0]:interval[1]]
+
+        sat_indices = np.where(np.absolute(diff_det_interval) < self.saturation_threshold)[0]
+
+        j = sat_indices[-1]
+        for i in sat_indices[::-1]:
+            if i == j:
+                j -= 1
+            else:
+                #print("not true for", i, diff_det_interval[i-1:i+2])
+                break
+        #print("i", i)
+        #print("j", j)
+
+        self.result["intervals"]["saturation"][self.current_idx] = [interval[0] + i, interval[1]]
+
+        return [interval[0] + sat_indices[0], interval[0] + i]
+
 
     def fit_gain(self, gain, interval, cut_off_ends):
 
