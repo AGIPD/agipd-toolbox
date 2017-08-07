@@ -18,11 +18,11 @@ def get_arguments():
 
     parser.add_argument("--input_dir",
                         type=str,
-                        required=True,
+                        default="/gpfs/cfel/fsds/labs/agipd/calibration/processed",
                         help="Directory to get data from")
     parser.add_argument("--output_dir",
                         type=str,
-                        required=True,
+                        default="/gpfs/cfel/fsds/labs/agipd/calibration/processed",
                         help="Base directory to write results to")
     parser.add_argument("--module",
                         type=str,
@@ -35,7 +35,7 @@ def get_arguments():
     parser.add_argument("--current",
                         type=str,
                         required=True,
-                        help="Current to use, e.g. itestc20")
+                        help="Current to use (e.g. itestc20) or combined")
     parser.add_argument("--individual_plots",
                         help="Create plots per asic",
                         action="store_true")
@@ -153,8 +153,11 @@ def create_matrix_individual(input_fname):
     # calcurate matrix
     return generate_matrix(process_result)
 
-def create_plots(mem_cell_list, colormap_matrix, plot_prefix, plot_ending, splitted=False):
+def create_plots(mem_cell_list, colormap_matrix, plot_file_prefix, plot_ending, splitted=False):
     plot_size = (27, 7)
+                # [left, bottom, width, height]
+    ax_location = [0.91, 0.11, 0.01, 0.75]
+    ax2_location = [0.94, 0.11, 0.01, 0.75]
 
     for mem_cell in mem_cell_list:
         # fill number to be of 3 digits
@@ -169,28 +172,30 @@ def create_plots(mem_cell_list, colormap_matrix, plot_prefix, plot_ending, split
                 fig, ax = plt.subplots(figsize=plot_size)
 
                 p_a = ax.imshow(m_a, interpolation='nearest', cmap=cm.Reds)
-                # [left, bottom, width, height]
-                colorbar_ax = fig.add_axes([1.0, 0, 0.01, 0.9])
+                colorbar_ax = fig.add_axes(ax_location)
                 fig.colorbar(p_a, cax=colorbar_ax)
 
                 p_b = ax.imshow(m_b, interpolation='nearest', cmap=cm.viridis)
-                # [left, bottom, width, height]
-                colorbar_ax = fig.add_axes([1.05, 0, 0.01, 0.9])
+                colorbar_ax = fig.add_axes(ax2_location)
                 fig.colorbar(p_b, cax=colorbar_ax)
 
             else:
                 fig = plt.figure(figsize=plot_size)
                 plt.imshow(m)
-                plt.colorbar()
+                colorbar_ax = fig.add_axes(ax_location)
+                plt.colorbar(cax=colorbar_ax)
 
-            fig.savefig("{}_{}_{}{}".format(plot_prefix, "low", key, plot_ending),
+            title_prefix = plot_file_prefix.rsplit("/", 1)[1]
+            plt.suptitle("{}_{} {}".format(title_prefix, "low", key), fontsize=24)
+
+            fig.savefig("{}_{}_{}{}".format(plot_file_prefix, "low", key, plot_ending),
                         bbox_inches='tight')
             fig.clf()
             plt.close(fig)
 
 
 class CreateColormaps():
-    def __init__(self, input_file_dir, output_file_dir, module, current,
+    def __init__(self, input_template, output_template, module, current,
                  plot_dir, pixel_v_list, pixel_u_list, mem_cell_list,
                  n_processes, individual_plots=False):
 
@@ -201,9 +206,8 @@ class CreateColormaps():
 
         self.plot_ending = ".png"
 
-        file_prefix = "{}_drscs_{}_asic".format(module, current)
-        self.input_prefix = os.path.join(input_file_dir, file_prefix)
-        self.output_prefix = os.path.join(output_file_dir, file_prefix)
+        self.input_template = input_template
+        self.output_template = output_template
 
         self.asics_in_upper_row = np.arange(16,8,-1)
         self.asics_in_lower_row = np.arange(1,9)
@@ -261,7 +265,7 @@ class CreateColormaps():
             plot_prefix = self.plot_template.substitute(a=asic)
 
             # the input files for processing are the output ones from gather
-            input_fname = "{}{}_processed.h5".format(self.input_prefix, str(asic).zfill(2))
+            input_fname = self.input_template.substitute(a=str(asic).zfill(2))
             print("input_file", input_fname)
 
             result_list.append(
@@ -299,7 +303,7 @@ class CreateColormaps():
         for asic in asic_list:
 
             # the input files for processing are the output ones from gather
-            input_fname = "{}{}_processed.h5".format(self.input_prefix, str(asic).zfill(2))
+            input_fname = self.input_template.substitute(a=str(asic).zfill(2))
             print("input_file", input_fname)
 
             # calcurate matrix
@@ -350,11 +354,31 @@ if __name__ == "__main__":
     print("current: ", current)
     print("individual_plots: ", individual_plots)
 
-    input_file_dir = os.path.join(input_base_dir, module, temperature, "drscs", current, "process")
-    output_file_dir = os.path.join(output_base_dir, module, temperature, "drscs", current)
+    if current == "combined":
+        input_path = os.path.join(input_base_dir, module, temperature, "drscs", "combined")
+        # substitute all except current and asic
+        input_template = Template("${p}/${m}_drscs_asic${a}_combined.h5").safe_substitute(p=input_path, m=module)
 
-    plot_dir = os.path.join(output_base_dir, module, temperature, "drscs", "plots", current, "colormaps")
-    print("plot_dir", plot_dir)
+        plot_dir = os.path.join(output_base_dir, module, temperature, "drscs", "plots", "combined")
+        print("plot_dir", plot_dir)
+
+    else:
+        input_path = os.path.join(input_base_dir, module, temperature, "drscs", current, "process")
+        # substitute all except current and asic
+        input_template = Template("${p}/${m}_drscs_${c}_asic${a}_processed.h5").safe_substitute(p=input_path, m=module, c=current)
+
+        plot_dir = os.path.join(output_base_dir, module, temperature, "drscs", "plots", current, "colormaps")
+        print("plot_dir", plot_dir)
+
+    # make a template out of this string to let Combine set current and asic
+    input_template = Template(input_template)
+
+    output_path = os.path.join(output_base_dir, module, temperature, "drscs", current)
+    # substitute all except current and asic
+    output_template = Template("${m}_drscs_${c}_asic${a}_colormap.h5").safe_substitute(m=module, c=current)
+    # make a template out of this string to let Combine set current and asic
+    output_template = Template(output_template)
+
     create_dir(plot_dir)
 
     if individual_plots:
@@ -367,7 +391,7 @@ if __name__ == "__main__":
 
     n_processes = 8
 
-    obj = CreateColormaps(input_file_dir, output_file_dir, module, current,
+    obj = CreateColormaps(input_template, output_template, module, current,
                           plot_dir, pixel_v_list, pixel_u_list, mem_cell_list,
                           n_processes, individual_plots)
 

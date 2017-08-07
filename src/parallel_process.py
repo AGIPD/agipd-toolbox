@@ -6,7 +6,8 @@ import os
 import time
 import h5py
 from process import ProcessDrscs, initiate_result, check_file_exists
-
+from functools import reduce  # forward compatibility for Python 3
+import operator
 
 def exec_process(asic, input_file, analog, digital, pixel_v_list, pixel_u_list, mem_cell_list):
 
@@ -22,6 +23,98 @@ def exec_process(asic, input_file, analog, digital, pixel_v_list, pixel_u_list, 
     cal.run(pixel_v_list, pixel_u_list, mem_cell_list, create_error_plots=create_error_plots)
 
     return cal.result, pixel_v_list, pixel_u_list, mem_cell_list
+
+
+def map_to_dict(map_list, result):
+    return reduce(operator.getitem, map_list, result)
+
+
+def map_to_hdf5(map_list, result):
+    return  np.array(result["/" + "/".join(map_list)])
+
+
+def integrate_result(idx, result, source):
+
+    if type(source) == h5py._hl.files.File:
+        map_to_format = map_to_hdf5
+
+        # these have to be treated differently because it contains ints/floats
+        for key in source["collection"].keys():
+            # do not do this for array time entries because otherwise it would
+            # overwrite self.results with a pointer to p_results
+            if key not in ["diff_changes_idx", "len_diff_changes_idx"]:
+                result["collection"][key] = source["/collection/" + key][()]
+
+    elif type(source) == dict():
+        map_to_format = map_to_dict
+
+        # these have to be treated differently because it contains ints/floats
+        for key in source["collection"]:
+            # do not do this for array time entries because otherwise it would
+            # overwrite self.results with a pointer to p_results
+            if key not in ["diff_changes_idx", "len_diff_changes_idx"]:
+                result["collection"][key] = source["collection"][key]
+    else:
+        raise("Source to intergate of unsupported format")
+
+
+
+    # idx at start: individual, subintervals, diff_changes_idx, saturation
+    index = idx + (Ellipsis,)
+
+    for key in ["slope", "offset", "residuals", "average_residual"]:
+        for gain in ["high", "medium", "low"]:
+            source_key = [key, "individual", gain]
+            map_to_dict(source_key, result)[index] = (
+                map_to_format(source_key, source)[index])
+
+    for gain in ["high", "medium", "low"]:
+        source_key = ["intervals", "subintervals", gain]
+        map_to_dict(source_key, result)[index] = (
+            map_to_format(source_key, source)[index])
+
+    for key in ["diff_changes_idx"]:
+        source_key = ["collection", key]
+        map_to_dict(source_key, result)[index] = (
+            map_to_format(source_key, source)[index])
+
+    source_key = ["intervals", "saturation"]
+    map_to_dict(source_key, result)[index] = (
+        map_to_format(source_key, source)[index])
+
+    # idx at end: mean, medians, threshold
+    index = (Ellipsis, ) + idx
+
+    for key in ["slope", "offset", "residuals", "average_residual"]:
+        source_key = [key, "mean"]
+        map_to_dict(source_key, result)[index] = (
+            map_to_format(source_key, source)[index])
+
+    for key in ["medians", "thresholds"]:
+        source_key = [key]
+        map_to_dict(source_key, result)[index] = (
+            map_to_format(source_key, source)[index])
+
+    # only idx: error_code, warning_code, len_diff_changes_idx
+    index = (Ellipsis,) + idx
+
+    for key in ["error_code", "warning_code"]:
+        source_key = [key]
+        map_to_dict(source_key, result)[index] = (
+            map_to_format(source_key, source)[index])
+
+    for key in ["len_diff_changes_idx"]:
+        source_key = ["collection", key]
+        map_to_dict(source_key, result)[index] = (
+            map_to_format(source_key, source)[index])
+
+    # special: gain_stages
+    index = (Ellipsis,) + idx + (slice(None),)
+
+    source_key = ["intervals", "gain_stages"]
+    map_to_dict(source_key, result)[index] = (
+        map_to_format(source_key, source)[index])
+
 
 
 class ParallelProcess():
@@ -105,7 +198,7 @@ class ParallelProcess():
         source_file.close()
 
     def run(self):
-        # start 4 worker processes
+        # start worker processes
         pool = Pool(processes=self.n_processes)
 
         print("\nStart process pool")
@@ -186,6 +279,7 @@ class ParallelProcess():
         for key in ["slope", "offset", "residuals", "average_residual"]:
             self.result[key]["mean"][idx] = (
                 p_result[key]["mean"][idx])
+
         self.result["medians"][idx] = (
             p_result["medians"][idx])
         self.result["thresholds"][idx] = (
