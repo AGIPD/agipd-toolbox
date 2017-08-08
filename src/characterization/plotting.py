@@ -214,7 +214,7 @@ def generate_idx_plot(plot_file_prefix, plot_title_prefix, plot_ending, plot_idx
     plot_name = "{}_data{}".format(plot_file_prefix,
                                    plot_ending)
 
-    print("generate plot")
+    print("generate plot:", plot_idx)
     generate_data_plot(idx,
                        x_values,
                        analog,
@@ -308,7 +308,7 @@ class GeneratePlots():
 
         for i in np.arange(len(plot_indices[0])):
             idx = (plot_indices[0][i], plot_indices[1][i], plot_indices[2][i])
-            print('idx', idx)
+            #print('idx', idx)
 
             analog, digital = self.load_raw_data(idx)
 
@@ -326,5 +326,5 @@ class GeneratePlots():
                      digital,
                      scaled_x_values)))
 
-            for process_result in result_list:
-                process_result.get()
+        for process_result in result_list:
+            process_result.get()
