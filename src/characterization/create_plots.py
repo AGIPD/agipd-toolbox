@@ -1,6 +1,47 @@
 import os
 import numpy as np
 from plotting import GeneratePlots
+import argparse
+
+def get_arguments():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--base_dir",
+                        type=str,
+                        default="/gpfs/cfel/fsds/labs/agipd/calibration/processed/",
+                        help="Processing directory base")
+    parser.add_argument("--n_processes",
+                        type=int,
+                        default=10,
+                        help="The number of processes for the pool")
+    parser.add_argument("--module",
+                        type=str,
+                        required=True,
+                        help="Module to gather, e.g M310")
+    parser.add_argument("--temperature",
+                        type=str,
+                        required=True,
+                        help="temperature to gather, e.g. temperature_30C")
+    parser.add_argument("--current",
+                        type=str,
+                        help="Current to use, e.g. itestc20")
+    parser.add_argument("--asic",
+                        type=int,
+                        required=True,
+                        choices=range(1, 17),
+                        help="Asic number")
+    parser.add_argument("--plot_dir",
+                        type=str,
+                        help="Subdir in which the plots should be stored")
+    parser.add_argument("--pixel",
+                        type=int,
+                        nargs = 3,
+                        help="Pixel and memory cell to create a plot from")
+
+    args = parser.parse_args()
+
+    return args
+
 
 def condition_function(error_code):
     indices = np.where(error_code != 0)
@@ -19,16 +60,24 @@ def create_dir(directory_name):
 
 if __name__ == "__main__":
 
-    base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
+    args = get_arguments()
 
-    asic = 15
-    module = "M314"
-    temperature = "temperature_m15C"
-    current = "itestc80"
-    #current = "itestc150"
+    base_dir = args.base_dir
+    asic = args.asic
+    module = args.module
+    temperature = args.temperature
+    current = args.current
+
+    plot_subdir = args.plot_dir or "asic{}_failed".format(str(asic).zfill(2))
+
+    #base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
+    #asic = 3
+    #module = "M303"
+    #temperature = "temperature_m15C"
+    #current = "itestc20"
 
     #plot_subdir = "asic{}_failed".format(str(asic).zfill(2))
-    plot_subdir = "manu_test"
+    #plot_subdir = "manu_test"
 
     n_processes = 10
 
@@ -47,7 +96,8 @@ if __name__ == "__main__":
 
     idx = None
 
-    idx = (2,38,99)
+    #idx = (2,38,99)
+    #idx = (0,2,197)
 
     if idx is not None:
         obj.run_idx(idx)
