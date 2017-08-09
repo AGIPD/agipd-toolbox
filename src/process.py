@@ -94,6 +94,7 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
         "collection": {
             "diff_threshold": None,
             "region_range_in_percent": None,
+            "region_range": None,
             "safty_factor" : None,
             "diff_changes_idx": None,
             "len_diff_changes_idx": None,
@@ -190,6 +191,7 @@ class ProcessDrscs():
 
         self.diff_threshold = -100
         self.region_range_in_percent = 2
+        self.region_range = 10
 
         self.safty_factor = 1000
         self.n_diff_changes_stored = 10
@@ -300,6 +302,7 @@ class ProcessDrscs():
 
         self.result["collection"]["diff_threshold"] = self.diff_threshold
         self.result["collection"]["region_range_in_percent"] = self.region_range_in_percent
+        self.result["collection"]["region_range"] = self.region_range
         self.result["collection"]["safty_factor"] = self.safty_factor
         self.result["collection"]["n_diff_changes_stored"] = self.n_diff_changes_stored
         self.result["collection"]["scaling_point"] = self.scaling_point
@@ -452,7 +455,7 @@ class ProcessDrscs():
         set_stop_flag = True
         iteration_check = 0
         last_iteration_borders = []
-        region_range = 0
+        region_range_before = 0
         while i < len(self.diff_changes_idx):
 
             if set_stop_flag:
@@ -468,11 +471,11 @@ class ProcessDrscs():
 
             range_len_tmp = np.ceil((prev_stop - gain_intervals[-1][1]) * self.region_range_in_percent / 100)
             if range_len_tmp != 0:
-                region_range = range_len_tmp
-            #print("region_range", region_range)
+                region_range_before = range_len_tmp
+            #print("region_range_before", region_range_before)
 
             # determine the region before the potention gain stage change
-            start_before = prev_stop - region_range
+            start_before = prev_stop - region_range_before
             if start_before < 0:
                 region_of_interest_before = data_a[0:prev_stop]
             else:
@@ -480,7 +483,7 @@ class ProcessDrscs():
             #print("region_of_interest_before", region_of_interest_before)
 
             # determine the region after the potention gain stage change
-            stop_after = pot_start + region_range
+            stop_after = pot_start + self.region_range
             if stop_after > self.diff.size:
                 region_of_interest_after = data_a[pot_start:self.diff.size]
             else:
@@ -576,7 +579,6 @@ class ProcessDrscs():
 
                             #region_stop = self.diff_changes_idx[i + 1:][near_matches_after[0]]
                             #print("region_stop", region_stop)
-
                             #region_of_interest_after = data_a[pot_start:region_stop]
 
                             #print("region_of_interest_after", region_of_interest_after)
@@ -603,6 +605,13 @@ class ProcessDrscs():
                                 i += near_matches_after[-1]
                                 set_stop_flag = False
                                 continue
+                            # if there is an outlier right before an jump but the
+                            # slope is so steep that not considering the region
+                            # between the outlier and the jump would falsify the
+                            # jump detection
+                            elif mean_before + self.safty_factor < mean_after:
+                                #print("mean before is much bigger than mean after")
+                                set_stop_flag = True
                             else:
                                 set_stop_flag = False
                     else:
