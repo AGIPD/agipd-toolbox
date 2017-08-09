@@ -67,6 +67,8 @@ if __name__ == "__main__":
     module = args.module
     temperature = args.temperature
     current = args.current
+    idx = tuple(args.pixel)
+    print("idx", idx)
 
     plot_subdir = args.plot_dir or "asic{}_failed".format(str(asic).zfill(2))
 
@@ -94,10 +96,7 @@ if __name__ == "__main__":
 
     obj = GeneratePlots(asic, gather_fname, plot_prefix, plot_dir, n_processes)
 
-    idx = None
-
-    #idx = (2,38,99)
-    #idx = (0,2,197)
+    #idx = (5,5,1)
 
     if idx is not None:
         obj.run_idx(idx)
