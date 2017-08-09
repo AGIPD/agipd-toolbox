@@ -67,7 +67,10 @@ if __name__ == "__main__":
     module = args.module
     temperature = args.temperature
     current = args.current
-    idx = tuple(args.pixel)
+    if args.pixel is not None:
+        idx = tuple(args.pixel)
+    else:
+        idx = None
     print("idx", idx)
 
     plot_subdir = args.plot_dir or "asic{}_failed".format(str(asic).zfill(2))
