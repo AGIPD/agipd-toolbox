@@ -189,7 +189,7 @@ class ProcessDrscs():
         self.percent = 10
 
         self.diff_threshold = -100
-        self.region_range_in_percent = 5
+        self.region_range_in_percent = 2
 
         self.safty_factor = 1000
         self.n_diff_changes_stored = 10
@@ -310,6 +310,7 @@ class ProcessDrscs():
         self.result["collection"]["saturation_threshold"] = self.saturation_threshold
 
         for pixel_v in self.pixel_v_list:
+            #print("start processing row", pixel_v)
             for pixel_u in self.pixel_u_list:
                 #t = time.time()
                 for mem_cell in self.mem_cell_list:
@@ -568,10 +569,16 @@ class ProcessDrscs():
                         # cut off the area after the jump and try again
                         elif near_matches_after.size != 0:
                             #print("near_matches_after is not emtpy")
-                            region_stop = self.diff_changes_idx[i + 1:][near_matches_after[0]]
+
+                            region_start = self.diff_changes_idx[i + 1:][near_matches_after[-1]]
+                            #print("region_start", region_start)
+                            region_of_interest_after = data_a[region_start:stop_after]
+
+                            #region_stop = self.diff_changes_idx[i + 1:][near_matches_after[0]]
                             #print("region_stop", region_stop)
 
-                            region_of_interest_after = data_a[pot_start:region_stop]
+                            #region_of_interest_after = data_a[pot_start:region_stop]
+
                             #print("region_of_interest_after", region_of_interest_after)
 
                             if region_of_interest_after.size == 0:
@@ -596,6 +603,8 @@ class ProcessDrscs():
                                 i += near_matches_after[-1]
                                 set_stop_flag = False
                                 continue
+                            else:
+                                set_stop_flag = False
                     else:
                         if mean_before > mean_after + self.safty_factor:
                             gain_intervals[-1][1] = prev_stop
@@ -638,7 +647,7 @@ class ProcessDrscs():
             gain_intervals[-1][1] = self.diff.size + 1
         else:
             gain_intervals.append([pot_start, self.diff.size + 1])
-        #print("found gain intervals", gain_intervals)
+        #print(self.current_idx, ", found gain intervals", gain_intervals)
         #print("len gain intervals", len(gain_intervals))
 
         if len(gain_intervals) > 3:
