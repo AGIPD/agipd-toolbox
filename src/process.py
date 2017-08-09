@@ -689,7 +689,25 @@ class ProcessDrscs():
         self.result["intervals"]["gain_stages"][self.gain_idx["low"]] = new_gain_stage
 
 
-    def detect_saturation(self,interval):
+    def detect_saturation(self, interval):
+        self.saturation_threshold = 14000
+
+        sat_index = np.where(self.analog[self.current_idx[0], self.current_idx[1], self.current_idx[2], interval[0]:interval[1]] >= self.saturation_threshold)[0]
+
+        # check if the result of where was empty
+        if sat_index.size == 0:
+            sat_index = interval[1]
+        else:
+            sat_index = interval[0] + sat_index[0]
+        #print("sat_indices", sat_index)
+        #print("value", self.analog[self.current_idx[0], self.current_idx[1], self.current_idx[2], sat_index-5:sat_index+6])
+
+        self.result["intervals"]["saturation"][self.current_idx] = [sat_index, interval[1]]
+
+        return [interval[0], sat_index]
+
+
+    def detect_saturation2(self, interval):
         diff_det_interval = self.diff[interval[0]:interval[1]]
 
         sat_indices = np.where(np.absolute(diff_det_interval) < self.saturation_threshold)[0]
