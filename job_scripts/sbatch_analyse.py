@@ -203,7 +203,7 @@ class SubmitJobs():
             cmd = [shell_script, batch_job_dir] + self.script_params + \
                   ["--asic_list", asic_set]
 
-#            cmd = ["sbatch"] + self.sbatch_params + cmd
+            cmd = ["sbatch"] + self.sbatch_params + cmd
 
             subprocess.call(cmd)
 
