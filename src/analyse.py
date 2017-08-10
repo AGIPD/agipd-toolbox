@@ -17,12 +17,15 @@ from __future__ import print_function
 
 import os
 import sys
-from parallel_process import ParallelProcess
-from gather import GatherData
 import argparse
 import datetime
 import time
 import numpy as np
+from string import Template
+
+from gather import GatherData
+from parallel_process import ParallelProcess
+from merge_drscs import ParallelMerge
 
 def get_arguments():
     parser = argparse.ArgumentParser()
@@ -57,13 +60,16 @@ def get_arguments():
                         help="Element used for fluorescence, e.g. Cu")
     parser.add_argument("--asic",
                         type=int,
-                        required=True,
                         choices=range(1, 17),
                         help="Asic number")
-    parser.add_argument("--type",
+    parser.add_argument("--asic_list",
+                        type=int,
+                        nargs="+",
+                        help="List of asics")
+    parser.add_argument("--run_type",
                         type=str,
                         required=True,
-                        choices=["gather", "process"],
+                        choices=["gather", "process", "merge"],
                         help="What type of run should be started")
     parser.add_argument("--measurement",
                         type=str,
@@ -87,10 +93,26 @@ def get_arguments():
 
     args = parser.parse_args()
 
-    if args.type == "gather":
+    if args.run_type == "gather":
         if args.column_spec and len(args.column_spec) != 4:
             print("There have to be 4 columns defined")
             sys.exit(1)
+
+        if not args.asic:
+            print("Asic has to be set for run_type {}".format(args.run_type))
+            sys.exit(1)
+    elif args.run_type == "process":
+        if not args.asic:
+            print("Asic has to be set for run_type {}".format(args.run_type))
+            sys.exit(1)
+    elif args.run_type == "process":
+        if not args.asic_list:
+            print("Asic list has to be set for run_type {}".format(args.run_type))
+            sys.exit(1)
+
+    if args.run_type == "merge" and args.measurement != "drscs":
+        print("Merge is only supported for drscs")
+        sys.exit(1)
 
     if args.measurement == "dark" and not args.tint:
         print("The tint must be defined for dark!")
@@ -100,7 +122,7 @@ def get_arguments():
         print("The element must be defined for xray!")
         sys.exit(1)
 
-    if args.measurement == "drscs" and not args.current:
+    if args.measurement == "drscs" and not args.current and args.run_type != "merge":
         print("The current must be defined for drscs!")
         sys.exit(1)
 
@@ -119,7 +141,7 @@ def create_dir(directory_name):
 class Analyse():
     def __init__(self, run_type, meas_type, input_base_dir, output_base_dir,
                  n_processes, module, temperature, current, tint, element,
-                 asic, column_spec, reduced_columns, max_part):
+                 asic, asic_list, column_spec, reduced_columns, max_part):
         print("started Analyse")
 
         self.run_type = run_type
@@ -133,6 +155,7 @@ class Analyse():
         self.tint = tint
         self.element = element
         self.asic = asic
+        self.asic_list = asic_list
         self.reduced_columns = reduced_columns
 
         if column_spec and len(column_spec) == 4:
@@ -169,6 +192,7 @@ class Analyse():
         print("tint (dark): ", self.tint)
         print("element (xray): ", self.element)
         print("asic: ", self.asic)
+        print("asic_list: ", self.asic_list)
         print("input_dir: ", self.input_base_dir)
         print("output_dir: ", self.output_base_dir)
         print("column_specs: ", self.column_specs)
@@ -195,8 +219,12 @@ class Analyse():
 
         if self.run_type == "gather":
             self.run_gather()
-        else:
+        elif self.run_type == "process":
             self.run_process()
+        elif self.run_type == "merge":
+            self.run_merge_drscs()
+        else:
+            print("Unsupported argument: run_type {}".format(self.run_type))
 
         print("\nFinished at", str(datetime.datetime.now()))
         print("took time: ", time.time() - t)
@@ -246,7 +274,6 @@ class Analyse():
         else:
             GatherData(self.asic, input_fname, output_fname, self.meas_type,
                        self.max_part)
-
 
     def run_process(self):
         # the input files for processing are the output ones from gather
@@ -305,12 +332,33 @@ class Analyse():
         proc = ParallelProcess(self.asic, input_fname, pixel_v_list, pixel_u_list,
                                mem_cell_list, self.n_processes, output_fname)
 
+    def run_merge_drscs(self):
+
+        base_path = self.input_base_dir
+        asic_list = self.asic_list
+
+        input_path = os.path.join(base_path, self.module, self.temperature, "drscs")
+        # substitute all except current and asic
+        input_template = (Template("${p}/${c}/process/${m}_drscs_${c}_asic${a}_processed.h5")
+                          .safe_substitute(p=input_path, m=self.module))
+        # make a template out of this string to let Combine set current and asic
+        input_template = Template(input_template)
+
+        output_path = os.path.join(base_path, self.module, self.temperature,
+                                   "drscs", "combined")
+        output_template = (Template("${p}/${m}_drscs_asic${a}_combined.h5")
+                           .safe_substitute(p=output_path,
+                                            m=self.module,
+                                            t=self.temperature))
+        output_template = Template(output_template)
+
+        ParallelMerge(input_template, output_template, asic_list, self.n_processes)
 
 if __name__ == "__main__":
 
     args = get_arguments()
 
-    run_type = args.type
+    run_type = args.run_type
     meas_type = args.measurement
     input_base_dir = args.input_dir
     output_base_dir = args.output_dir
@@ -321,10 +369,11 @@ if __name__ == "__main__":
     tint = args.tint
     element = args.element
     asic = args.asic
+    asic_list = args.asic_list
     column_spec = args.column_spec
     reduced_columns = args.reduced_columns
     max_part = args.max_part
 
     Analyse(run_type, meas_type, input_base_dir, output_base_dir, n_processes,
-            module, temperature, current, tint, element, asic, column_spec,
-            reduced_columns, max_part)
+            module, temperature, current, tint, element, asic, asic_list,
+            column_spec, reduced_columns, max_part)
