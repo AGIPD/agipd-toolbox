@@ -4,7 +4,6 @@ from multiprocessing import Pool, TimeoutError
 import matplotlib.pyplot as plt
 import numpy as np
 import h5py
-from string import Template
 import os
 import sys
 import time
@@ -1003,33 +1002,35 @@ if __name__ == "__main__":
 
     base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
 
-    asic = 10
-    #asic = 2
-    #asic = 1
-    #asic = 11
-    module = "M314"
+    asic = 1
+    module = "M303"
     temperature = "temperature_m15C"
-    current = "itestc150"
+    #current = "itestc150"
+    current = "itestc20"
 
     input_fname = os.path.join(base_dir, module, temperature, "drscs", current, "gather",
                               "{}_drscs_{}_asic{}.h5".format(module, current, str(asic).zfill(2)))
     output_fname = os.path.join(base_dir, module, temperature, "drscs", current, "process",
                                "{}_drscs_{}_asic{}_processed.h5".format(module, current, str(asic).zfill(2)))
-    plot_dir = os.path.join(base_dir, module, temperature, "drscs", "plots", current, "manu_test")
+    plot_subdir = "pixel_investigation"
+    plot_dir = os.path.join(base_dir, module, temperature, "drscs", "plots", current, plot_subdir)
+
     #plot_dir = os.path.join(base_dir, module, temperature, "drscs", "plots", current, "asic_{}".format(asic))
     plot_prefix = "{}_{}".format(module, current)
 
-    #pixel_v_list = np.arange(64)
-    #pixel_u_list = np.arange(64)
-    #mem_cell_list = np.arange(352)
+    create_dir(plot_dir)
 
-    pixel_v_list = np.array([48])
-    pixel_u_list = np.array([59])
-    mem_cell_list = np.arange(0,1)
+    #pixel_v_list = np.arange(2,3)
+    #pixel_u_list = np.arange(38,39)
+    #mem_cell_list = np.arange(99,100)
 
-    #output_fname = False
+    pixel_v_list = np.array([2])
+    pixel_u_list = np.array([4])
+    mem_cell_list = np.array([100])
+
+    output_fname = False
     #create_plots can be set to False, "data", "fit", "combined" or "all"
-    create_plots = False#["combined"]
+    create_plots = ["data", "combined"]
     create_error_plots = False #True
     #create_plots=["data", "combined"]
 

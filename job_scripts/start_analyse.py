@@ -18,7 +18,7 @@ def get_arguments():
     parser.add_argument("--run_type",
                         type=str,
                         required=True,
-                        choices=["gather", "process"],
+                        choices=["gather", "process", "merge"],
                         help="what type of run should be started")
     parser.add_argument("--measurement",
                         type=str,
@@ -80,6 +80,10 @@ def get_arguments():
             print("There have to be 4 columns defined")
             sys.exit(1)
 
+    if args.run_type == "merge" and args.measurement != "drscs":
+        print("Merge is only supported for drscs")
+        sys.exit(1)
+
     if args.measurement == "dark" and not args.tint:
         print("The tint must be defined for dark!")
         sys.exit(1)
@@ -88,7 +92,7 @@ def get_arguments():
         print("The element must be defined for xray!")
         sys.exit(1)
 
-    if args.measurement == "drscs" and not args.current:
+    if args.measurement == "drscs" and not args.current and args.run_type != "merge":
         print("The current must be defined for drscs!")
         sys.exit(1)
 
@@ -128,29 +132,47 @@ class StartAnalyse():
         from analyse import Analyse
 
         jobs = []
-        for asic in self.asic_list:
-            print("Starting script for asic {}\n".format(asic))
+        if self.run_type == "merge":
+            Analyse(self.run_type,
+                    self.meas_type,
+                    self.input_base_dir,
+                    self.output_base_dir,
+                    self.n_processes,
+                    self.module,
+                    self.temperature,
+                    self.current,
+                    self.tint,
+                    self.element,
+                    0,
+                    self.asic_list,
+                    self.column_spec,
+                    self.reduced_columns,
+                    self.max_part)
+        else:
+            for asic in self.asic_list:
+                print("Starting script for asic {}\n".format(asic))
 
-            p = multiprocessing.Process(target=Analyse,
-                                        args=(self.run_type,
-                                              self.meas_type,
-                                              self.input_base_dir,
-                                              self.output_base_dir,
-                                              self.n_processes,
-                                              self.module,
-                                              self.temperature,
-                                              self.current,
-                                              self.tint,
-                                              self.element,
-                                              asic,
-                                              self.column_spec,
-                                              self.reduced_columns,
-                                              self.max_part))
-            jobs.append(p)
-            p.start()
+                p = multiprocessing.Process(target=Analyse,
+                                            args=(self.run_type,
+                                                  self.meas_type,
+                                                  self.input_base_dir,
+                                                  self.output_base_dir,
+                                                  self.n_processes,
+                                                  self.module,
+                                                  self.temperature,
+                                                  self.current,
+                                                  self.tint,
+                                                  self.element,
+                                                  asic,
+                                                  self.asic_list,
+                                                  self.column_spec,
+                                                  self.reduced_columns,
+                                                  self.max_part))
+                jobs.append(p)
+                p.start()
 
-        for job in jobs:
-            job.join()
+            for job in jobs:
+                job.join()
 
 
 if __name__ == "__main__":

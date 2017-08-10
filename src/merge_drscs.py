@@ -11,7 +11,7 @@ from process import check_file_exists
 from parallel_process import integrate_result
 from multiprocessing import Pool
 
-class ParallelCombine():
+class ParallelMerge():
     def __init__(self, input_template, output_template, asic_list, n_processes):
         self.input_template = input_template
         self.output_template = output_template
@@ -51,8 +51,15 @@ class ParallelCombine():
 def exec_combine(input_template, output_template, asic):
     output_fname = output_template.substitute(a=str(asic).zfill(2))
 
-    obj = CombineDrscs(input_template, output_fname, asic)
-    obj.run()
+    obj = None
+    try:
+        obj = CombineDrscs(input_template, output_fname, asic)
+    except:
+        pass
+
+    # for some reason the process does not stop if CombineDrscs failes
+    if obj is not None:
+        obj.run()
 
 
 class CombineDrscs():
@@ -215,7 +222,7 @@ if __name__ == "__main__":
     output_template = Template("${p}/${m}_drscs_asic${a}_combined.h5").safe_substitute(p=output_path, m=module, t=temperature)
     output_template = Template(output_template)
 
-    ParallelCombine(input_template, output_template, asic_list, n_processes)
+    ParallelMerge(input_template, output_template, asic_list, n_processes)
 
 #    for asic in asic_list:
 #        output_fname = os.path.join(base_path, module, temperature, "drscs", "combined",

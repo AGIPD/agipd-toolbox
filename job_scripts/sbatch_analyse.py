@@ -23,7 +23,7 @@ def get_arguments():
 
     parser.add_argument("--run_type",
                         type=str,
-                        choices = ["gather", "process"],
+                        choices = ["gather", "process", "merge"],
                         help="Run type of the analysis")
 
     args = parser.parse_args()
@@ -122,13 +122,20 @@ class SubmitJobs():
         #comma seperated string into into list
         current_list = [c.split()[0] for c in current.split(",")]
 
-        for current in current_list:
-            self.current = current
-            self.script_params = script_params + \
-                                 ["--current", current]
+        if self.run_type == "merge":
+            self.script_params = script_params
 
-            print("run:", current)
+            print("run merge")
             self.run()
+
+        else:
+            for current in current_list:
+                self.current = current
+                self.script_params = script_params + \
+                                     ["--current", current]
+
+                print("run:", current)
+                self.run()
 
     def generate_asic_lists(self, asic_set, n_jobs):
 
@@ -196,7 +203,7 @@ class SubmitJobs():
             cmd = [shell_script, batch_job_dir] + self.script_params + \
                   ["--asic_list", asic_set]
 
-            cmd = ["sbatch"] + self.sbatch_params + cmd
+#            cmd = ["sbatch"] + self.sbatch_params + cmd
 
             subprocess.call(cmd)
 
