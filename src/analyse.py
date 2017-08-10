@@ -344,13 +344,15 @@ class Analyse():
         # make a template out of this string to let Combine set current and asic
         input_template = Template(input_template)
 
-        output_path = os.path.join(base_path, self.module, self.temperature,
+        output_dir = os.path.join(base_path, self.module, self.temperature,
                                    "drscs", "combined")
         output_template = (Template("${p}/${m}_drscs_asic${a}_combined.h5")
-                           .safe_substitute(p=output_path,
+                           .safe_substitute(p=output_dir,
                                             m=self.module,
                                             t=self.temperature))
         output_template = Template(output_template)
+
+        create_dir(output_dir)
 
         ParallelMerge(input_template, output_template, asic_list, self.n_processes)
 
