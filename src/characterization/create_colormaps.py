@@ -57,13 +57,16 @@ def create_dir(directory_name):
             if os.path.isdir(directory_name):
                 pass
 
-
-def generate_matrix(result):
+def generate_matrix(result, gain_name, quality):
     """
     generate map for low gain
     """
-    gain = 2
-    gain_name = "low"
+    gain_d = {
+        "high": 0,
+        "medium": 1,
+        "low": 2
+    }
+    gain = gain_d[gain_name]
 
     matrix = {
         "slope": None,
@@ -83,41 +86,45 @@ def generate_matrix(result):
         # intiate with nan
         matrix[key][...] = np.NAN
 
-    for v in np.arange(n_pixel_v):
-        for u in np.arange(n_pixel_u):
-            for mem_cell in np.arange(n_mem_cell):
-                #print("pixel [{},{}], mem_cell {}".format(v, u, mem_cell))
+    if quality:
+        for v in np.arange(n_pixel_v):
+            for u in np.arange(n_pixel_u):
+                for mem_cell in np.arange(n_mem_cell):
+                    #print("pixel [{},{}], mem_cell {}".format(v, u, mem_cell))
 
-                for key in ["slope", "offset"]:
-                    mean = result[key]["mean"][gain, v, u, mem_cell]
-                    values = result[key]["individual"][gain_name][v, u, mem_cell][1:-1]
-                    #print(key)
-                    #print("mean={}, values={}".format(mean, values))
+                    for key in ["slope", "offset"]:
+                        mean = result[key]["mean"][gain, v, u, mem_cell]
+                        values = result[key]["individual"][gain_name][v, u, mem_cell][1:-1]
+                        #print(key)
+                        #print("mean={}, values={}".format(mean, values))
 
-                    try:
-                        if mean != 0:
-                            matrix[key][v, u, mem_cell] = (
-                                np.linalg.norm(values - mean)/np.absolute(n_used_fits * mean))
-                    except:
-                        print("pixel {}, mem_cell {}".format(mem_cell, v, u))
-                        print(key)
-                        print("mean={}".format(mean))
-                        print("values={}".format(values))
+                        try:
+                            if mean != 0:
+                                matrix[key][v, u, mem_cell] = (
+                                    np.linalg.norm(values - mean)/np.absolute(n_used_fits * mean))
+                        except:
+                            print("pixel {}, mem_cell {}".format(mem_cell, v, u))
+                            print(key)
+                            print("mean={}".format(mean))
+                            print("values={}".format(values))
+    else:
+        matrix[key] = result[key]["mean"][gain, ...]
 
     return matrix
 
 
-def create_individual_plots(input_fname, mem_cell_list, plot_prefix, plot_ending):
+def create_individual_plots(input_fname, mem_cell_list, plot_prefix, plot_ending, gain_name, quality):
     try:
-        colormap_matrix = create_matrix_individual(input_fname)
+        colormap_matrix = create_matrix_individual(input_fname, gain_name, quality)
 
-        create_plots(mem_cell_list, colormap_matrix, plot_prefix, plot_ending, splitted=False)
+        create_plots(mem_cell_list, colormap_matrix, plot_prefix, plot_ending,
+                     gain_name, quality, splitted=False)
     except OSError:
         print("OSError:", input_fname)
         pass
 
 
-def create_matrix_individual(input_fname):
+def create_matrix_individual(input_fname, gain_name, quality):
     t = time.time()
 
     process_result = {
@@ -151,9 +158,10 @@ def create_matrix_individual(input_fname):
     source_file.close()
 
     # calcurate matrix
-    return generate_matrix(process_result)
+    return generate_matrix(process_result, gain_name, quality)
 
-def create_plots(mem_cell_list, colormap_matrix, plot_file_prefix, plot_ending, splitted=False):
+def create_plots(mem_cell_list, colormap_matrix, plot_file_prefix, plot_ending,
+                 gain_name, quality, splitted=False):
     plot_size = (27, 7)
                 # [left, bottom, width, height]
     ax_location = [0.91, 0.11, 0.01, 0.75]
@@ -164,7 +172,7 @@ def create_plots(mem_cell_list, colormap_matrix, plot_file_prefix, plot_ending, 
         for key in colormap_matrix:
             m = colormap_matrix[key][..., mem_cell]
 
-            if splitted and np.where(m >= 1)[0].size != 0:
+            if splitted and quality and np.where(m >= 1)[0].size != 0:
 
                 m_a = masked_array(m, m < 1)
                 m_b = masked_array(m, m >= 1)
@@ -186,9 +194,9 @@ def create_plots(mem_cell_list, colormap_matrix, plot_file_prefix, plot_ending, 
                 plt.colorbar(cax=colorbar_ax)
 
             title_prefix = plot_file_prefix.rsplit("/", 1)[1]
-            plt.suptitle("{}_{} {}".format(title_prefix, "low", key), fontsize=24)
+            plt.suptitle("{}_{} {}".format(title_prefix, gain_name, key), fontsize=24)
 
-            fig.savefig("{}_{}_{}{}".format(plot_file_prefix, "low", key, plot_ending),
+            fig.savefig("{}_{}_{}{}".format(plot_file_prefix, gain_name, key, plot_ending),
                         bbox_inches='tight')
             fig.clf()
             plt.close(fig)
@@ -197,12 +205,15 @@ def create_plots(mem_cell_list, colormap_matrix, plot_file_prefix, plot_ending, 
 class CreateColormaps():
     def __init__(self, input_template, output_template, module, current,
                  plot_dir, pixel_v_list, pixel_u_list, mem_cell_list,
-                 n_processes, individual_plots=False):
+                 n_processes, gain_name="low", quality=True, individual_plots=False):
 
         self.plot_dir = plot_dir
         self.pixel_v_list = pixel_v_list
         self.pixel_u_list = pixel_u_list
         self.mem_cell_list = mem_cell_list
+
+        self.gain_name = gain_name
+        self.quality = quality
 
         self.plot_ending = ".png"
 
@@ -237,23 +248,39 @@ class CreateColormaps():
             if self.individual_plots:
 
 
-                # substitute all except asic
-                self.plot_template = Template(
-                    "${p}/individual/${m}_${c}_asic${a}_${mc}").safe_substitute(
-                        p=plot_dir, m=module, c=current, mc=str(mem_cell).zfill(3))
-                # make a template out of this string
-                self.plot_template = Template(self.plot_template)
+                if quality:
+                    # substitute all except asic
+                    self.plot_template = Template(
+                        "${p}/individual/${m}_${c}_asic${a}_${mc}_quality").safe_substitute(
+                            p=plot_dir, m=module, c=current, mc=str(mem_cell).zfill(3))
+                    # make a template out of this string
+                    self.plot_template = Template(self.plot_template)
+                else:
+                    # substitute all except asic
+                    self.plot_template = Template(
+                        "${p}/individual/${m}_${c}_asic${a}_${mc}").safe_substitute(
+                            p=plot_dir, m=module, c=current, mc=str(mem_cell).zfill(3))
+                    # make a template out of this string
+                    self.plot_template = Template(self.plot_template)
 
                 self.get_data_individual()
             else:
-                self.plot_prefix = "{}/{}_{}_{}".format(plot_dir,
-                                                        module,
-                                                        current,
-                                                        str(mem_cell).zfill(3))
+                if quality:
+                    self.plot_prefix = ("{}/{}_{}_{}_quality"
+                                        .format(plot_dir,
+                                                module,
+                                                current,
+                                                str(mem_cell).zfill(3)))
+                else:
+                    self.plot_prefix = "{}/{}_{}_{}".format(plot_dir,
+                                                            module,
+                                                            current,
+                                                            str(mem_cell).zfill(3))
 
                 self.get_data()
                 create_plots(self.mem_cell_list, self.colormap_matrix,
-                             self.plot_prefix, self.plot_ending, splitted=True)
+                             self.plot_prefix, self.plot_ending, self.gain_name,
+                             self.quality, splitted=True)
 
             print("\nFinished at {} after {}"
                   .format(datetime.datetime.now(), time.time() - t))
@@ -274,7 +301,9 @@ class CreateColormaps():
                     (input_fname,
                      self.mem_cell_list,
                      plot_prefix,
-                     self.plot_ending)))
+                     self.plot_ending,
+                     self.gain_name,
+                     self.quality)))
 
         for process_result in result_list:
             process_result.get()
@@ -309,7 +338,7 @@ class CreateColormaps():
             # calcurate matrix
             result_list.append(
                 self.pool.apply_async(
-                     create_matrix_individual, (input_fname,)))
+                     create_matrix_individual, (input_fname, self.gain_name, self.quality)))
 
         # build matrix for whole module
         for i in range(asic_list.size):
@@ -391,8 +420,21 @@ if __name__ == "__main__":
 
     n_processes = 8
 
+    # generate gain map for all gain stages
+    quality = False
+    for gain_name in ["high", "medium", "low"]:
+        obj = CreateColormaps(input_template, output_template, module, current,
+                              plot_dir, pixel_v_list, pixel_u_list, mem_cell_list,
+                              n_processes, gain_name, quality, individual_plots)
+
+        obj.run()
+
+    # generate quality map
+    gain_name = "low"
+    quality = True
+
     obj = CreateColormaps(input_template, output_template, module, current,
                           plot_dir, pixel_v_list, pixel_u_list, mem_cell_list,
-                          n_processes, individual_plots)
+                          n_processes, gain_name, quality, individual_plots)
 
     obj.run()
