@@ -104,11 +104,11 @@ if __name__ == "__main__":
                                       "{}_drscs_{}_asic{}_processed.h5"
                                       .format(module, current, str(asic).zfill(2)))
 
+    plot_prefix = module
+
     plot_dir = os.path.normpath(os.path.join(base_dir, module, temperature,
                                              "drscs", "plots", current,
                                              plot_subdir))
-    plot_prefix = "{}_{}".format(module, current)
-
     create_dir(plot_dir)
 
     obj = GeneratePlots(asic, current, gather_template, plot_prefix, plot_dir, n_processes)

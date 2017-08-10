@@ -1,4 +1,6 @@
 import os
+import matplotlib
+matplotlib.use('Agg') # Must be before importing matplotlib.pyplot or pylab!
 import matplotlib.pyplot as plt
 import numpy as np
 import h5py
@@ -246,11 +248,15 @@ class GeneratePlots():
 
         if current.startswith("itestc"):
             self.current = int(current[len("itestc"):])
+
+            #print("plot_prefix", plot_prefix)
+            #self.plot_file_prefix = "{}_asic{}".format(plot_prefix, str(asic).zfill(2))
         else:
             self.current = None
 
         print("plot_prefix", plot_prefix)
-        self.plot_file_prefix = "{}_asic{}".format(plot_prefix, str(asic).zfill(2))
+        self.plot_file_prefix = plot_prefix
+
         self.plot_file_prefix = os.path.join(self.plot_dir, self.plot_file_prefix)
 
         self.plot_title_prefix = self.plot_file_prefix.rsplit("/", 1)[1]
@@ -310,6 +316,9 @@ class GeneratePlots():
 
         scaled_x_values = self.scale_full_x_axis(number_of_x_values)
 
+        plot_file_prefix = "{}_itestc{}_asic{}".format(self.plot_file_prefix, current, str(self.asic).zfill(2))
+        plot_title_prefix = "{}_itestc{}_asic{}".format(self.plot_title_prefix, current, str(self.asic).zfill(2))
+
         generate_idx_plot(self.plot_file_prefix, self.plot_title_prefix,
                           self.plot_ending, idx, analog, digital,
                           scaled_x_values)
@@ -342,6 +351,7 @@ class GeneratePlots():
             idx = (plot_indices[0][0], plot_indices[1][0], plot_indices[2][0])
             current = self.check_current(self.chosen_current[idx])
             input_fname = self.input_template.substitute(c=current)
+
             analog, digital = self.load_raw_data(input_fname, idx)
             number_of_x_values = analog.shape[0]
 
@@ -353,6 +363,12 @@ class GeneratePlots():
 
             current = self.check_current(self.chosen_current[idx])
             input_fname = self.input_template.substitute(c=current)
+            plot_file_prefix = "{}_itestc{}_asic{}".format(self.plot_file_prefix,
+                                                           current,
+                                                           str(self.asic).zfill(2))
+            plot_title_prefix = "{}_itestc{}_asic{}".format(self.plot_title_prefix,
+                                                            current,
+                                                            str(self.asic).zfill(2))
 
             analog, digital = self.load_raw_data(input_fname, idx)
 
@@ -362,8 +378,8 @@ class GeneratePlots():
             result_list.append(
                 pool.apply_async(
                     generate_idx_plot,
-                    (self.plot_file_prefix,
-                     self.plot_title_prefix,
+                    (plot_file_prefix,
+                     plot_title_prefix,
                      self.plot_ending,
                      idx,
                      analog,
