@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from plotting import GeneratePlots
+from plotting import GeneratePlots, generate_failed_images_plot
 import argparse
 from string import Template
 import h5py
@@ -46,38 +46,6 @@ def get_arguments():
 
     return args
 
-
-def determine_failed_pixels(process_fname):
-
-    f = h5py.File(process_fname, "r")
-    error_code = f["/error_code"][()]
-    f.close()
-
-    indices = np.where(error_code != 0)
-
-    total_number = indices[0].size
-
-    prev = (0, 0)
-    result_indices = ([], [], [])
-    occurrences = []
-    for i in np.arange(indices[0].size):
-        #print("indices", indices[0][i], indices[1][i])
-        if indices[0][i] == prev[0] and indices[1][i] == prev[1]:
-            occurrences[-1] += 1
-            #print("occurrences", occurrences)
-        else:
-            result_indices[0].append(indices[0][i])
-            result_indices[1].append(indices[1][i])
-            result_indices[2].append(indices[2][i])
-            occurrences.append(1)
-            #print("result_indices", result_indices)
-
-            prev = (indices[0][i], indices[1][i])
-            #print("prev", prev)
-
-    return result_indices, occurrences, total_number
-
-
 def create_dir(directory_name):
     if not os.path.exists(directory_name):
         try:
@@ -101,16 +69,26 @@ class GenerateStats():
         self.stat_fname = stat_fname
         self.no_plotting = no_plotting
         self.no_over_plotting = no_over_plotting
+        self.stats = dict()
+
+        self.plot_ending = ".png"
+
+        self.asic_list = range(1, 17)
+
+        self.n_mem_cells = 352
+        self.n_pixels_v = 64
+        self.n_pixels_u = 64
 
     def run(self):
 
         self.write_preamble()
 
-        asic_list = range(1, 17)
 
-        for asic in asic_list:
+        for asic in self.asic_list:
             process_fname = process_template.substitute(a=str(asic).zfill(2))
-            indices, occurences, total_number = determine_failed_pixels(process_fname)
+            indices, occurences, total_number = self.determine_failed_pixels(process_fname, asic)
+
+            self.calc_stats(asic)
 
             plot_dir = self.plot_dir_template.substitute(a=str(asic).zfill(2))
 
@@ -128,10 +106,11 @@ class GenerateStats():
                     idx = (indices[0][i], indices[1][i], indices[2][i])
 
                     if self.no_over_plotting:
-                        file_name = "{}_asic{}_[{}, {}]_{}_data.png".format(self.plot_prefix,
+                        file_name = "{}_asic{}_[{}, {}]_{}_data{}".format(self.plot_prefix,
                                                                         str(asic).zfill(2),
                                                                         idx[0], idx[1],
-                                                                        str(idx[2]).zfill(3))
+                                                                        str(idx[2]).zfill(3),
+                                                                        self.plot_ending)
                         plot_fname = os.path.join(plot_dir, file_name)
 
                         if not os.path.exists(plot_fname):
@@ -140,9 +119,78 @@ class GenerateStats():
                         obj.run_idx(idx, current_value)
                     #    obj.run_condition(process_fname, condition_function)
 
+            plot_dir_images = os.path.join(plot_dir, "failed_pixels_per_images")
+            create_dir(plot_dir_images)
+
+            plot_file_name = self.plot_image_loss(asic, plot_dir_images)
+
             self.write_asic_table(asic, indices, occurences, total_number, plot_dir)
 
+            self.write_asic_summary(asic, plot_dir_images, plot_file_name)
+
         self.write_epilog()
+
+
+    def determine_failed_pixels(self, process_fname, asic):
+
+        f = h5py.File(process_fname, "r")
+        error_code = f["/error_code"][()]
+        f.close()
+
+        self.stats[asic] = dict()
+
+        s = self.stats[asic]
+
+        indices = np.where(error_code != 0)
+        total_number = indices[0].size
+
+        s["indices"] = indices
+        s["total_number"] = total_number
+
+        prev = (0, 0)
+        result_indices = ([], [], [])
+        occurrences = []
+        for i in np.arange(indices[0].size):
+            #print("indices", indices[0][i], indices[1][i])
+            if indices[0][i] == prev[0] and indices[1][i] == prev[1]:
+                occurrences[-1] += 1
+                #print("occurrences", occurrences)
+            else:
+                result_indices[0].append(indices[0][i])
+                result_indices[1].append(indices[1][i])
+                result_indices[2].append(indices[2][i])
+                occurrences.append(1)
+                #print("result_indices", result_indices)
+
+                prev = (indices[0][i], indices[1][i])
+                #print("prev", prev)
+
+        return result_indices, occurrences, total_number
+
+    def calc_stats(self, asic):
+        indices = self.stats[asic]["indices"]
+
+        failed_images = np.zeros(self.n_mem_cells, dtype=np.int)
+        for i in np.arange(indices[2].size):
+            failed_images[indices[2][i]] += 1
+
+        self.stats[asic]["failed_images"] = failed_images
+
+    def plot_image_loss(self, asic, plot_dir):
+        #print("failed_images", self.stats[asic]["failed_images"])
+
+        plot_file_prefix = "{}_asic{}".format(self.plot_prefix, str(asic).zfill(2))
+        plot_file_prefix = os.path.join(plot_dir, plot_file_prefix)
+
+        plot_title_prefix = plot_file_prefix.rsplit("/", 1)[1]
+
+        plot_title = "{} failed pixels per image".format(plot_title_prefix)
+        plot_name = "{}_failed_pixels_per_image{}".format(plot_file_prefix, self.plot_ending)
+
+        generate_failed_images_plot(self.stats[asic]["failed_images"], plot_title, plot_name)
+
+        return plot_name
+
 
     def write_preamble(self):
         with open(self.stat_fname, 'w') as f:
@@ -182,23 +230,19 @@ class GenerateStats():
             f.write("\\tableofcontents")
             f.write("\n")
 
-    def write_epilog(self):
-        with open(self.stat_fname, 'a') as f:
-            f.write("\n")
-            f.write("\\end{document}")
-
     def write_asic_table(self, asic, indices, occurences, total_number, plot_dir):
-        print(indices)
 
         with open(self.stat_fname, 'a') as f:
 
             f.write("\\newpage")
-            f.write("\section{")
-            f.write("Asic {}".format(asic))
+            f.write("\section{ASIC ")
+            f.write(str(asic))
             f.write("}\n")
             f.write("Pixel memory cell combinations with problems: {}\\\\\n".format(total_number))
-            f.write("This corresponds to : {}\\%".format((total_number / (64 * 64 *352)) * 100))
-
+            f.write("This corresponds to : {:.2f}\\%"
+                    .format((total_number / (self.n_pixels_v *
+                                             self.n_pixels_u *
+                                             self.n_mem_cells)) * 100))
 
             f.write("\\begin{longtable}{|l|c|l|l|}\n")
             f.write("\\hline\n")
@@ -224,7 +268,26 @@ class GenerateStats():
                 f.write("}} & \\\\\n")
                 f.write("\\hline\n")
 
-            f.write("\\end{longtable}")
+            f.write("\\end{longtable}\n")
+
+    def write_asic_summary(self, asic, plot_dir_images, plot_file_name):
+        plot_fname = '"' + os.path.join(plot_dir_images, plot_file_name[:-len(self.plot_ending)]) + '"'
+
+        with open(self.stat_fname, 'a') as f:
+            f.write("\n")
+            f.write("\\subsection{Failed pixel per image}\n")
+            f.write("\includegraphics[width=0.5\\textwidth]{")
+            f.write(plot_fname)
+            f.write("}\\\\\n\n")
+
+    def write_epilog(self):
+        with open(self.stat_fname, 'a') as f:
+            f.write("\n")
+            f.write("\section{Summary}")
+#            f.write()
+
+            f.write("\n")
+            f.write("\\end{document}")
 
 
 if __name__ == "__main__":
@@ -274,7 +337,6 @@ if __name__ == "__main__":
     stat_dir = os.path.normpath(os.path.join(base_dir, module, temperature,
                                              "drscs", "plots", "stats"))
     stat_fname = os.path.join(stat_dir, "stats_{}.tex".format(module))
-    #stat_fname = os.path.join(stat_dir, "stats_{:.2f}.tex".format(module))
 
     plot_prefix = "{}_{}".format(module, current)
 

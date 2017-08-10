@@ -57,6 +57,18 @@ def generate_data_plot(current_idx, scaled_x_values, analog,
     plt.close(fig)
 
 
+def generate_failed_images_plot(data, plot_title, plot_name):
+
+    fig = plt.figure()
+    plt.plot(data, label="Number of broken pixels per image")
+
+    plt.legend()
+    fig.suptitle(plot_title)
+    fig.savefig(plot_name)
+    fig.clf()
+    plt.close(fig)
+
+
 def remove_legend_dubplicates():
     # Remove duplicates in legend
     # https://stackoverflow.com/questions/26337493/pyplot-combine-multiple-line-labels-in-legend
