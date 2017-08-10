@@ -141,7 +141,7 @@ def create_dir(directory_name):
 class Analyse():
     def __init__(self, run_type, meas_type, input_base_dir, output_base_dir,
                  n_processes, module, temperature, current, tint, element,
-                 asic, asic_list, column_spec, reduced_columns, max_part):
+                 asic, asic_list, safty_factor, column_spec, reduced_columns, max_part):
         print("started Analyse")
 
         self.run_type = run_type
@@ -156,6 +156,7 @@ class Analyse():
         self.element = element
         self.asic = asic
         self.asic_list = asic_list
+        self.safty_factor = safty_factor
         self.reduced_columns = reduced_columns
 
         if column_spec and len(column_spec) == 4:
@@ -329,8 +330,14 @@ class Analyse():
         pixel_u_list = np.arange(64)
         mem_cell_list = np.arange(352)
 
-        proc = ParallelProcess(self.asic, input_fname, pixel_v_list, pixel_u_list,
-                               mem_cell_list, self.n_processes, output_fname)
+        proc = ParallelProcess(self.asic,
+                               input_fname,
+                               pixel_v_list,
+                               pixel_u_list,
+                               mem_cell_list,
+                               self.n_processes,
+                               self.safty_factor,
+                               output_fname)
 
     def run_merge_drscs(self):
 
@@ -378,4 +385,4 @@ if __name__ == "__main__":
 
     Analyse(run_type, meas_type, input_base_dir, output_base_dir, n_processes,
             module, temperature, current, tint, element, asic, asic_list,
-            column_spec, reduced_columns, max_part)
+            safty_factor, column_spec, reduced_columns, max_part)

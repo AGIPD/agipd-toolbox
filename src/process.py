@@ -9,6 +9,7 @@ import sys
 import time
 import traceback
 from characterization.plotting import generate_data_plot, generate_fit_plot, generate_combined_plot, generate_all_plots
+from helpers import create_dir
 
 
 class IntervalError(Exception):
@@ -163,7 +164,7 @@ def biggest_entries(list_to_check, N):
 
 class ProcessDrscs():
     def __init__(self, asic, input_fname=False, output_fname=False,
-                 analog=None, digital=None,
+                 analog=None, digital=None, safty_factor=1000,
                  plot_prefix=None, plot_dir=None, create_plots=False):
 
         if input_fname:
@@ -192,7 +193,7 @@ class ProcessDrscs():
         self.region_range_in_percent = 2
         self.region_range = 10
 
-        self.safty_factor = 1000
+        self.safty_factor = safty_factor
         self.n_diff_changes_stored = 10
         self.saturation_threshold = 30
 
@@ -575,10 +576,6 @@ class ProcessDrscs():
                             region_start = self.diff_changes_idx[i + 1:][near_matches_after[-1]]
                             #print("region_start", region_start)
                             region_of_interest_after = data_a[region_start:stop_after]
-
-                            #region_stop = self.diff_changes_idx[i + 1:][near_matches_after[0]]
-                            #print("region_stop", region_stop)
-                            #region_of_interest_after = data_a[pot_start:region_stop]
 
                             #print("region_of_interest_after", region_of_interest_after)
 
@@ -1003,10 +1000,11 @@ if __name__ == "__main__":
     base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
 
     asic = 1
-    module = "M303"
-    temperature = "temperature_m15C"
+    module = "M234"
+    temperature = "temperature_m20C"
     #current = "itestc150"
     current = "itestc20"
+    safty_factor = 750
 
     input_fname = os.path.join(base_dir, module, temperature, "drscs", current, "gather",
                               "{}_drscs_{}_asic{}.h5".format(module, current, str(asic).zfill(2)))
@@ -1024,19 +1022,19 @@ if __name__ == "__main__":
     #pixel_u_list = np.arange(38,39)
     #mem_cell_list = np.arange(99,100)
 
-    pixel_v_list = np.array([2])
-    pixel_u_list = np.array([4])
-    mem_cell_list = np.array([100])
+    pixel_v_list = np.array([0])
+    pixel_u_list = np.array([0])
+    mem_cell_list = np.array([0])
 
     output_fname = False
     #create_plots can be set to False, "data", "fit", "combined" or "all"
-    create_plots = ["data", "combined"]
+    create_plots = False #["data", "combined"]
     create_error_plots = False #True
     #create_plots=["data", "combined"]
 
     cal = ProcessDrscs(asic, input_fname, output_fname=output_fname,
-                       plot_prefix=plot_prefix, plot_dir=plot_dir,
-                       create_plots=create_plots)
+                       safty_factor=safty_factor, plot_prefix=plot_prefix,
+                       plot_dir=plot_dir, create_plots=create_plots)
 
     print("\nRun processing")
     t = time.time()

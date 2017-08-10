@@ -60,6 +60,7 @@ class SubmitJobs():
         self.measurement = config["general"]["measurement"]
         current = config["general"]["current"]
         self.current = None
+        self.safty_factor = config["general"]["safty_factor"]
 
         self.n_jobs = int(config[self.run_type]["n_jobs"])
         self.n_processes = config[self.run_type]["n_processes"]
@@ -109,6 +110,7 @@ class SubmitJobs():
             "--n_processes", self.n_processes,
             "--module", self.module,
             "--temperature", self.temperature,
+            "--safty_factor", self.safty_factor,
         ]
 
         if self.run_type == "gather":
