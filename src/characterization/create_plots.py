@@ -2,6 +2,7 @@ import os
 import numpy as np
 from plotting import GeneratePlots
 import argparse
+from string import Template
 
 def get_arguments():
     parser = argparse.ArgumentParser()
@@ -73,8 +74,6 @@ if __name__ == "__main__":
         idx = None
     print("idx", idx)
 
-    plot_subdir = args.plot_dir or "asic{}_failed".format(str(asic).zfill(2))
-
     #base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
     #asic = 3
     #module = "M303"
@@ -86,22 +85,38 @@ if __name__ == "__main__":
 
     n_processes = 10
 
-    gather_fname = os.path.join(base_dir, module, temperature, "drscs", current, "gather",
-                                "{}_drscs_{}_asic{}.h5".format(module, current,
-                                                                  str(asic).zfill(2)))
-    process_fname = os.path.join(base_dir, module, temperature, "drscs", current, "process",
-                                  "{}_drscs_{}_asic{}_processed.h5".format(module, current,
-                                                                           str(asic).zfill(2)))
-    plot_dir = os.path.join(base_dir, module, temperature, "drscs", "plots", current, plot_subdir)
+    gather_path = os.path.join(base_dir, module, temperature, "drscs", "itestc${c}", "gather")
+    gather_template = (Template("${p}/${m}_drscs_itestc${c}_asic${a}.h5")
+                       .safe_substitute(p=gather_path, m=module, a=str(asic).zfill(2)))
+    gather_template = Template(gather_template)
+    #gather_fname = os.path.join(base_dir, module, temperature, "drscs", current, "gather",
+    #                            "{}_drscs_{}_asic{}.h5"
+    #                            .format(module, current, str(asic).zfill(2)))
+
+    plot_subdir = args.plot_dir or "asic{}_failed".format(str(asic).zfill(2))
+
+    if current == "combined":
+        process_fname = os.path.join(base_dir, module, temperature, "drscs", "combined",
+                                     "{}_drscs_asic{}_combined.h5"
+                                     .format(module, str(asic).zfill(2)))
+    else:
+        process_fname = os.path.join(base_dir, module, temperature, "drscs", current, "process",
+                                      "{}_drscs_{}_asic{}_processed.h5"
+                                      .format(module, current, str(asic).zfill(2)))
+
+    plot_dir = os.path.normpath(os.path.join(base_dir, module, temperature,
+                                             "drscs", "plots", current,
+                                             plot_subdir))
     plot_prefix = "{}_{}".format(module, current)
 
     create_dir(plot_dir)
 
-    obj = GeneratePlots(asic, gather_fname, plot_prefix, plot_dir, n_processes)
+    obj = GeneratePlots(asic, current, gather_template, plot_prefix, plot_dir, n_processes)
 
     #idx = (5,5,1)
 
     if idx is not None:
-        obj.run_idx(idx)
+        current_value = int(current[len("itestc"):])
+        obj.run_idx(idx, current_value)
     else:
         obj.run_condition(process_fname, condition_function)

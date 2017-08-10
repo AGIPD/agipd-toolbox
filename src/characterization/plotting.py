@@ -223,12 +223,19 @@ def generate_idx_plot(plot_file_prefix, plot_title_prefix, plot_ending, plot_idx
                        plot_name)
 
 class GeneratePlots():
-    def __init__(self, asic, input_fname, plot_prefix, plot_dir, n_processes):
+    def __init__(self, asic, current, input_template, plot_prefix, plot_dir, n_processes):
 
         self.asic = asic
-        self.input_fname = input_fname
+        self.input_template = input_template
+        self.input_fname = None
         self.process_fname = None
         self.plot_dir = plot_dir
+        self.chosen_current = None
+
+        if current.startswith("itestc"):
+            self.current = int(current[len("itestc"):])
+        else:
+            self.current = None
 
         print("plot_prefix", plot_prefix)
         self.plot_file_prefix = "{}_asic{}".format(plot_prefix, str(asic).zfill(2))
@@ -250,11 +257,16 @@ class GeneratePlots():
         process_file = h5py.File(self.process_fname, "r")
 
         self.error_code = process_file["/error_code"][()]
+        try:
+            self.chosen_current = process_file["/chosen_current"][()]
+        except:
+            self.chosen_current = self.current * np.ones(self.error_code.shape)
+            pass
 
         process_file.close()
 
-    def load_raw_data(self, idx=None):
-        source_file = h5py.File(self.input_fname, "r")
+    def load_raw_data(self, input_fname, idx=None):
+        source_file = h5py.File(input_fname, "r")
 
         if idx is not None:
             analog = source_file["/entry/instrument/detector/data"][idx]
@@ -279,8 +291,9 @@ class GeneratePlots():
 
         return scaled_x_values
 
-    def run_idx(self, idx):
-        analog, digital = self.load_raw_data(idx)
+    def run_idx(self, idx, current):
+        input_fname = self.input_template.substitute(c=current)
+        analog, digital = self.load_raw_data(input_fname, idx)
         number_of_x_values = analog.shape[0]
 
         scaled_x_values = self.scale_full_x_axis(number_of_x_values)
@@ -288,6 +301,18 @@ class GeneratePlots():
         generate_idx_plot(self.plot_file_prefix, self.plot_title_prefix,
                           self.plot_ending, idx, analog, digital,
                           scaled_x_values)
+
+    def check_current(self, current):
+
+        if current == 0 :
+            idx_candidates = np.where(self.chosen_current != 0)
+            idx = (idx_candidates[0][0], idx_candidates[1][0], idx_candidates[2][0])
+            current = self.chosen_current[idx]
+
+        current = int(current)
+
+        return current
+
 
     def run_condition(self, process_fname, condition_function):
         self.process_fname = process_fname
@@ -299,9 +324,13 @@ class GeneratePlots():
 
         plot_indices = condition_function(self.error_code)
 
+        analog = dict()
+        digital = dict()
         if plot_indices[0].size != 0:
             idx = (plot_indices[0][0], plot_indices[1][0], plot_indices[2][0])
-            analog, digital = self.load_raw_data(idx)
+            current = self.check_current(self.chosen_current[idx])
+            input_fname = self.input_template.substitute(c=current)
+            analog, digital = self.load_raw_data(input_fname, idx)
             number_of_x_values = analog.shape[0]
 
             scaled_x_values = self.scale_full_x_axis(number_of_x_values)
@@ -310,7 +339,10 @@ class GeneratePlots():
             idx = (plot_indices[0][i], plot_indices[1][i], plot_indices[2][i])
             #print('idx', idx)
 
-            analog, digital = self.load_raw_data(idx)
+            current = self.check_current(self.chosen_current[idx])
+            input_fname = self.input_template.substitute(c=current)
+
+            analog, digital = self.load_raw_data(input_fname, idx)
 
             if analog.shape[0] != number_of_x_values:
                 scaled_x_values = self.scale_full_x_axis(analog.shape[0])
