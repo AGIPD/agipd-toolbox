@@ -102,13 +102,18 @@ def generate_matrix(result, gain_name, quality):
                             if mean != 0:
                                 matrix[key][v, u, mem_cell] = (
                                     np.linalg.norm(values - mean)/np.absolute(n_used_fits * mean))
-                        except:
+                        except Exception as e:
+                            print("Error was: ", e)
                             print("pixel {}, mem_cell {}".format(mem_cell, v, u))
                             print(key)
                             print("mean={}".format(mean))
                             print("values={}".format(values))
     else:
-        matrix[key] = result[key]["mean"][gain, ...]
+        for key in ["slope", "offset"]:
+            matrix[key] = result[key]["mean"][gain, ...]
+
+            idx = np.where(result["error_code"] != 0)
+            matrix[key][idx] = np.NAN
 
     return matrix
 
@@ -155,6 +160,7 @@ def create_matrix_individual(input_fname, gain_name, quality):
     process_result["offset"]["mean"] = source_file["/offset/mean"][()]
     process_result["offset"]["individual"]["low"] = source_file["/offset/individual/low"][()]
 
+    process_result["error_code"] = source_file["/error_code"][()]
     source_file.close()
 
     # calcurate matrix
