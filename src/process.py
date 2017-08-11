@@ -162,6 +162,11 @@ class ProcessDrscs():
 
         self.log = setup_logging("ProcessDrscs", log_level)
 
+        if log_level.lower() == "debug":
+            self.use_debug = True
+        else:
+            self.use_debug = False
+
         if input_fname:
             self.input_fname = input_fname
             self.analog = None
@@ -235,14 +240,14 @@ class ProcessDrscs():
 
 
         if plot_prefix:
-            print("plot_prefix", plot_prefix)
+            self.log.info("plot_prefix {}".format(plot_prefix))
             self.plot_file_prefix = "{}_asic{}".format(plot_prefix, str(asic).zfill(2))
             if plot_dir is not None:
                 self.plot_file_prefix = os.path.join(self.plot_dir, self.plot_file_prefix)
 
             self.plot_title_prefix = self.plot_file_prefix.rsplit("/", 1)[1]
-            print("plot_file_prefix", self.plot_file_prefix)
-            print("plot_title_prefix", self.plot_title_prefix)
+            self.log.debug("plot_file_prefix {}".format(self.plot_file_prefix))
+            self.log.info("plot_title_prefix {}".format(self.plot_title_prefix))
 
             self.plot_ending = ".png"
         else:
@@ -254,10 +259,10 @@ class ProcessDrscs():
             check_file_exists(self.output_fname)
 
         if self.input_fname is not None:
-            print("Load data")
+            self.log.info("Load data")
             t = time.time()
             self.load_data()
-            print("took time: {}".format(time.time() - t))
+            self.log.debug("took time: {}".format(time.time() - t))
 
         self.scale_full_x_axis()
 
@@ -276,11 +281,11 @@ class ProcessDrscs():
             create_error_plots=False):
 
         if len(pixel_v_list) == 0 or len(pixel_u_list) == 0:
-            print("pixel_v_list", pixel_v_list)
-            print("pixel_u_list", pixel_u_list)
+            self.log.error("pixel_v_list: {}".format(pixel_v_list))
+            self.log.error("pixel_u_list: {}".format(pixel_u_list))
             raise Exception("No proper pixel specified")
         if len(mem_cell_list) == 0:
-            print("mem_cell_list", mem_cell_list)
+            self.log.error("mem_cell_list: {}".format(mem_cell_list))
             raise Exception("No proper memory cell specified")
 
         if create_error_plots and self.plot_title_prefix is None:
@@ -308,7 +313,7 @@ class ProcessDrscs():
         self.result["collection"]["saturation_threshold"] = self.saturation_threshold
 
         for pixel_v in self.pixel_v_list:
-            #print("start processing row", pixel_v)
+            #self.log.debug("start processing row {}".format(pixel_v))
             for pixel_u in self.pixel_u_list:
                 #t = time.time()
                 for mem_cell in self.mem_cell_list:
@@ -351,9 +356,10 @@ class ProcessDrscs():
                             #print("found number of diff_changes_idx={}".format(len(self.diff_changes_idx)))
                             pass
                         else:
-                            print("Failed to run for pixel [{}, {}] and mem_cell {}"
+                            self.log.error("Failed to run for pixel [{}, {}] and mem_cell {}"
                                   .format(self.current_idx[0], self.current_idx[1], self.current_idx[2]))
-                            print(traceback.format_exc())
+                            self.log.error(traceback.format_exc())
+                            #TODO self.log.exception ?
 
                             if self.result["error_code"][self.current_idx] <= 0:
                                 self.result["error_code"][self.current_idx] = 1
@@ -383,16 +389,16 @@ class ProcessDrscs():
                                                    plot_title,
                                                    plot_name)
                             except:
-                                print("Failed to generate plot")
+                                self.log.error("Failed to generate plot")
                                 raise
 
 #                        if type(e) not in [IntervalError, IntervalSplitError, GainStageNumberError]:
 #                            raise
 
-                #print("Process pixel {} took time: {}".format([pixel_v, pixel_u], time.time() - t))
+                #self.log.debug("Process pixel {} took time: {}".format([pixel_v, pixel_u], time.time() - t))
 
         if self.output_fname is not None:
-            print("writing data")
+            self.log.info("writing data")
             self.write_data()
 
     def process_data_point(self, current_idx):
@@ -420,12 +426,12 @@ class ProcessDrscs():
         self.calc_thresholds()
 
         if self.create_plot_type:
-            print("\nGenerate plots")
+            self.log.info("\nGenerate plots")
             t = time.time()
 
             self.create_plots()
 
-            print("took time: {}".format(time.time() - t))
+            self.log.info("took time: {}".format(time.time() - t))
 
     def calc_gain_regions(self):
         data_a = self.analog[self.current_idx[0], self.current_idx[1], self.current_idx[2], :]
@@ -438,12 +444,11 @@ class ProcessDrscs():
         gain_intervals = [[0, 0]]
 
         #TODO check if diff_changes_idx has to many entries
-        #print("current idx: {}", self.current_idx)
-        #print(self.diff_changes_idx)
-        for i in self.diff_changes_idx:
-            #self.log.debug("{} : {}".format(i, data_a[i:i+2]))
-            pass
-
+        if self.use_debug:
+            #self.log.debug("current idx: {}".format(self.current_idx))
+            #self.log.debug(self.diff_changes_idx)
+            for i in self.diff_changes_idx:
+                self.log.debug("{} : {}".format(i, data_a[i:i+2]))
 
         i = 0
         prev_stop = 0
@@ -461,14 +466,13 @@ class ProcessDrscs():
             # exclude the found point
             pot_start = self.diff_changes_idx[i] + 1
 
-            #self.log.debug("gain intervals {}".format(gain_intervals))
-            #self.log.debug("prev_stop: {}".format(prev_stop))
-            #self.log.debug("pot_start: {}".format(pot_start))
-
             range_len_tmp = np.ceil((prev_stop - gain_intervals[-1][1]) * self.region_range_in_percent / 100)
             if range_len_tmp != 0:
                 region_range_before = range_len_tmp
-            #self.log.debug("region_range_before: {}".format(region_range_before))
+            # the region before would be empty
+            else:
+                i += 1
+                continue
 
             # determine the region before the potention gain stage change
             start_before = prev_stop - region_range_before
@@ -476,7 +480,6 @@ class ProcessDrscs():
                 region_of_interest_before = data_a[0:prev_stop]
             else:
                 region_of_interest_before = data_a[start_before:prev_stop]
-            #self.log.debug("region_of_interest_before {}".format(region_of_interest_before))
 
             # determine the region after the potention gain stage change
             stop_after = pot_start + self.region_range
@@ -484,7 +487,6 @@ class ProcessDrscs():
                 region_of_interest_after = data_a[pot_start:self.diff.size]
             else:
                 region_of_interest_after = data_a[pot_start:stop_after]
-            #self.log.debug("region_of_interest_after: {}".format(region_of_interest_after))
 
             # check if the following idx is contained in region_of_interest_before
             near_matches_before = np.where(start_before < self.diff_changes_idx[:prev_stop_idx])
@@ -495,9 +497,6 @@ class ProcessDrscs():
             near_matches_after = np.where(self.diff_changes_idx[i + 1:] < stop_after)
             # np.where returns a tuple (array, type)
             near_matches_after = near_matches_after[0]
-            #self.log.debug("near match before {} {}".format(near_matches_before, self.diff_changes_idx[:prev_stop_idx][near_matches_before]))
-            #self.log.debug("near match after {} {}".format(near_matches_after, self.diff_changes_idx[i + 1:][near_matches_after]))
-
             if region_of_interest_before.size == 0:
                 mean_before = data_a[prev_stop]
             else:
@@ -508,17 +507,36 @@ class ProcessDrscs():
             else:
                 mean_after = np.mean(region_of_interest_after)
 
-            #self.log.debug("mean_before {}".format(mean_before))
-            #self.log.debug("mean_after {}".format(mean_after))
+            if self.use_debug:
+                self.log.debug("gain intervals {}".format(gain_intervals))
+                self.log.debug("prev_stop: {}".format(prev_stop))
+                self.log.debug("pot_start: {}".format(pot_start))
+
+                self.log.debug("region_range_before: {}".format(region_range_before))
+                self.log.debug("region_of_interest_before {}".format(region_of_interest_before))
+                self.log.debug("region_of_interest_after: {}".format(region_of_interest_after))
+                self.log.debug("near match before {} {}"
+                               .format(near_matches_before,
+                                       self.diff_changes_idx[:prev_stop_idx][near_matches_before]))
+                self.log.debug("near match after {} {}"
+                               .format(near_matches_after,
+                                       self.diff_changes_idx[i + 1:][near_matches_after]))
+
+                self.log.debug("mean_before {}".format(mean_before))
+                self.log.debug("mean_after {}".format(mean_after))
 
             if near_matches_before.size == 0 and near_matches_after.size == 0:
 
                 # if the slope is too high the mean is falsified by this
                 if (region_of_interest_before.size != 0 and \
-                        np.max(region_of_interest_before) - np.min(region_of_interest_before) > self.safty_factor * 2):
+                        np.max(region_of_interest_before)
+                        - np.min(region_of_interest_before) > self.safty_factor * 2):
                     # cut the region of interest into half
                     mean_before = np.mean(region_of_interest_before[len(region_of_interest_before) / 2:])
-                    #self.log.debug("mean_before after cut down of region of interest: {}".format(mean_before))
+
+                    if self.use_debug:
+                        self.log.debug("mean_before after cut down of region of interest: {}"
+                                       .format(mean_before))
 
                 if mean_before > mean_after + self.safty_factor:
                     # a stage change was found
@@ -529,26 +547,33 @@ class ProcessDrscs():
                 set_stop_flag = True
             else:
                 if gain_intervals[-1][1] == 0:
-                    #self.log.debug("gain intervals last entry == 0")
+                    if self.use_debug:
+                        self.log.debug("gain intervals last entry == 0")
 
                     if near_matches_before.size != 0:
-                        #self.log.debug("near_matches_before is not emtpy")
                         region_start = self.diff_changes_idx[:prev_stop_idx][near_matches_before[-1]] + 1
-                        #self.log.debug("region_start {}".format(region_start))
 
                         region_of_interest_before = data_a[region_start:prev_stop]
-                        #self.log.debug("region_of_interest_before {}".format(region_of_interest_before))
 
                         if region_of_interest_before.size == 0:
                             mean_before = data_a[prev_stop]
                         else:
                             mean_before = np.mean(region_of_interest_before)
-                        #self.log.debug("mean_before {}".format(mean_before))
+
+                        if self.use_debug:
+                            self.log.debug("near_matches_before is not emtpy")
+                            self.log.debug("region_start {}".format(region_start))
+                            self.log.debug("region_of_interest_before {}".format(region_of_interest_before))
+                            self.log.debug("mean_before {}".format(mean_before))
 
                     if near_matches_before.size == 0:
-                        #self.log.debug("near_matches_before.size == 0")
+                        if self.use_debug:
+                            self.log.debug("near_matches_before.size == 0")
+
                         if mean_before > mean_after + self.safty_factor:
-                            #self.log.debug("mean check")
+                            if self.use_debug:
+                                self.log.debug("mean check")
+
                             gain_intervals[-1][1] = prev_stop
 
                             # prevent an infinite loop
@@ -567,19 +592,19 @@ class ProcessDrscs():
                         # for diff changes where there is a jump right after (down, up, stay, stay, jump,...)
                         # cut off the area after the jump and try again
                         elif near_matches_after.size != 0:
-                            #self.log.debug("near_matches_after is not emtpy")
-
                             region_start = self.diff_changes_idx[i + 1:][near_matches_after[-1]]
-                            #self.log.debug("region_start {}".format(region_start))
                             region_of_interest_after = data_a[region_start:stop_after]
-
-                            #self.log.debug("region_of_interest_after {}".format(region_of_interest_after))
 
                             if region_of_interest_after.size == 0:
                                 mean_after = data_a[pot_start]
                             else:
                                 mean_after = np.mean(region_of_interest_after)
-                            #self.log.debug("mean_after {}".format(mean_after))
+
+                            if self.use_debug:
+                                self.log.debug("near_matches_after is not emtpy")
+                                self.log.debug("region_start {}".format(region_start))
+                                self.log.debug("region_of_interest_after {}".format(region_of_interest_after))
+                                self.log.debug("mean_after {}".format(mean_after))
 
                             if mean_before > mean_after + self.safty_factor:
                                 gain_intervals[-1][1] = prev_stop
@@ -602,7 +627,9 @@ class ProcessDrscs():
                             # between the outlier and the jump would falsify the
                             # jump detection
                             elif mean_before + self.safty_factor < mean_after:
-                                #self.log.debug("mean before is much bigger than mean after")
+                                if self.use_debug:
+                                    self.log.debug("mean before is much bigger than mean after")
+
                                 set_stop_flag = True
                             else:
                                 set_stop_flag = False
@@ -648,8 +675,10 @@ class ProcessDrscs():
             gain_intervals[-1][1] = self.diff.size + 1
         else:
             gain_intervals.append([pot_start, self.diff.size + 1])
-        #self.log.debug("{}, found gain intervals {}".format(self.current_idx, gain_intervals))
-        #self.log.debug("len gain intervals {}".format(len(gain_intervals)))
+
+        if self.use_debug:
+            self.log.debug("{}, found gain intervals {}".format(self.current_idx, gain_intervals))
+            self.log.debug("len gain intervals {}".format(len(gain_intervals)))
 
         if len(gain_intervals) > 3:
             self.result["error_code"][self.current_idx] = 2
@@ -686,7 +715,7 @@ class ProcessDrscs():
         self.result["intervals"]["gain_stages"][self.gain_idx["medium"]] = gain_intervals[1]
 
         new_gain_stage = self.detect_saturation(gain_intervals[2])
-        #print("new_gain_stage", new_gain_stage)
+        #self.log.debug("new_gain_stage: {}".format(new_gain_stage))
         self.result["intervals"]["gain_stages"][self.gain_idx["low"]] = new_gain_stage
 
 
@@ -700,8 +729,8 @@ class ProcessDrscs():
             sat_index = interval[1]
         else:
             sat_index = interval[0] + sat_index[0]
-        #print("sat_indices", sat_index)
-        #print("value", self.analog[self.current_idx[0], self.current_idx[1], self.current_idx[2], sat_index-5:sat_index+6])
+        #self.log.debug("sat_indices {}".format(sat_index))
+        #self.log.debug("value {}".format(self.analog[self.current_idx[0], self.current_idx[1], self.current_idx[2], sat_index-5:sat_index+6])
 
         self.result["intervals"]["saturation"][self.current_idx] = [sat_index, interval[1]]
 
@@ -718,10 +747,10 @@ class ProcessDrscs():
             if i == j:
                 j -= 1
             else:
-                #print("not true for", i, diff_det_interval[i-1:i+2])
+                #self.log.debug("not true for {} {}".format(i, diff_det_interval[i-1:i+2]))
                 break
-        #print("i", i)
-        #print("j", j)
+        #self.log.debug("i {}".format(i))
+        #self.log.debug("j {}".format(j))
 
         self.result["intervals"]["saturation"][self.current_idx] = [interval[0] + i, interval[1]]
 
@@ -742,16 +771,16 @@ class ProcessDrscs():
         """
         split given interval into equaly sized sub-intervals
         """
-        #print("nsplits", nsplits)
-        #print("interval={}".format(interval))
+        #self.log.debug("nsplits {}".format(nsplits))
+        #self.log("interval={}".format(interval))
 
         step = int((interval[-1] - interval[0]) / nsplits)
-        #print("step", step)
+        #self.log("step {}".format(step))
 
         if step == 0:
-            print("current_idx", self.current_idx)
-            print("nsplits", nsplits)
-            print("interval={}".format(interval))
+            self.log.debug("current_idx {}".format(self.current_idx))
+            self.log.debug("nsplits {}".format(nsplits))
+            self.log.debug("interval={}".format(interval))
             raise IntervalSplitError("Interval has not enough points to split")
 
         splitted_intervals = [
@@ -762,7 +791,7 @@ class ProcessDrscs():
         # before the end of the given interval
         splitted_intervals[-1][1] = interval[1]
 
-        #print("splitted_intervals={}".format(splitted_intervals))
+        #self.log.debug("splitted_intervals={}".format(splitted_intervals))
 
         return splitted_intervals
 
@@ -774,8 +803,8 @@ class ProcessDrscs():
             # 100.0 is needed because else it casts it as ints, i.e. 10/100=>0
             lower_border = int(tmp[0] + len(tmp) * self.percent/100.0)
             upper_border = int(tmp[0] + len(tmp) * (1 - self.percent/100.0))
-            #print("lower_border = {}".format(lower_border))
-            #print("upper_border = {}".format(upper_border))
+            #self.log.debug("lower_border = {}".format(lower_border))
+            #self.log.debug("upper_border = {}".format(upper_border))
         else:
             lower_border = interval[0]
             upper_border = interval[1]
@@ -812,13 +841,15 @@ class ProcessDrscs():
             self.result["residuals"]["individual"][gain][array_idx] = res[1]
             self.result["average_residual"]["individual"][gain][array_idx] = (
                 np.sqrt(res[1] / number_of_points))
-            #print("average_residual", self.result["average_residual"]["individual"][gain][array_idx])
+
+            #self.log.debug("average_residual {}".format(self.result["average_residual"]["individual"][gain][array_idx]))
         except:
             if res is None:
-                print("interval\n{}".format(interval))
-                print("self.coefficient_matrix\n{}".format(self.coefficient_matrix))
-                print("self.data_to_fit[{}][{}]\n{}"
-                      .format(gain, interval_idx, self.data_to_fit[gain][interval_idx]))
+                self.log.debug("interval\n{}".format(interval))
+                self.log.debug("self.coefficient_matrix\n{}".format(self.coefficient_matrix))
+                self.log.debug("self.data_to_fit[{}][{}]\n{}"
+                               .format(gain, interval_idx,
+                                       self.data_to_fit[gain][interval_idx]))
 
                 raise
 
@@ -827,16 +858,17 @@ class ProcessDrscs():
             elif res[1].size != 1:
                 raise FitError("Failed to calculate residual")
             else:
-                print("interval\n{}".format(interval))
-                print("self.coefficient_matrix\n{}".format(self.coefficient_matrix))
-                print("self.data_to_fit[{}][{}]\n{}"
-                      .format(gain, interval_idx, self.data_to_fit[gain][interval_idx]))
-                print("res", res)
+                self.log.debug("interval\n{}".format(interval))
+                self.log.debug("self.coefficient_matrix\n{}".format(self.coefficient_matrix))
+                self.log.debug("self.data_to_fit[{}][{}]\n{}"
+                               .format(gain, interval_idx,
+                                       self.data_to_fit[gain][interval_idx]))
+                self.log.debug("res {}".format(res))
 
                 raise
 
-        #print("found slope: {}".format(self.result["slope"]["individual"][gain]))
-        #print("found offset: {}".format(self.result["offset"]["individual"][gain]))
+        #self.log.debug("found slope: {}".format(self.result["slope"]["individual"][gain]))
+        #self.log.debug("found offset: {}".format(self.result["offset"]["individual"][gain]))
 
     def calc_gain_median(self):
         for gain in ["high", "medium", "low"]:
@@ -881,7 +913,7 @@ class ProcessDrscs():
         save_file = h5py.File(self.output_fname, "w", libver="latest")
 
         try:
-            print("\nStart saving data")
+            self.log.info("\nStart saving data")
             t = time.time()
 
             for key in self.result:
@@ -895,10 +927,10 @@ class ProcessDrscs():
                         else:
                             for gain in ["high", "medium", "low"]:
                                 save_file.create_dataset("/{}/{}/{}".format(key, subkey, gain),
-                                                         data=self.result[key][subkey][gain])
+                                                         data=self.result[key][subke352n])
 
             save_file.flush()
-            print("took time: {}".format(time.time() - t))
+            self.log.info("took time: {}".format(time.time() - t))
         finally:
             save_file.close()
 
