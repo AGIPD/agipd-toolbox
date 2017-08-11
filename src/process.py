@@ -1,7 +1,6 @@
 from __future__ import print_function
 
 from multiprocessing import Pool, TimeoutError
-import matplotlib.pyplot as plt
 import numpy as np
 import h5py
 import os
@@ -9,7 +8,8 @@ import sys
 import time
 import traceback
 from characterization.plotting import generate_data_plot, generate_fit_plot, generate_combined_plot, generate_all_plots
-from helpers import create_dir
+import matplotlib.pyplot as plt
+from helpers import create_dir, check_file_exists, setup_logging
 
 
 class IntervalError(Exception):
@@ -29,14 +29,6 @@ class ThresholdNumberError(Exception):
 
 class InfiniteLoopNumberError(Exception):
     pass
-
-def check_file_exists(file_name):
-    print("save_file = {}".format(file_name))
-    if os.path.exists(file_name):
-        print("Output file already exists")
-        sys.exit(1)
-    else:
-        print("Output file: ok")
 
 # not defined inside the class to let other classes reuse this
 def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
@@ -165,7 +157,10 @@ def biggest_entries(list_to_check, N):
 class ProcessDrscs():
     def __init__(self, asic, input_fname=False, output_fname=False,
                  analog=None, digital=None, safty_factor=1000,
-                 plot_prefix=None, plot_dir=None, create_plots=False):
+                 plot_prefix=None, plot_dir=None, create_plots=False,
+                 log_level="info"):
+
+        self.log = setup_logging("ProcessDrscs", log_level)
 
         if input_fname:
             self.input_fname = input_fname
@@ -445,8 +440,10 @@ class ProcessDrscs():
         #TODO check if diff_changes_idx has to many entries
         #print("current idx: {}", self.current_idx)
         #print(self.diff_changes_idx)
-        #for i in self.diff_changes_idx:
-        #    print(i, ":", data_a[i:i+2])
+        for i in self.diff_changes_idx:
+            #self.log.debug("{} : {}".format(i, data_a[i:i+2]))
+            pass
+
 
         i = 0
         prev_stop = 0
@@ -459,20 +456,19 @@ class ProcessDrscs():
         while i < len(self.diff_changes_idx):
 
             if set_stop_flag:
-                #print("setting prev_stop")
                 prev_stop = self.diff_changes_idx[i]
                 prev_stop_idx = i
             # exclude the found point
             pot_start = self.diff_changes_idx[i] + 1
 
-            #print("gain intervals", gain_intervals)
-            #print("prev_stop", prev_stop)
-            #print("pot_start", pot_start)
+            #self.log.debug("gain intervals {}".format(gain_intervals))
+            #self.log.debug("prev_stop: {}".format(prev_stop))
+            #self.log.debug("pot_start: {}".format(pot_start))
 
             range_len_tmp = np.ceil((prev_stop - gain_intervals[-1][1]) * self.region_range_in_percent / 100)
             if range_len_tmp != 0:
                 region_range_before = range_len_tmp
-            #print("region_range_before", region_range_before)
+            #self.log.debug("region_range_before: {}".format(region_range_before))
 
             # determine the region before the potention gain stage change
             start_before = prev_stop - region_range_before
@@ -480,7 +476,7 @@ class ProcessDrscs():
                 region_of_interest_before = data_a[0:prev_stop]
             else:
                 region_of_interest_before = data_a[start_before:prev_stop]
-            #print("region_of_interest_before", region_of_interest_before)
+            #self.log.debug("region_of_interest_before {}".format(region_of_interest_before))
 
             # determine the region after the potention gain stage change
             stop_after = pot_start + self.region_range
@@ -488,7 +484,7 @@ class ProcessDrscs():
                 region_of_interest_after = data_a[pot_start:self.diff.size]
             else:
                 region_of_interest_after = data_a[pot_start:stop_after]
-            #print("region_of_interest_after", region_of_interest_after)
+            #self.log.debug("region_of_interest_after: {}".format(region_of_interest_after))
 
             # check if the following idx is contained in region_of_interest_before
             near_matches_before = np.where(start_before < self.diff_changes_idx[:prev_stop_idx])
@@ -499,8 +495,8 @@ class ProcessDrscs():
             near_matches_after = np.where(self.diff_changes_idx[i + 1:] < stop_after)
             # np.where returns a tuple (array, type)
             near_matches_after = near_matches_after[0]
-            #print("near match before", near_matches_before, self.diff_changes_idx[:prev_stop_idx][near_matches_before])
-            #print("near match after", near_matches_after, self.diff_changes_idx[i + 1:][near_matches_after])
+            #self.log.debug("near match before {} {}".format(near_matches_before, self.diff_changes_idx[:prev_stop_idx][near_matches_before]))
+            #self.log.debug("near match after {} {}".format(near_matches_after, self.diff_changes_idx[i + 1:][near_matches_after]))
 
             if region_of_interest_before.size == 0:
                 mean_before = data_a[prev_stop]
@@ -512,8 +508,8 @@ class ProcessDrscs():
             else:
                 mean_after = np.mean(region_of_interest_after)
 
-            #print("mean_before", mean_before)
-            #print("mean_after", mean_after)
+            #self.log.debug("mean_before {}".format(mean_before))
+            #self.log.debug("mean_after {}".format(mean_after))
 
             if near_matches_before.size == 0 and near_matches_after.size == 0:
 
@@ -522,7 +518,7 @@ class ProcessDrscs():
                         np.max(region_of_interest_before) - np.min(region_of_interest_before) > self.safty_factor * 2):
                     # cut the region of interest into half
                     mean_before = np.mean(region_of_interest_before[len(region_of_interest_before) / 2:])
-                    #print("mean_before after cut down of region of interest:", mean_before)
+                    #self.log.debug("mean_before after cut down of region of interest: {}".format(mean_before))
 
                 if mean_before > mean_after + self.safty_factor:
                     # a stage change was found
@@ -533,26 +529,26 @@ class ProcessDrscs():
                 set_stop_flag = True
             else:
                 if gain_intervals[-1][1] == 0:
-                    #print("gain intervals last entry == 0")
+                    #self.log.debug("gain intervals last entry == 0")
 
                     if near_matches_before.size != 0:
-                        #print("near_matches_before is not emtpy")
+                        #self.log.debug("near_matches_before is not emtpy")
                         region_start = self.diff_changes_idx[:prev_stop_idx][near_matches_before[-1]] + 1
-                        #print("region_start", region_start)
+                        #self.log.debug("region_start {}".format(region_start))
 
                         region_of_interest_before = data_a[region_start:prev_stop]
-                        #print("region_of_interest_before", region_of_interest_before)
+                        #self.log.debug("region_of_interest_before {}".format(region_of_interest_before))
 
                         if region_of_interest_before.size == 0:
                             mean_before = data_a[prev_stop]
                         else:
                             mean_before = np.mean(region_of_interest_before)
-                        #print("mean_before", mean_before)
+                        #self.log.debug("mean_before {}".format(mean_before))
 
                     if near_matches_before.size == 0:
-                        #print("near_matches_before.size == 0")
+                        #self.log.debug("near_matches_before.size == 0")
                         if mean_before > mean_after + self.safty_factor:
-                            #print("mean check")
+                            #self.log.debug("mean check")
                             gain_intervals[-1][1] = prev_stop
 
                             # prevent an infinite loop
@@ -571,19 +567,19 @@ class ProcessDrscs():
                         # for diff changes where there is a jump right after (down, up, stay, stay, jump,...)
                         # cut off the area after the jump and try again
                         elif near_matches_after.size != 0:
-                            #print("near_matches_after is not emtpy")
+                            #self.log.debug("near_matches_after is not emtpy")
 
                             region_start = self.diff_changes_idx[i + 1:][near_matches_after[-1]]
-                            #print("region_start", region_start)
+                            #self.log.debug("region_start {}".format(region_start))
                             region_of_interest_after = data_a[region_start:stop_after]
 
-                            #print("region_of_interest_after", region_of_interest_after)
+                            #self.log.debug("region_of_interest_after {}".format(region_of_interest_after))
 
                             if region_of_interest_after.size == 0:
                                 mean_after = data_a[pot_start]
                             else:
                                 mean_after = np.mean(region_of_interest_after)
-                            #print("mean_after", mean_after)
+                            #self.log.debug("mean_after {}".format(mean_after))
 
                             if mean_before > mean_after + self.safty_factor:
                                 gain_intervals[-1][1] = prev_stop
@@ -606,7 +602,7 @@ class ProcessDrscs():
                             # between the outlier and the jump would falsify the
                             # jump detection
                             elif mean_before + self.safty_factor < mean_after:
-                                #print("mean before is much bigger than mean after")
+                                #self.log.debug("mean before is much bigger than mean after")
                                 set_stop_flag = True
                             else:
                                 set_stop_flag = False
@@ -652,8 +648,8 @@ class ProcessDrscs():
             gain_intervals[-1][1] = self.diff.size + 1
         else:
             gain_intervals.append([pot_start, self.diff.size + 1])
-        #print(self.current_idx, ", found gain intervals", gain_intervals)
-        #print("len gain intervals", len(gain_intervals))
+        #self.log.debug("{}, found gain intervals {}".format(self.current_idx, gain_intervals))
+        #self.log.debug("len gain intervals {}".format(len(gain_intervals)))
 
         if len(gain_intervals) > 3:
             self.result["error_code"][self.current_idx] = 2
@@ -1002,9 +998,9 @@ if __name__ == "__main__":
     asic = 1
     module = "M234"
     temperature = "temperature_m20C"
-    #current = "itestc150"
     current = "itestc20"
     safty_factor = 750
+    #safty_factor = 500
 
     input_fname = os.path.join(base_dir, module, temperature, "drscs", current, "gather",
                               "{}_drscs_{}_asic{}.h5".format(module, current, str(asic).zfill(2)))
@@ -1032,9 +1028,17 @@ if __name__ == "__main__":
     create_error_plots = False #True
     #create_plots=["data", "combined"]
 
-    cal = ProcessDrscs(asic, input_fname, output_fname=output_fname,
-                       safty_factor=safty_factor, plot_prefix=plot_prefix,
-                       plot_dir=plot_dir, create_plots=create_plots)
+    #log_level = "info"
+    log_level = "debug"
+
+    cal = ProcessDrscs(asic,
+                       input_fname,
+                       output_fname=output_fname,
+                       safty_factor=safty_factor,
+                       plot_prefix=plot_prefix,
+                       plot_dir=plot_dir,
+                       create_plots=create_plots,
+                       log_level=log_level)
 
     print("\nRun processing")
     t = time.time()
