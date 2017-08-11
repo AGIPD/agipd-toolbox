@@ -173,7 +173,7 @@ class GatherData():
 
         for index_list in indices:
             if len(index_list) < 1:
-                print("More than one index found: {}\n".format(index_list))
+                print("Too few indeces found: {}\n".format(index_list))
                 sys.exit(1)
             elif len(index_list) > 1:
                 print("More than one index found: {}\n".format(index_list))

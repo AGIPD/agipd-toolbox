@@ -87,7 +87,7 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
             "diff_threshold": None,
             "region_range_in_percent": None,
             "region_range": None,
-            "safty_factor" : None,
+            "safety_factor" : None,
             "diff_changes_idx": None,
             "len_diff_changes_idx": None,
             "saturation_threshold": None,
@@ -156,7 +156,7 @@ def biggest_entries(list_to_check, N):
 
 class ProcessDrscs():
     def __init__(self, asic, input_fname=False, output_fname=False,
-                 analog=None, digital=None, safty_factor=1000,
+                 analog=None, digital=None, safety_factor=1000,
                  plot_prefix=None, plot_dir=None, create_plots=False,
                  log_level="info"):
 
@@ -193,7 +193,7 @@ class ProcessDrscs():
         self.region_range_in_percent = 2
         self.region_range = 10
 
-        self.safty_factor = safty_factor
+        self.safety_factor = safety_factor
         self.n_diff_changes_stored = 10
         self.saturation_threshold = 30
 
@@ -303,7 +303,7 @@ class ProcessDrscs():
         self.result["collection"]["diff_threshold"] = self.diff_threshold
         self.result["collection"]["region_range_in_percent"] = self.region_range_in_percent
         self.result["collection"]["region_range"] = self.region_range
-        self.result["collection"]["safty_factor"] = self.safty_factor
+        self.result["collection"]["safety_factor"] = self.safety_factor
         self.result["collection"]["n_diff_changes_stored"] = self.n_diff_changes_stored
         self.result["collection"]["scaling_point"] = self.scaling_point
         self.result["collection"]["scaling_factor"] = self.scaling_factor
@@ -530,7 +530,7 @@ class ProcessDrscs():
                 # if the slope is too high the mean is falsified by this
                 if (region_of_interest_before.size != 0 and \
                         np.max(region_of_interest_before)
-                        - np.min(region_of_interest_before) > self.safty_factor * 2):
+                        - np.min(region_of_interest_before) > self.safety_factor * 2):
                     # cut the region of interest into half
                     mean_before = np.mean(region_of_interest_before[len(region_of_interest_before) / 2:])
 
@@ -538,7 +538,7 @@ class ProcessDrscs():
                         self.log.debug("mean_before after cut down of region of interest: {}"
                                        .format(mean_before))
 
-                if mean_before > mean_after + self.safty_factor:
+                if mean_before > mean_after + self.safety_factor:
                     # a stage change was found
                     gain_intervals[-1][1] = prev_stop
                     gain_intervals.append([pot_start, 0])
@@ -570,7 +570,7 @@ class ProcessDrscs():
                         if self.use_debug:
                             self.log.debug("near_matches_before.size == 0")
 
-                        if mean_before > mean_after + self.safty_factor:
+                        if mean_before > mean_after + self.safety_factor:
                             if self.use_debug:
                                 self.log.debug("mean check")
 
@@ -606,7 +606,7 @@ class ProcessDrscs():
                                 self.log.debug("region_of_interest_after {}".format(region_of_interest_after))
                                 self.log.debug("mean_after {}".format(mean_after))
 
-                            if mean_before > mean_after + self.safty_factor:
+                            if mean_before > mean_after + self.safety_factor:
                                 gain_intervals[-1][1] = prev_stop
 
                                 # prevent an infinite loop
@@ -626,7 +626,7 @@ class ProcessDrscs():
                             # slope is so steep that not considering the region
                             # between the outlier and the jump would falsify the
                             # jump detection
-                            elif mean_before + self.safty_factor < mean_after:
+                            elif mean_before + self.safety_factor < mean_after:
                                 if self.use_debug:
                                     self.log.debug("mean before is much bigger than mean after")
 
@@ -634,7 +634,7 @@ class ProcessDrscs():
                             else:
                                 set_stop_flag = False
                     else:
-                        if mean_before > mean_after + self.safty_factor:
+                        if mean_before > mean_after + self.safety_factor:
                             gain_intervals[-1][1] = prev_stop
 
                             # prevent an infinite loop
@@ -664,7 +664,7 @@ class ProcessDrscs():
                         set_stop_flag = False
                         continue
 
-                    elif mean_before > mean_after + self.safty_factor:
+                    elif mean_before > mean_after + self.safety_factor:
                         if not set_stop_flag:
                             set_stop_flag = True
 
@@ -1028,11 +1028,11 @@ if __name__ == "__main__":
     base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
 
     asic = 1
-    module = "M234"
-    temperature = "temperature_m20C"
+    module = "M303"
+    temperature = "temperature_m15C"
     current = "itestc20"
-    safty_factor = 750
-    #safty_factor = 500
+    #safety_factor = 750
+    safety_factor = 500
 
     input_fname = os.path.join(base_dir, module, temperature, "drscs", current, "gather",
                               "{}_drscs_{}_asic{}.h5".format(module, current, str(asic).zfill(2)))
@@ -1066,7 +1066,7 @@ if __name__ == "__main__":
     cal = ProcessDrscs(asic,
                        input_fname,
                        output_fname=output_fname,
-                       safty_factor=safty_factor,
+                       safety_factor=safety_factor,
                        plot_prefix=plot_prefix,
                        plot_dir=plot_dir,
                        create_plots=create_plots,

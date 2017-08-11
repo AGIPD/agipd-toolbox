@@ -58,7 +58,7 @@ def get_arguments():
                         type=int,
                         nargs='+',
                         help="Asic number")
-    parser.add_argument("--safty_factor",
+    parser.add_argument("--safety_factor",
                         required=True,
                         type=int,
                         help="Safty factor used in the determination of the "
@@ -119,7 +119,7 @@ class StartAnalyse():
         self.tint = args.tint
         self.element = args.element
         self.asic_list = args.asic_list
-        self.safty_factor = args.safty_factor
+        self.safety_factor = args.safety_factor
         self.max_part = args.max_part
         self.column_spec = args.column_spec
         self.reduced_columns = args.reduced_columns
@@ -151,7 +151,7 @@ class StartAnalyse():
                     self.element,
                     0,
                     self.asic_list,
-                    self.safty_factor,
+                    self.safety_factor,
                     self.column_spec,
                     self.reduced_columns,
                     self.max_part)
@@ -172,7 +172,7 @@ class StartAnalyse():
                                                   self.element,
                                                   asic,
                                                   self.asic_list,
-                                                  self.safty_factor,
+                                                  self.safety_factor,
                                                   self.column_spec,
                                                   self.reduced_columns,
                                                   self.max_part))

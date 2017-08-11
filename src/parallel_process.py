@@ -9,7 +9,7 @@ from process import ProcessDrscs, initiate_result, check_file_exists
 from functools import reduce  # forward compatibility for Python 3
 import operator
 
-def exec_process(asic, input_file, analog, digital, pixel_v_list, pixel_u_list, mem_cell_list, safty_factor):
+def exec_process(asic, input_file, analog, digital, pixel_v_list, pixel_u_list, mem_cell_list, safety_factor):
 
     create_error_plots=False
 
@@ -18,7 +18,7 @@ def exec_process(asic, input_file, analog, digital, pixel_v_list, pixel_u_list, 
     #create_error_plots=True
 
     #cal = ProcessDrscs(asic, analog=analog, digital=digital)
-    cal = ProcessDrscs(asic, input_file, safty_factor=safty_factor)#,
+    cal = ProcessDrscs(asic, input_file, safety_factor=safety_factor)#,
     #                   plot_prefix=plot_prefix, plot_dir=plot_dir, create_plots=False)
     cal.run(pixel_v_list, pixel_u_list, mem_cell_list, create_error_plots=create_error_plots)
 
@@ -119,7 +119,7 @@ def integrate_result(idx, result, source):
 
 class ParallelProcess():
     def __init__(self, asic, input_fname, pixel_v_list, pixel_u_list,
-                 mem_cell_list, n_processes, safty_factor, output_fname):
+                 mem_cell_list, n_processes, safety_factor, output_fname):
         self.asic = asic
         self.input_fname = input_fname
 
@@ -131,7 +131,7 @@ class ParallelProcess():
         self.n_processes = n_processes
         self.process_lists = []
 
-        self.safty_factor = safty_factor
+        self.safety_factor = safety_factor
 
         self.output_fname = output_fname
         self.result = None
@@ -215,7 +215,7 @@ class ParallelProcess():
                                       self.analog, self.digital,
                                       pixel_v_sublist, self.pixel_u_list,
                                       self.mem_cell_list,
-                                      self.safty_factor)))
+                                      self.safety_factor)))
 
             for process_result in result_list:
                 p_result, v_list, u_list, mem_cell_list = process_result.get()
@@ -357,7 +357,7 @@ if __name__ == "__main__":
     temperature = "temperature_m15C"
     #current = "itestc150"
     current = "itestc20"
-    safty_factor = 1000
+    safety_factor = 1000
 
     input_fname = os.path.join(base_dir, module, temperature, "drscs", current, "gather",
                               "{}_drscs_{}_asic{}.h5".format(module, current, str(asic).zfill(2)))
@@ -374,4 +374,4 @@ if __name__ == "__main__":
     n_processes = 10
 
     proc = ParallelProcess(asic, input_fname, pixel_v_list, pixel_u_list,
-                           mem_cell_list, n_processes, safty_factor, output_fname)
+                           mem_cell_list, n_processes, safety_factor, output_fname)
