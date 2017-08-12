@@ -469,7 +469,14 @@ class ProcessDrscs():
         # calculates the difference between neighboring elements
         self.diff = np.diff(data_a)
 
-        self.diff_changes_idx = np.where(self.diff < self.diff_threshold)[0]
+        #diff_falls_idx = np.where(self.diff < self.diff_threshold)[0]
+        #diff_rises_idx = np.where(self.diff > self.safety_factor)[0]
+
+        #self.log.debug("diff_falls_idx {}".format(diff_falls_idx))
+        #self.log.debug("diff_rises_idx {}".format(diff_rises_idx))
+
+        self.diff_changes_idx = np.where((self.diff < self.diff_threshold) |
+                                         (self.diff > self.safety_factor))[0]
 
         gain_intervals = [[0, 0]]
 
@@ -496,7 +503,7 @@ class ProcessDrscs():
             # exclude the found point
             pot_start = self.diff_changes_idx[i] + 1
 
-            range_len_tmp = np.ceil((prev_stop - gain_intervals[-1][1]) * self.region_range_in_percent / 100)
+            range_len_tmp = np.ceil((prev_stop - gain_intervals[-1][0]) * self.region_range_in_percent / 100)
             if range_len_tmp != 0:
                 region_range_before = range_len_tmp
             # the region before would be empty
@@ -507,16 +514,16 @@ class ProcessDrscs():
             # determine the region before the potention gain stage change
             start_before = prev_stop - region_range_before
             if start_before < 0:
-                region_of_interest_before = data_a[0:prev_stop]
-            else:
-                region_of_interest_before = data_a[start_before:prev_stop]
+                start_before = 0
+
+            region_of_interest_before = data_a[start_before:prev_stop]
 
             # determine the region after the potention gain stage change
             stop_after = pot_start + self.region_range
             if stop_after > self.diff.size:
-                region_of_interest_after = data_a[pot_start:self.diff.size]
-            else:
-                region_of_interest_after = data_a[pot_start:stop_after]
+                stop_after = self.diff.size
+
+            region_of_interest_after = data_a[pot_start:stop_after]
 
             # check if the following idx is contained in region_of_interest_before
             near_matches_before = np.where(start_before < self.diff_changes_idx[:prev_stop_idx])
@@ -537,7 +544,9 @@ class ProcessDrscs():
             else:
                 mean_after = np.mean(region_of_interest_after)
 
+
             if self.use_debug:
+                self.log.debug("\n")
                 self.log.debug("gain intervals {}".format(gain_intervals))
                 self.log.debug("prev_stop: {}".format(prev_stop))
                 self.log.debug("pot_start: {}".format(pot_start))
@@ -545,6 +554,7 @@ class ProcessDrscs():
                 self.log.debug("region_range_before: {}".format(region_range_before))
                 self.log.debug("region_of_interest_before {}".format(region_of_interest_before))
                 self.log.debug("region_of_interest_after: {}".format(region_of_interest_after))
+
                 self.log.debug("near match before {} {}"
                                .format(near_matches_before,
                                        self.diff_changes_idx[:prev_stop_idx][near_matches_before]))
@@ -575,6 +585,7 @@ class ProcessDrscs():
 
                 i += 1
                 set_stop_flag = True
+
             else:
                 if gain_intervals[-1][1] == 0:
                     if self.use_debug:
@@ -1062,12 +1073,12 @@ if __name__ == "__main__":
 
     base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
 
-    asic = 1
-    module = "M303"
-    temperature = "temperature_m15C"
+    asic = 5
+    module = "M234"
+    temperature = "temperature_m20C"
     current = "itestc20"
     #safety_factor = 750
-    safety_factor = 500
+    safety_factor = 450
 
     input_fname = os.path.join(base_dir, module, temperature, "drscs", current, "gather",
                               "{}_drscs_{}_asic{}.h5".format(module, current, str(asic).zfill(2)))
