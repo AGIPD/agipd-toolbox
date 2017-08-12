@@ -50,6 +50,12 @@ def condition_function(error_code):
     return indices
 
 
+def condition_function(error_code):
+    indices = np.where(error_code != 0)
+
+    return indices
+
+
 def create_dir(directory_name):
     if not os.path.exists(directory_name):
         try:
@@ -95,9 +101,9 @@ if __name__ == "__main__":
 
     plot_subdir = args.plot_dir or "asic{}_failed".format(str(asic).zfill(2))
 
-    if current == "combined":
-        process_fname = os.path.join(base_dir, module, temperature, "drscs", "combined",
-                                     "{}_drscs_asic{}_combined.h5"
+    if current == "merged":
+        process_fname = os.path.join(base_dir, module, temperature, "drscs", "merged",
+                                     "{}_drscs_asic{}_merged.h5"
                                      .format(module, str(asic).zfill(2)))
     else:
         process_fname = os.path.join(base_dir, module, temperature, "drscs", current, "process",

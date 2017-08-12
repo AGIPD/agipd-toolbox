@@ -30,12 +30,12 @@ class ParallelMerge():
         try:
             result_list = []
             for asic in self.asic_list:
-                print("combine asic", asic)
-#                exec_combine(self.input_template,
+                print("merge asic", asic)
+#                exec_merge(self.input_template,
 #                             self.output_template,
 #                             asic)
                 result_list.append(
-                    pool.apply_async(exec_combine,
+                    pool.apply_async(exec_merge,
                                      (self.input_template,
                                       self.output_template,
                                       asic)))
@@ -48,21 +48,21 @@ class ParallelMerge():
         print("process pool took time:", time.time() - t)
 
 
-def exec_combine(input_template, output_template, asic):
+def exec_merge(input_template, output_template, asic):
     output_fname = output_template.substitute(a=str(asic).zfill(2))
 
     obj = None
     try:
-        obj = CombineDrscs(input_template, output_fname, asic)
+        obj = MergeDrscs(input_template, output_fname, asic)
     except:
         pass
 
-    # for some reason the process does not stop if CombineDrscs failes
+    # for some reason the process does not stop if MergeDrscs failes
     if obj is not None:
         obj.run()
 
 
-class CombineDrscs():
+class MergeDrscs():
     def __init__(self, cs_input_template, output_fname, asic):
 
         self.cs_input_template = cs_input_template
@@ -205,8 +205,8 @@ class CombineDrscs():
 
 if __name__ == "__main__":
     base_path = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
-    module = "M303"
-    temperature = "temperature_m15C"
+    module = "M234"
+    temperature = "temperature_m20C"
     #asic_list = [1]
     asic_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
     n_processes = 10
@@ -214,21 +214,21 @@ if __name__ == "__main__":
     input_path = os.path.join(base_path, module, temperature, "drscs")
     # substitute all except current and asic
     input_template = Template("${p}/${c}/process/${m}_drscs_${c}_asic${a}_processed.h5").safe_substitute(p=input_path, m=module)
-    # make a template out of this string to let Combine set current and asic
+    # make a template out of this string to let Merge set current and asic
     input_template = Template(input_template)
 
 
-    output_path = os.path.join(base_path, module, temperature, "drscs", "combined")
-    output_template = Template("${p}/${m}_drscs_asic${a}_combined.h5").safe_substitute(p=output_path, m=module, t=temperature)
+    output_path = os.path.join(base_path, module, temperature, "drscs", "merged")
+    output_template = Template("${p}/${m}_drscs_asic${a}_merges.h5").safe_substitute(p=output_path, m=module, t=temperature)
     output_template = Template(output_template)
 
     ParallelMerge(input_template, output_template, asic_list, n_processes)
 
 #    for asic in asic_list:
-#        output_fname = os.path.join(base_path, module, temperature, "drscs", "combined",
-#                                    "{}_{}_drsc_asic{}_combined.h5".format(module, temperature,
+#        output_fname = os.path.join(base_path, module, temperature, "drscs", "merged",
+#                                    "{}_{}_drsc_asic{}_mergd.h5".format(module, temperature,
 #                                                                       str(asic).zfill(2)))
 
-#        obj = CombineDrscs(input_template, output_fname, asic)
+#        obj = MergeDrscs(input_template, output_fname, asic)
 #        obj.run()
 

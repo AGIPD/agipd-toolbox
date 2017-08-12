@@ -348,12 +348,12 @@ class Analyse():
         # substitute all except current and asic
         input_template = (Template("${p}/${c}/process/${m}_drscs_${c}_asic${a}_processed.h5")
                           .safe_substitute(p=input_path, m=self.module))
-        # make a template out of this string to let Combine set current and asic
+        # make a template out of this string to let Merge set current and asic
         input_template = Template(input_template)
 
         output_dir = os.path.join(base_path, self.module, self.temperature,
-                                   "drscs", "combined")
-        output_template = (Template("${p}/${m}_drscs_asic${a}_combined.h5")
+                                   "drscs", "merged")
+        output_template = (Template("${p}/${m}_drscs_asic${a}_merged.h5")
                            .safe_substitute(p=output_dir,
                                             m=self.module,
                                             t=self.temperature))

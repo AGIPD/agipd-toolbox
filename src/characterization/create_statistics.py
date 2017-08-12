@@ -32,9 +32,9 @@ def get_arguments():
                         type=str,
                         help="Subdir in which the plots should be stored")
 
-    parser.add_argument("--combined",
+    parser.add_argument("--merged",
                         action="store_true",
-                        help="Use the combined processing results")
+                        help="Use the merged processing results")
     parser.add_argument("--no_plotting",
                         action="store_true",
                         help="Disable plot generation")
@@ -300,7 +300,7 @@ if __name__ == "__main__":
     current = args.current
     no_plotting = args.no_plotting
     no_over_plotting = args.no_over_plotting
-    combined = args.combined
+    merged = args.merged
 
     n_processes = 10
     default_plot_dir = "asic${a}_failed_stat"
@@ -315,14 +315,14 @@ if __name__ == "__main__":
 
     plot_subdir = args.plot_dir or default_plot_dir
 
-    if combined:
-        process_path = os.path.join(base_dir, module, temperature, "drscs", "combined")
-        process_template = (Template("${p}/${m}_drscs_asic${a}_combined.h5")
+    if merged:
+        process_path = os.path.join(base_dir, module, temperature, "drscs", "merged")
+        process_template = (Template("${p}/${m}_drscs_asic${a}_merged.h5")
                             .safe_substitute(p=process_path, m=module))
         process_template = Template(process_template)
 
         plot_dir = Template(os.path.normpath(os.path.join(base_dir, module, temperature,
-                                                          "drscs", "plots", "combined",
+                                                          "drscs", "plots", "merged",
                                                           plot_subdir)))
     else:
         process_path = os.path.join(base_dir, module, temperature, "drscs", current, "process")

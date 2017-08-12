@@ -35,7 +35,7 @@ def get_arguments():
     parser.add_argument("--current",
                         type=str,
                         required=True,
-                        help="Current to use (e.g. itestc20) or combined")
+                        help="Current to use (e.g. itestc20) or merged")
     parser.add_argument("--individual_plots",
                         help="Create plots per asic",
                         action="store_true")
@@ -389,21 +389,18 @@ if __name__ == "__main__":
     print("current: ", current)
     print("individual_plots: ", individual_plots)
 
-    if current == "combined":
-        input_path = os.path.join(input_base_dir, module, temperature, "drscs", "combined")
+    if current == "merged":
+        input_path = os.path.join(input_base_dir, module, temperature, "drscs", "merged")
         # substitute all except current and asic
-        input_template = Template("${p}/${m}_drscs_asic${a}_combined.h5").safe_substitute(p=input_path, m=module)
-
-        plot_dir = os.path.join(output_base_dir, module, temperature, "drscs", "plots", "combined")
-        print("plot_dir", plot_dir)
+        input_template = Template("${p}/${m}_drscs_asic${a}_merged.h5").safe_substitute(p=input_path, m=module)
 
     else:
         input_path = os.path.join(input_base_dir, module, temperature, "drscs", current, "process")
         # substitute all except current and asic
         input_template = Template("${p}/${m}_drscs_${c}_asic${a}_processed.h5").safe_substitute(p=input_path, m=module, c=current)
 
-        plot_dir = os.path.join(output_base_dir, module, temperature, "drscs", "plots", current, "colormaps")
-        print("plot_dir", plot_dir)
+    plot_dir = os.path.join(output_base_dir, module, temperature, "drscs", "plots", current, "colormaps")
+    print("plot_dir", plot_dir)
 
     # make a template out of this string to let Combine set current and asic
     input_template = Template(input_template)
