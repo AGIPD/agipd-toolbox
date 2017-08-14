@@ -51,7 +51,7 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
                 "low": None
             }
         },
-        "residuals": {
+        "residual": {
             "mean": None,
             "individual": {
                 "high" : None,
@@ -112,7 +112,7 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
     print("threshold shape: {}".format(threshold_shape))
 
     # initiate fit results
-    for key in ["slope", "offset", "residuals", "average_residual"]:
+    for key in ["slope", "offset", "residual", "average_residual"]:
         result[key]["mean"] = np.zeros(shape, np.float32)
         result[key]["individual"] = {
             "high": np.zeros(shape_tmp + (n_intervals["high"],)),
@@ -330,11 +330,11 @@ class ProcessDrscs():
                             l = self.fit_cutoff_left
                             r = self.fit_cutoff_right
                             if len(self.result["slope"]["individual"][gain][self.out_idx]) >= l + r + 1:
-                                for t in ["slope", "offset", "residuals", "average_residual"]:
+                                for t in ["slope", "offset", "residual", "average_residual"]:
                                     self.result[t]["mean"][self.gain_idx[gain]] = (
                                         np.mean(self.result[t]["individual"][gain][self.out_idx][l:-r]))
                             else:
-                                for t in ["slope", "offset", "residuals", "average_residual"]:
+                                for t in ["slope", "offset", "residual", "average_residual"]:
                                     self.result[t]["mean"][self.gain_idx[gain]] = (
                                         np.mean(self.result[t]["individual"][gain][self.out_idx]))
 
@@ -602,7 +602,7 @@ class ProcessDrscs():
                             mean_before = np.mean(region_of_interest_before)
 
                         if self.use_debug:
-                            self.log.debug("near_matches_before is not emtpy")
+                            self.log.debug("near_matches_before is not empty")
                             self.log.debug("region_start {}".format(region_start))
                             self.log.debug("region_of_interest_before {}".format(region_of_interest_before))
                             self.log.debug("mean_before {}".format(mean_before))
@@ -821,7 +821,7 @@ class ProcessDrscs():
         #self.log("interval={}".format(interval))
 
         step = int((interval[-1] - interval[0]) / nsplits)
-        #self.log("step {}".format(step))
+        #self.log.debug("step {}".format(step))
 
         if step == 0:
             self.log.debug("out_idx {}".format(self.out_idx))
@@ -882,9 +882,10 @@ class ProcessDrscs():
         res = None
         try:
             res = np.linalg.lstsq(self.coefficient_matrix, self.data_to_fit[gain][interval_idx])
+
             self.result["slope"]["individual"][gain][array_idx] = res[0][0]
             self.result["offset"]["individual"][gain][array_idx] = res[0][1]
-            self.result["residuals"]["individual"][gain][array_idx] = res[1]
+            self.result["residual"]["individual"][gain][array_idx] = res[1]
             self.result["average_residual"]["individual"][gain][array_idx] = (
                 np.sqrt(res[1] / number_of_points))
 

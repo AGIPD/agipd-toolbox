@@ -62,7 +62,7 @@ def integrate_result(idx, result, source):
     # idx at start: individual, subintervals, diff_changes_idx, saturation
     index = idx + (Ellipsis,)
 
-    for key in ["slope", "offset", "residuals", "average_residual"]:
+    for key in ["slope", "offset", "residual", "average_residual"]:
         for gain in ["high", "medium", "low"]:
             source_key = [key, "individual", gain]
             map_to_dict(source_key, result)[index] = (
@@ -85,7 +85,7 @@ def integrate_result(idx, result, source):
     # idx at end: mean, medians, threshold
     index = (Ellipsis, ) + idx
 
-    for key in ["slope", "offset", "residuals", "average_residual"]:
+    for key in ["slope", "offset", "residual", "average_residual"]:
         source_key = [key, "mean"]
         map_to_dict(source_key, result)[index] = (
             map_to_format(source_key, source)[index])
@@ -252,7 +252,7 @@ class ParallelProcess():
                slice(m_start, m_stop),
                Ellipsis)
 
-        for key in ["slope", "offset", "residuals", "average_residual"]:
+        for key in ["slope", "offset", "residual", "average_residual"]:
             for gain in ["high", "medium", "low"]:
                 self.result[key]["individual"][gain][idx] = (
                     p_result[key]["individual"][gain][idx])
@@ -279,7 +279,7 @@ class ParallelProcess():
                slice(u_start, u_stop),
                slice(m_start, m_stop))
 
-        for key in ["slope", "offset", "residuals", "average_residual"]:
+        for key in ["slope", "offset", "residual", "average_residual"]:
             self.result[key]["mean"][idx] = (
                 p_result[key]["mean"][idx])
 
