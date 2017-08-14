@@ -125,6 +125,8 @@ class SubmitJobs():
         current_list = [c.split()[0] for c in current.split(",")]
 
         if self.run_type == "merge":
+            # missuse current to set merge as the job name
+            self.current = self.run_type
             self.script_params = script_params
 
             print("run merge")

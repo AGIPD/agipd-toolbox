@@ -727,20 +727,29 @@ class GatherData():
 
 if __name__ == "__main__":
 
+    base_path = "/gpfs/cfel/fsds/labs/agipd/calibration/"
+
+    module = "M312"
+    meas_run_type = "drscs"
+    #meas_type = meas_run_type
     meas_type = "drscs"
+    temperature = "temperature_33C"
+    input_sub_dir = "temp_dep_drscs"
+    current = "itestc20"
     asic = 1
 
-    input_file_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/raw/temp_dep_drscs/temperature_12C/drscs/itestc80"
-    input_file_name = "M312*_drscs_itestc80"
-    input_file = os.path.join(input_file_dir, input_file_name)
-
-    output_file_name = "M312_drscs_itestc80_asic01.h5"
-    output_file_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/M312/temperature_12C/drscs/itestc80/gather"
-    output_fname = os.path.join(output_file_dir, output_file_name)
-
-    column_specs = [15, 26, 37, 48]
+    column_specs = [37, 48, 15, 26]
+    #column_specs = [15, 26, 37, 48]
     #column_specs = [[15, 1], [26, 2], [37, 3], [48, 4]]
 
     max_part = False
+
+    input_file_dir = os.path.join(base_path, "raw", input_sub_dir, temperature, meas_type, current)
+    input_file_name = "{}*_{}_{}".format(module, meas_type, current)
+    input_file = os.path.join(input_file_dir, input_file_name)
+
+    output_file_dir = os.path.join(base_path, "processed", module, temperature, meas_run_type, current, "gather")
+    output_file_name = "{}_{}_{}_asic{}.h5".format(module, meas_run_type, current, str(asic).zfill(2))
+    output_fname = os.path.join(output_file_dir, output_file_name)
 
     GatherData(asic, input_file, output_file_name, meas_type, max_part, column_specs)
