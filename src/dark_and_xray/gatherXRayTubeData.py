@@ -3,44 +3,46 @@ import numpy as np
 import sys
 import time
 
-# fileName = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/m1_M314_XRAY_FLUOR_00000.nxs'
-# dataPathInFile = '/entry/instrument/detector/data'
-#
-# saveFileName = '/gpfs/cfel/fsds/labs/processed/calibration_1.1/mokalphaData_m1_new_v2.h5'
+class GatherXRayTubeData():
+    def __init__(self, fileName, safeFileName):
 
-fileName = sys.argv[1]
-dataPathInFile = '/entry/instrument/detector/data'
-saveFileName = sys.argv[2]
+        self.fileName = fileName
+        self.saveFileName = safeFileName
+        self.dataPathInFile = '/entry/instrument/detector/data'
 
-print('\n\n\nstart gatherXRayTubeData')
-print('fileName = ', fileName)
-print('dataPathInFile = ', dataPathInFile)
-print('saveFileName = ', saveFileName)
-print(' ')
+        print('\n\n\nstart gatherXRayTubeData')
+        print('fileName = ', self.fileName)
+        print('saveFileName = ', self.saveFileName)
+        print('dataPathInFile = ', dataPathInFile)
+        print(' ')
 
-totalTime = time.time()
+        self.run()
 
-f = h5py.File(fileName, 'r')
-dataCount = int(f[dataPathInFile].shape[0] / 2)
+    def run(self):
 
-saveFile = h5py.File(saveFileName, "w", libver='latest')
-dset_analog = saveFile.create_dataset("analog", shape=(dataCount, 128, 512), dtype='int16')
-dset_digital = saveFile.create_dataset("digital", shape=(dataCount, 128, 512), dtype='int16')
+        totalTime = time.time()
 
-print('start loading')
-rawData = np.array(f[dataPathInFile])
-print('loading done')
-f.close()
+        f = h5py.File(self.fileName, 'r')
+        dataCount = int(f[dataPathInFile].shape[0] / 2)
 
-analog = rawData[::2, ...]
-digital = rawData[1::2, ...]
+        saveFile = h5py.File(self.saveFileName, "w", libver='latest')
+        dset_analog = saveFile.create_dataset("analog", shape=(dataCount, 128, 512), dtype='int16')
+        dset_digital = saveFile.create_dataset("digital", shape=(dataCount, 128, 512), dtype='int16')
 
-print('start saving')
-dset_analog[...] = analog
-dset_digital[...] = digital
-print('saving done')
+        print('start loading')
+        rawData = np.array(f[dataPathInFile])
+        print('loading done')
+        f.close()
 
-saveFile.flush()
-saveFile.close()
+        analog = rawData[::2, ...]
+        digital = rawData[1::2, ...]
 
-print('gatherXRayTubeData took time:  ', time.time() - totalTime, '\n\n')
+        print('start saving')
+        dset_analog[...] = analog
+        dset_digital[...] = digital
+        print('saving done')
+
+        saveFile.flush()
+        saveFile.close()
+
+        print('gatherXRayTubeData took time:  ', time.time() - totalTime, '\n\n')

@@ -3,7 +3,7 @@ from scipy.signal import convolve
 from scipy.optimize import curve_fit
 import peakutils
 
-from agipdCalibration.algorithms.helperFunctions import orderFilterCourse
+from .helperFunctions import orderFilterCourse
 
 import matplotlib.pyplot as plt
 
@@ -115,7 +115,7 @@ def indexes_peakutilsManuallyAdjusted(y, thres=0.3, min_dist=1):
     -------
     ndarray
         Array containing the indexes of the peaks that were detected
-        
+
     '''
     if isinstance(y, np.ndarray) and np.issubdtype(y.dtype, np.unsignedinteger):
         raise ValueError("y must be signed")
@@ -179,7 +179,7 @@ def interpolate_peakutilsManuallyAdjusted(x, y, ind, width, func):
         #print("pcov_slice: ", pcov_slice)
         out.append(fit)
         pcov.append(pcov_slice)
-    
+
     #print("out: ", out)
     #print("pcov2: ", pcov)
 

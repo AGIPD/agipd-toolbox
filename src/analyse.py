@@ -268,13 +268,28 @@ class Analyse():
 
         create_dir(output_file_dir)
 
-       # is this necessary? or is there a better way to do this?
-        if self.meas_type.startswith("drscs"):
-            GatherData(self.asic, input_fname, output_fname, self.meas_type,
-                       self.max_part, self.column_specs)
+        # Dark gathering was not yet integrated into the new gather/process structure
+        if self.meas_type == "dark":
+            fileName = os.path.join(input_file_name, input_file_name)
+            safeFileName = os.path.join(output_file_name, output_file_name)
+            nParts = 10
+
+            GatherDarkData(nParts, fileName, saveFileName)
+        # Xray gathering was not yet integrated into the new gather/process structure
+        elif self.meas_type == "xray":
+            fileName = os.path.join(input_file_name, input_file_name)
+            safeFileName = os.path.join(output_file_name, output_file_name)
+
+            GatherXRayTubeData(fileName, safeFileName)
         else:
-            GatherData(self.asic, input_fname, output_fname, self.meas_type,
-                       self.max_part)
+           # is this necessary? or is there a better way to do this?
+            if self.meas_type.startswith("drscs"):
+                GatherData(self.asic, input_fname, output_fname, self.meas_type,
+                           self.max_part, self.column_specs)
+            else:
+                GatherData(self.asic, input_fname, output_fname, self.meas_type,
+                           self.max_part)
+
 
     def run_process(self):
         # the input files for processing are the output ones from gather
@@ -330,14 +345,27 @@ class Analyse():
         pixel_u_list = np.arange(64)
         mem_cell_list = np.arange(352)
 
-        proc = ParallelProcess(self.asic,
-                               input_fname,
-                               pixel_v_list,
-                               pixel_u_list,
-                               mem_cell_list,
-                               self.n_processes,
-                               self.safety_factor,
-                               output_fname)
+        # Dark processing was not yet integrated into the new gather/process structure
+        if self.meas_type == "dark":
+            fileName = os.path.join(input_file_name, input_file_name)
+            safeFileName = os.path.join(output_file_name, output_file_name)
+
+            BatchProcessDarkData(fileName, safeFileName)
+        # Xray processing was not yet integrated into the new gather/process structure
+        elif self.meas_type == "xray":
+            fileName = input_fname
+            safeFileName = output_fname
+
+            BatchProcessXRayTubeData(fileName, safeFileName)
+        else:
+            proc = ParallelProcess(self.asic,
+                                   input_fname,
+                                   pixel_v_list,
+                                   pixel_u_list,
+                                   mem_cell_list,
+                                   self.n_processes,
+                                   self.safety_factor,
+                                   output_fname)
 
     def run_merge_drscs(self):
 
