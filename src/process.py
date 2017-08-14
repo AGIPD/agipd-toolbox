@@ -189,13 +189,13 @@ class ProcessDrscs():
 
         self.percent = 10
 
-        self.diff_threshold = -100
-        self.region_range_in_percent = 2
-        self.region_range = 10
-
         self.safety_factor = safety_factor
         self.n_diff_changes_stored = 10
         self.saturation_threshold = 30
+
+        self.diff_threshold = -100
+        self.region_range_in_percent = 2
+        self.region_range = 10
 
         self.scaling_point = 200
         self.scaling_factor = 10
@@ -236,9 +236,10 @@ class ProcessDrscs():
         # 2    Too many gain stages found
         # 3    Not enough gain stages found
         # 4    Breaking infinite loop
+        # 5    Failed to calculate slope and offset
         #
         # warning_code:
-        # 2    Use then two biggest intervals
+        # 1    Failed to calculate residual
         ###
 
 
@@ -353,6 +354,8 @@ class ProcessDrscs():
                         elif type(e) == GainStageNumberError:
                             #print("{}: GainStageNumberError".format(self.out_idx))
                             #print("found number of diff_changes_idx={}".format(len(self.diff_changes_idx)))
+                            pass
+                        elif type(e) == FitError:
                             pass
                         else:
                             self.log.error("Failed to run for pixel [{}, {}] and mem_cell {}"
@@ -469,23 +472,26 @@ class ProcessDrscs():
         # calculates the difference between neighboring elements
         self.diff = np.diff(data_a)
 
-        #diff_falls_idx = np.where(self.diff < self.diff_threshold)[0]
-        #diff_rises_idx = np.where(self.diff > self.safety_factor)[0]
+        # an additional threshold is needed to catch cases like this:
+        # safety factor : 450
+        # 257 : [9600 9239]
+        # 258 : [9239 8873]
+        # 259 : [8873 8436]
+        # region_of_interest_before (prev_stop: 257):  [9496 9493 9542 9558 9576]
+        # region_of_interest_after (pot_start: 258): [9239 8873 8436 8390 8395 8389 8388 8413 8425 8417]
+        # region_of_interest_before (prev_stop: 257): [9496 9493 9542 9558 9576]
+        # region_of_interest_after (pot_start: 259): [8436 8390 8395 8389 8388 8413 8425 8417 8416 8435]
+        # here the safety factor would need needed to be decreased too far
 
-        #self.log.debug("diff_falls_idx {}".format(diff_falls_idx))
-        #self.log.debug("diff_rises_idx {}".format(diff_rises_idx))
+        # other reason: all of the pixels with shadow lines would be passing the tests
 
         self.diff_changes_idx = np.where((self.diff < self.diff_threshold) |
                                          (self.diff > self.safety_factor))[0]
-
-        gain_intervals = [[0, 0]]
-
-        #TODO check if diff_changes_idx has to many entries
         if self.use_debug:
-            #self.log.debug("current idx: {}".format(self.out_idx))
-            #self.log.debug(self.diff_changes_idx)
             for i in self.diff_changes_idx:
                 self.log.debug("{} : {}".format(i, data_a[i:i+2]))
+
+        gain_intervals = [[0, 0]]
 
         i = 0
         prev_stop = 0
@@ -642,9 +648,10 @@ class ProcessDrscs():
                                 mean_after = np.mean(region_of_interest_after)
 
                             if self.use_debug:
-                                self.log.debug("near_matches_after is not emtpy")
+                                self.log.debug("near_matches_after is not empty")
                                 self.log.debug("region_start {}".format(region_start))
-                                self.log.debug("region_of_interest_after {}".format(region_of_interest_after))
+                                self.log.debug("region_of_interest_after {}"
+                                               .format(region_of_interest_after))
                                 self.log.debug("mean_after {}".format(mean_after))
 
                             if mean_before > mean_after + self.safety_factor:
@@ -901,8 +908,10 @@ class ProcessDrscs():
                 raise
 
             if res[0].size != 2:
+                self.result["error_code"][self.out_idx] = 5
                 raise FitError("Failed to calculate slope and offset")
             elif res[1].size != 1:
+                self.result["warning_code"][self.out_idx] = 1
                 raise FitError("Failed to calculate residual")
             else:
                 self.log.debug("interval\n{}".format(interval))
