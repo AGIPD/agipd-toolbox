@@ -555,10 +555,10 @@ class GatherData():
                 # the end of the block in the source
                 self.source_index.append([i, 0])
 
-                print("seq_number[{}]={}, seq_number[{}]={}"
-                      .format(i-1, self.seq_number[i-1], i, self.seq_number[i]))
-                print("source_seq_number[{}]={}, source_seq_number[{}]={}"
-                      .format(i-1, self.source_seq_number[i-1], i, self.source_seq_number[i]))
+                #print("seq_number[{}]={}, seq_number[{}]={}"
+                #      .format(i-1, self.seq_number[i-1], i, self.seq_number[i]))
+                #print("source_seq_number[{}]={}, source_seq_number[{}]={}"
+                #      .format(i-1, self.source_seq_number[i-1], i, self.source_seq_number[i]))
 
             stop_source = i
             stop = self.seq_number[i]
@@ -593,10 +593,10 @@ class GatherData():
             s_start = self.source_index[i][0]
             s_stop = self.source_index[i][1] + 1
 
-            print("t_start = {}".format(t_start))
-            print("t_stop = {}".format(t_stop))
-            print("s_start = {}".format(s_start))
-            print("s_stop = {}".format(s_stop))
+            #print("t_start = {}".format(t_start))
+            #print("t_stop = {}".format(t_stop))
+            #print("s_start = {}".format(s_start))
+            #print("s_stop = {}".format(s_stop))
 
             #print("loaded_raw_data = {}".format(loaded_raw_data[s_start:s_stop, ...]))
             raw_data[t_start:t_stop, ...] = loaded_raw_data[s_start:s_stop, ...]
@@ -606,8 +606,8 @@ class GatherData():
             if raw_data.shape == self.raw_data_shape and t_start != 0:
                 print_start = t_start - 2
                 print_stop = t_start + 2
-                print("raw_data in frame_loss region={}"
-                      .format(raw_data[(print_start):(print_stop), 0, 0]))
+                #print("raw_data in frame_loss region={}"
+                #      .format(raw_data[(print_start):(print_stop), 0, 0]))
 
     def get_metadata(self, source_file, column_index, part_index):
 
