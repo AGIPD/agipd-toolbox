@@ -57,10 +57,7 @@ def create_dir(directory_name):
             if os.path.isdir(directory_name):
                 pass
 
-def generate_matrix(result, gain_name, quality):
-    """
-    generate map for low gain
-    """
+def generate_matrix(result, gain_name, matrix_type):
     gain_d = {
         "high": 0,
         "medium": 1,
@@ -70,7 +67,8 @@ def generate_matrix(result, gain_name, quality):
 
     matrix = {
         "slope": None,
-        "offset": None
+        "offset": None,
+        "average_residual": None,
     }
 
     #TODO generic (get from file)
@@ -86,7 +84,7 @@ def generate_matrix(result, gain_name, quality):
         # intiate with nan
         matrix[key][...] = np.NAN
 
-    if quality:
+    if matrix_type == "quality":
         for v in np.arange(n_pixel_v):
             for u in np.arange(n_pixel_u):
                 for mem_cell in np.arange(n_mem_cell):
@@ -109,7 +107,7 @@ def generate_matrix(result, gain_name, quality):
                             print("mean={}".format(mean))
                             print("values={}".format(values))
     else:
-        for key in ["slope", "offset"]:
+        for key in ["slope", "offset", "average_residual"]:
             matrix[key] = result[key]["mean"][gain, ...]
 
             idx = np.where(result["error_code"] != 0)
@@ -118,18 +116,18 @@ def generate_matrix(result, gain_name, quality):
     return matrix
 
 
-def create_individual_plots(input_fname, mem_cell_list, plot_prefix, plot_ending, gain_name, quality):
+def create_individual_plots(input_fname, mem_cell_list, plot_prefix, plot_ending, gain_name, matrix_type):
     try:
-        colormap_matrix = create_matrix_individual(input_fname, gain_name, quality)
+        colormap_matrix = create_matrix_individual(input_fname, gain_name, matrix_type)
 
         create_plots(mem_cell_list, colormap_matrix, plot_prefix, plot_ending,
-                     gain_name, quality, splitted=False)
+                     gain_name, matrix_type, splitted=False)
     except OSError:
         print("OSError:", input_fname)
         pass
 
 
-def create_matrix_individual(input_fname, gain_name, quality):
+def create_matrix_individual(input_fname, gain_name, matrix_type):
     t = time.time()
 
     process_result = {
@@ -149,25 +147,31 @@ def create_matrix_individual(input_fname, gain_name, quality):
                 "low": None
             }
         },
+        "average_residual": {
+            "mean": None,
+            "individual": {
+                "high" : None,
+                "medium": None,
+                "low": None
+            }
+        },
     }
 
     # read in data
     source_file = h5py.File(input_fname, "r")
 
-    process_result["slope"]["mean"] = source_file["/slope/mean"][()]
-    process_result["slope"]["individual"]["low"] = source_file["/slope/individual/low"][()]
-
-    process_result["offset"]["mean"] = source_file["/offset/mean"][()]
-    process_result["offset"]["individual"]["low"] = source_file["/offset/individual/low"][()]
+    for key in process_result.keys():
+        process_result[key]["mean"] = source_file["/{}/mean".format(key)][()]
+        process_result[key]["individual"]["low"] = source_file["/{}/individual/low".format(key)][()]
 
     process_result["error_code"] = source_file["/error_code"][()]
     source_file.close()
 
     # calcurate matrix
-    return generate_matrix(process_result, gain_name, quality)
+    return generate_matrix(process_result, gain_name, matrix_type)
 
 def create_plots(mem_cell_list, colormap_matrix, plot_file_prefix, plot_ending,
-                 gain_name, quality, splitted=False):
+                 gain_name, matrix_type, splitted=False):
     plot_size = (27, 7)
                 # [left, bottom, width, height]
     ax_location = [0.91, 0.11, 0.01, 0.75]
@@ -178,7 +182,7 @@ def create_plots(mem_cell_list, colormap_matrix, plot_file_prefix, plot_ending,
         for key in colormap_matrix:
             m = colormap_matrix[key][..., mem_cell]
 
-            if splitted and quality and np.where(m >= 1)[0].size != 0:
+            if splitted and matrix_type == "quality" and np.where(m >= 1)[0].size != 0:
 
                 m_a = masked_array(m, m < 1)
                 m_b = masked_array(m, m >= 1)
@@ -210,16 +214,13 @@ def create_plots(mem_cell_list, colormap_matrix, plot_file_prefix, plot_ending,
 
 class CreateColormaps():
     def __init__(self, input_template, output_template, module, current,
-                 plot_dir, pixel_v_list, pixel_u_list, mem_cell_list,
-                 n_processes, gain_name="low", quality=True, individual_plots=False):
+                 plot_dir, n_processes, gain_name, matrix_type, mem_cell_list,
+                 individual_plots=False):
 
         self.plot_dir = plot_dir
-        self.pixel_v_list = pixel_v_list
-        self.pixel_u_list = pixel_u_list
-        self.mem_cell_list = mem_cell_list
-
         self.gain_name = gain_name
-        self.quality = quality
+        self.matrix_type = matrix_type
+        self.mem_cell_list = mem_cell_list
 
         self.plot_ending = ".png"
 
@@ -240,10 +241,17 @@ class CreateColormaps():
 
         self.pool = Pool(processes=self.n_processes)
 
-        self.colormap_matrix = {
-            "slope": None,
-            "offset": None
-        }
+        if matrix_type == "quality":
+            self.colormap_matrix = {
+                "slope": None,
+                "offset": None,
+            }
+        else:
+            self.colormap_matrix = {
+                "slope": None,
+                "offset": None,
+                "average_residual": None
+            }
 
     def run(self):
         for mem_cell in self.mem_cell_list:
@@ -252,41 +260,29 @@ class CreateColormaps():
             t= time.time()
 
             if self.individual_plots:
-
-
-                if quality:
-                    # substitute all except asic
-                    self.plot_template = Template(
-                        "${p}/individual/${m}_${c}_asic${a}_${mc}_quality").safe_substitute(
-                            p=plot_dir, m=module, c=current, mc=str(mem_cell).zfill(3))
-                    # make a template out of this string
-                    self.plot_template = Template(self.plot_template)
-                else:
-                    # substitute all except asic
-                    self.plot_template = Template(
-                        "${p}/individual/${m}_${c}_asic${a}_${mc}").safe_substitute(
-                            p=plot_dir, m=module, c=current, mc=str(mem_cell).zfill(3))
-                    # make a template out of this string
-                    self.plot_template = Template(self.plot_template)
-
+                # substitute all except asic
+                self.plot_template = (
+                    Template("${p}/individual/${m}_${c}_asic${a}_${mc}_${mt}")
+                    .safe_substitute(p=plot_dir,
+                                     m=module,
+                                     c=current,
+                                     mc=str(mem_cell).zfill(3),
+                                     mt=self.matrix_type))
+                # make a template out of this string
+                self.plot_template = Template(self.plot_template)
                 self.get_data_individual()
             else:
-                if quality:
-                    self.plot_prefix = ("{}/{}_{}_{}_quality"
-                                        .format(plot_dir,
-                                                module,
-                                                current,
-                                                str(mem_cell).zfill(3)))
-                else:
-                    self.plot_prefix = "{}/{}_{}_{}".format(plot_dir,
-                                                            module,
-                                                            current,
-                                                            str(mem_cell).zfill(3))
+                self.plot_prefix = ("{}/{}_{}_{}_{}"
+                                    .format(plot_dir,
+                                            module,
+                                            current,
+                                            str(mem_cell).zfill(3),
+                                            self.matrix_type))
 
                 self.get_data()
                 create_plots(self.mem_cell_list, self.colormap_matrix,
                              self.plot_prefix, self.plot_ending, self.gain_name,
-                             self.quality, splitted=True)
+                             self.matrix_type, splitted=True)
 
             print("\nFinished at {} after {}"
                   .format(datetime.datetime.now(), time.time() - t))
@@ -294,12 +290,14 @@ class CreateColormaps():
     def get_data_individual(self):
 
         result_list = []
+
+        print("matrix_type {}".format(matrix_type))
         for asic in self.asic_list:
             plot_prefix = self.plot_template.substitute(a=asic)
 
             # the input files for processing are the output ones from gather
             input_fname = self.input_template.substitute(a=str(asic).zfill(2))
-            print("input_file", input_fname)
+            print("input_file {}".format(input_fname))
 
             result_list.append(
                 self.pool.apply_async(
@@ -309,7 +307,7 @@ class CreateColormaps():
                      plot_prefix,
                      self.plot_ending,
                      self.gain_name,
-                     self.quality)))
+                     self.matrix_type)))
 
         for process_result in result_list:
             process_result.get()
@@ -331,20 +329,22 @@ class CreateColormaps():
 
         matrix = {
             "slope": None,
-            "offset": None
+            "offset": None,
+            "average_residual": None
         }
         result_list = []
 
+        print("matrix_type {}".format(matrix_type))
         for asic in asic_list:
 
             # the input files for processing are the output ones from gather
             input_fname = self.input_template.substitute(a=str(asic).zfill(2))
-            print("input_file", input_fname)
+            print("input_file {}".format(input_fname))
 
             # calcurate matrix
             result_list.append(
                 self.pool.apply_async(
-                     create_matrix_individual, (input_fname, self.gain_name, self.quality)))
+                     create_matrix_individual, (input_fname, self.gain_name, self.matrix_type)))
 
         # build matrix for whole module
         for i in range(asic_list.size):
@@ -352,14 +352,13 @@ class CreateColormaps():
             generated_matrix = result_list[i].get()
 
             if matrix["slope"] is None:
-                matrix["slope"] = generated_matrix["slope"]
-                matrix["offset"] = generated_matrix["offset"]
+                for key in matrix.keys():
+                    matrix[key] = generated_matrix[key]
 
             else:
-                matrix["slope"] = np.concatenate(
-                    (matrix["slope"], generated_matrix["slope"]), axis=1)
-                matrix["offset"] = np.concatenate(
-                    (matrix["offset"], generated_matrix["offset"]), axis=1)
+                for key in matrix.keys():
+                    matrix[key] = np.concatenate(
+                        (matrix[key], generated_matrix[key]), axis=1)
 
         return matrix
 
@@ -417,27 +416,25 @@ if __name__ == "__main__":
         create_dir(os.path.join(plot_dir, "individual"))
 
     create_error_plots = False
-    pixel_v_list = np.arange(29, 30)
-    pixel_u_list = np.arange(1, 2)
     mem_cell_list = np.arange(1,2)
 
     n_processes = 8
 
     # generate gain map for all gain stages
-    quality = False
+    matrix_type = "gain"
     for gain_name in ["high", "medium", "low"]:
         obj = CreateColormaps(input_template, output_template, module, current,
-                              plot_dir, pixel_v_list, pixel_u_list, mem_cell_list,
-                              n_processes, gain_name, quality, individual_plots)
+                              plot_dir, n_processes, gain_name, matrix_type,
+                              mem_cell_list, individual_plots)
 
         obj.run()
 
     # generate quality map
     gain_name = "low"
-    quality = True
+    matrix_type = "quality"
 
     obj = CreateColormaps(input_template, output_template, module, current,
-                          plot_dir, pixel_v_list, pixel_u_list, mem_cell_list,
-                          n_processes, gain_name, quality, individual_plots)
+                          plot_dir, n_processes, gain_name, matrix_type,
+                          mem_cell_list, individual_plots)
 
     obj.run()
