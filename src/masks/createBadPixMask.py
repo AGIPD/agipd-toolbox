@@ -10,49 +10,134 @@ Note: when no pixels/cells are masked, plotting throws an exception!
 import h5py
 import numpy as np
 import os
-
+import sys
 import matplotlib.pyplot as plt
 import pyqtgraph as pg
+from string import Template
+# need to tell python where to look for helpers.py
+BASE_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+#print(BASE_PATH)
+SRC_PATH = os.path.join(BASE_PATH, "src")
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
+# now we can import functions from files in src directory
+from helpers import create_dir
 
-
-module_id = 'M314'
-module_number = 'm7'
+module_id = 'M305'
+module_number = 'm8'
 temperature = 'temperature_m15C'
-itestc = 'itestc150'
+itestc = 'merged'
 tint = 'tint150ns'
 element = 'Cu'
+counter = '00000'
+asic_mapping = [[16, 15, 14, 13, 12, 11, 10, 9],
+                [1,   2,  3,  4,  5,  6,  7, 8]]
 base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/{}/{}".format(module_id, temperature)
 
 # Input files
 # Dynamic Range Scan (gain - current source)
-gains_filename = "analogGains_{}_{}.h5".format(module_id, module_number)
-gains_filepath = os.path.join(base_dir, 'drscs', itestc, gains_filename)
-gainbits_filename = "digitalMeans_{}_{}.h5".format(module_id, module_number)
-gainbits_filepath = os.path.join(base_dir, 'drscs', itestc, gainbits_filename)
+# TODO: currently only for merged!!
+gain_input_path = os.path.join(base_dir, "drscs", itestc)
+gain_input_template = Template("${p}/${m}_drscs_asic${a}_merged.h5").safe_substitute(p=gain_input_path, m=module_id)
+gain_input_template = Template(gain_input_template)
+
 # Darks
 dark_filename = "darkOffset_{}_{}_{}.h5".format(module_id, module_number, tint)
 dark_filepath = os.path.join(base_dir, 'dark', dark_filename)
+
 # X-ray
-xray_filename = "photonSpacing_{}_{}_xray_{}.h5".format(module_id, module_number, element)
+xray_filename = "photonSpacing_{}_{}_xray_{}_{}.h5".format(module_id, module_number, element, counter)
 xray_filepath = os.path.join(base_dir, 'xray', xray_filename)
 
 
-# Output mask file
-save_filename = os.path.join(base_dir, 'cal_output/agipd_mask_{}_{}_{}_{}_{}_{}.h5'.format(module_id, module_number, temperature, itestc, tint, element))
-
-# Create output file
+# Output dirs and mask file
+output_dir = os.path.join(base_dir, "cal_output")
+plot_dir = os.path.join(output_dir, "plots")
+save_filename = os.path.join(output_dir, 'agipd_mask_{}_{}_{}_{}_{}_{}.h5'.format(module_id, module_number, temperature, itestc, tint, element))
+create_dir(output_dir)
+create_dir(plot_dir)
 f_out = h5py.File(save_filename, "w", libver='latest')
 dset_combined_mask = f_out.create_dataset("combined_mask", shape=(352, 128, 512), dtype=bool)
 masks = f_out.create_group("masks")
 
-# Get data from gain files
-gains_file = h5py.File(gains_filepath, 'r', libver='latest')
-gains = gains_file["/analogGains"][...]  # shape=(3, 352, 128, 512)
-gain_offsets = gains_file["/anlogLineOffsets"][...]  # shape=(3, 352, 128, 512)
-gain_stds = gains_file["/analogFitStdDevs"][...]  # shape=(3, 352, 128, 512)
-gains_file.close()
 
-gainbits_file = h5py.File(gainbits_filepath, 'r', libver='latest')
+# Get data from gain files
+# each asic in separate file, needs to be assembled into full module
+gains_upper = []
+gains_lower = []
+gains_tmp = []
+gain_offsets_upper = []
+gain_offsets_lower = []
+gain_offsets_tmp = []
+error_code_upper = []
+error_code_lower = []
+error_code_tmp = []
+warning_code_upper = []
+warning_code_lower = []
+warning_code_tmp = []
+# Upper row
+asic_row = asic_mapping[0]
+for asic in asic_row:
+    gain_input_file = gain_input_template.substitute(a=str(asic).zfill(2))
+    f = h5py.File(gain_input_file, "r")
+    gains_tmp = f["/slope/mean"][...] # shape: 3 x 64 x 64 x 352
+    gain_offsets_tmp = f["/offset/mean"][...] # shape: 3 x 64 x 64 x 352
+    error_code_tmp = f["/error_code"][...] # shape: 64 x 64 x 352
+    warning_code_tmp = f["/warning_code"][...] # shape: 64 x 64 x 352
+    if asic == asic_row[0]:
+        gains_upper = gains_tmp
+        gain_offsets_upper = gain_offsets_tmp
+        error_code_upper = error_code_tmp
+        warning_code_upper = warning_code_tmp
+    else:
+        gains_upper = np.concatenate((gains_upper, gains_tmp), axis=2)
+        gain_offsets_upper = np.concatenate((gain_offsets_upper, gain_offsets_tmp), axis=2)
+        error_code_upper = np.concatenate((error_code_upper, error_code_tmp), axis=1)
+        warning_code_upper = np.concatenate((warning_code_upper, warning_code_tmp), axis=1)
+    f.close()
+
+# lower row
+asic_row = asic_mapping[1]
+for asic in asic_row:
+    gain_input_file = gain_input_template.substitute(a=str(asic).zfill(2))
+    f = h5py.File(gain_input_file, "r")
+    gains_tmp = f["/slope/mean"][...] # shape: 3 x 64 x 64 x 352
+    print("gains shape: ", gains_tmp.shape)
+    gain_offsets_tmp = f["/offset/mean"][...] # shape: 3 x 64 x 64 x 352
+    error_code_tmp = f["/error_code"][...] # shape: 64 x 64 x 352
+    warning_code_tmp = f["/warning_code"][...] # shape: 64 x 64 x 352
+    if asic == asic_row[0]:
+        gains_lower = gains_tmp
+        gain_offsets_lower = gain_offsets_tmp
+        error_code_lower = error_code_tmp
+        warning_code_lower = warning_code_tmp
+    else:
+        gains_lower = np.concatenate((gains_lower, gains_tmp), axis=2)
+        gain_offsets_lower = np.concatenate((gain_offsets_lower, gain_offsets_tmp), axis=2)
+        error_code_lower = np.concatenate((error_code_lower, error_code_tmp), axis=1)
+        warning_code_lower = np.concatenate((warning_code_lower, warning_code_tmp), axis=1)
+    f.close()
+
+print("gains_upper shape: ", gains_upper.shape)
+print("gains_lower shape: ", gains_lower.shape)
+# combine upper and lower rows into full module
+gains = np.concatenate((gains_upper, gains_lower), axis=1) # shape: 3 x 128 x 512 x 352
+print(gains.shape)
+gain_offsets = np.concatenate((gain_offsets_upper, gain_offsets_lower), axis=1) # shape: 3 x 128 x 512 x 352
+print(gain_offsets.shape)
+error_code = np.concatenate((error_code_upper, error_code_lower), axis=0) # shape: 128 x 512 x 352
+print(error_code.shape)
+warning_code = np.concatenate((warning_code_upper, warning_code_lower), axis=0) # shape: 128 x 512 x 352
+print(warning_code.shape)
+
+# transpose to be in same order as dark and xray - for now at least
+gains = gains.transpose((0, 3, 1, 2)) # shape: 3 x 352 x 128 x 512
+print(gains.shape)
+gain_offsets = gain_offsets.transpose((0, 3, 1, 2)) # shape: 3 x 352 x 128 x 512
+error_code = error_code.transpose((2, 0, 1)) # 352 x 128 x 512
+warning_code = warning_code.transpose((2, 0, 1)) # 352 x 128 x 512
+
+"""
 gainbits = gainbits_file["/digitalMeans"][...]  # shape=(352, 3, 128, 512)
 gainbit_thresholds = gainbits_file["/digitalThresholds"][...]  # shape=(2, 352, 128, 512)
 gainbit_stds = gainbits_file["/digitalStdDeviations"][...]  # shape=(352, 3, 128, 512)
@@ -60,7 +145,10 @@ gainbit_stds = gainbit_stds.transpose((1, 0, 2, 3))  # shape=(3, 352, 128, 512)
 gainbit_spacing_safety = gainbits_file["/digitalSpacingsSafetyFactors"][...]  # shape=(352, 2, 128, 512)
 gainbit_spacing_safety.transpose((1,0,2,3)) # shape=(2, 352, 128, 512)
 gainbits = gainbits.transpose((1, 0, 2, 3))  # shape=(3, 352, 128, 512)
-gainbits_file.close()
+"""
+
+
+
 
 # Get data from dark file
 dark_file = h5py.File(dark_filepath, 'r', libver='latest')
@@ -100,13 +188,18 @@ combined_mask = np.zeros((352, 128, 512), dtype=bool)
 failed_fit_mask = np.zeros((352, 128, 512), dtype=bool)
 dset_failed_fit_mask = masks.create_dataset("failed_fit", shape=(352, 128, 512), dtype=bool)
 
-for tmp in (gains, gain_offsets, gain_stds, gainbits, gainbit_thresholds, gainbit_stds):
-    for i in np.arange(tmp.shape[0]):
-        failed_fit_mask = np.logical_or(failed_fit_mask, ~np.isfinite(tmp[i, ...]))
-    tmp[~np.isfinite(tmp)] = 0  # to surpress "invalid value in comparison" warnings
-for tmp in (dark_offset, noise, photon_spacing, photon_spacing_quality):
-    failed_fit_mask = np.logical_or(failed_fit_mask, ~np.isfinite(tmp))
-    tmp[~np.isfinite(tmp)] = 0  # to surpress "invalid value in comparison" warnings
+#for tmp in (gains, gain_offsets, gain_stds, gainbits, gainbit_thresholds, gainbit_stds):
+#    for i in np.arange(tmp.shape[0]):
+#        failed_fit_mask = np.logical_or(failed_fit_mask, ~np.isfinite(tmp[i, ...]))
+#    tmp[~np.isfinite(tmp)] = 0  # to surpress "invalid value in comparison" warnings
+#for tmp in (dark_offset, noise, photon_spacing, photon_spacing_quality):
+#    failed_fit_mask = np.logical_or(failed_fit_mask, ~np.isfinite(tmp))
+#    tmp[~np.isfinite(tmp)] = 0  # to surpress "invalid value in comparison" warnings
+
+
+# for gain info we have error codes
+for tmp in (error_code, warning_code):
+    failed_fit_mask = np.logical_or(failed_fit_mask, np.where(tmp != 0, True, False))
 
 figure = plt.figure()
 axes = figure.gca()
