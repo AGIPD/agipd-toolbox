@@ -11,6 +11,7 @@ from string import Template
 
 class GatherData():
     def __init__(self, asic, input_file, output_file_name, meas_type, max_part, col_spec=[0]):
+        print("Using python version {}".format(sys.version_info))
         print("Using numpy version {}".format(np.__version__))
         print("Using h5py version {}".format(h5py.__version__))
 
