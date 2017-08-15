@@ -8,7 +8,7 @@ class GatherDarkData():
 
         self.nParts = nParts
         self.fileName = fileName
-        sel.saveFileName = saveFileName
+        self.saveFileName = saveFileName
         self.dataPathInFile = '/entry/instrument/detector/data'
 
         print('\n\n\nstart gatherDarkData')

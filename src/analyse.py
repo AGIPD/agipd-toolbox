@@ -24,6 +24,10 @@ import numpy as np
 from string import Template
 
 from gather import GatherData
+from dark_and_xray.gatherDarkData import GatherDarkData
+from dark_and_xray.batchProcessDarkData import BatchProcessDarkData
+from dark_and_xray.batchProcessXRayTubeData import BatchProcessXRayTubeData
+from dark_and_xray.gatherXRayTubeData import GatherXRayTubeData
 from parallel_process import ParallelProcess
 from merge_drscs import ParallelMerge
 
@@ -238,6 +242,9 @@ class Analyse():
         input_file_name = "{}*_{}_{}".format(module_split[0],
                                              self.meas_input[self.meas_type],
                                              self.meas_spec[self.meas_type])
+        input_file_name_old = "{}_{}_{}".format(module_split[0],
+                                                self.meas_input[self.meas_type],
+                                                self.meas_spec[self.meas_type])
         input_file_dir = os.path.join(self.input_base_dir,
                                       self.temperature,
                                       self.meas_input[self.meas_type],
@@ -270,15 +277,23 @@ class Analyse():
 
         # Dark gathering was not yet integrated into the new gather/process structure
         if self.meas_type == "dark":
-            fileName = os.path.join(input_file_name, input_file_name)
-            safeFileName = os.path.join(output_file_name, output_file_name)
+            input_fname = os.path.join(input_file_dir, input_file_name_old)
+            # dark and xray do not have supdirs
+            input_file_dir = os.path.dirname(input_file_dir)
+
+            fileName = os.path.join(input_file_dir, input_fname)
+            saveFileName = os.path.join(output_file_name, output_file_name)
             nParts = 10
 
             GatherDarkData(nParts, fileName, saveFileName)
         # Xray gathering was not yet integrated into the new gather/process structure
         elif self.meas_type == "xray":
-            fileName = os.path.join(input_file_name, input_file_name)
-            safeFileName = os.path.join(output_file_name, output_file_name)
+            input_fname = os.path.join(input_file_dir, input_file_name_old)
+            # dark and xray do not have supdirs
+            input_file_dir = os.path.dirname(input_file_dir)
+
+            fileName = os.path.join(input_file_dir, input_fname)
+            saveFileName = os.path.join(output_file_name, output_file_name)
 
             GatherXRayTubeData(fileName, safeFileName)
         else:

@@ -29,7 +29,7 @@ class BatchProcessXRayTubeData():
 
         self.run()
 
-    def run(self.):
+    def run(self):
 
         saveFile = h5py.File(self.saveFileName, "w", libver='latest')
         dset_photonSpacing = saveFile.create_dataset("photonSpacing", shape=(128, 512), dtype='int16')

@@ -58,9 +58,18 @@ class SubmitJobs():
         self.module = config["general"]["module"]
         self.temperature = config["general"]["temperature"]
         self.measurement = config["general"]["measurement"]
-        current = config["general"]["current"]
-        self.current = None
         self.safety_factor = config["general"]["safety_factor"]
+
+        self.current = None
+        self.tint = None
+        self.element = None
+
+        if self.measurement == "drscs":
+            current = config[self.measurement]["current"]
+        elif self.measurement == "dark":
+            self.tint = config[self.measurement]["tint"]
+        elif self.measurement == "xray":
+            self.element = config[self.measurement]["element"]
 
         self.n_jobs = int(config[self.run_type]["n_jobs"])
         self.n_processes = config[self.run_type]["n_processes"]
@@ -121,10 +130,7 @@ class SubmitJobs():
                 script_params += ["--column_spec", self.column_spec]
 
 
-        #comma seperated string into into list
-        current_list = [c.split()[0] for c in current.split(",")]
-
-        if self.run_type == "merge":
+        if self.run_type == "merge" and self.measurement == "drscs":
             # missuse current to set merge as the job name
             self.current = self.run_type
             self.script_params = script_params
@@ -132,7 +138,10 @@ class SubmitJobs():
             print("run merge")
             self.run()
 
-        else:
+        elif self.measurement == "drscs":
+            #comma seperated string into into list
+            current_list = [c.split()[0] for c in current.split(",")]
+
             for current in current_list:
                 self.current = current
                 self.script_params = script_params + \
@@ -140,6 +149,20 @@ class SubmitJobs():
 
                 print("run:", current)
                 self.run()
+
+        elif self.measurement == "dark":
+            self.script_params = script_params + \
+                                 ["--tint", self.tint]
+
+            print("run: ", self.tint)
+            self.run()
+
+        elif self.measurement == "xray":
+            self.script_params = script_params + \
+                                 ["--element", self.element]
+
+            print("run: ", self.element)
+            self.run()
 
     def generate_asic_lists(self, asic_set, n_jobs):
 
@@ -207,9 +230,13 @@ class SubmitJobs():
             cmd = [shell_script, batch_job_dir] + self.script_params + \
                   ["--asic_list", asic_set]
 
-            cmd = ["sbatch"] + self.sbatch_params + cmd
+            #cmd = ["sbatch"] + self.sbatch_params + cmd
 
-            subprocess.call(cmd)
+            try:
+                subprocess.call(cmd)
+            except:
+                print("cmd {}".format(cmd))
+                raise
 
 if __name__ == "__main__":
     SubmitJobs()
