@@ -130,7 +130,7 @@ if not ('dark_offset_range' in locals()):
 dark_offset_mask = np.zeros((352, 128, 512), dtype=bool)
 dset_dark_offset_mask = masks.create_dataset("dark_offset", shape=(352, 128, 512), dtype=bool)
 
-dark_offset_mean = np.mean(dark_offset[~combined_mask])
+dark_offset_mean = np.median(dark_offset[~combined_mask])
 dark_offset_sigma = np.std(dark_offset[~combined_mask])
 
 dark_offset_mask[dark_offset < dark_offset_mean - (dark_offset_range[0] * dark_offset_sigma)] = True
@@ -154,7 +154,7 @@ if not ('noise_range' in locals()):
 noise_mask = np.zeros((352, 128, 512), dtype=bool)
 dset_noise_mask = masks.create_dataset("noise", shape=(352, 128, 512), dtype=bool)
 
-noise_mean = np.mean(noise[~combined_mask])
+noise_mean = np.median(noise[~combined_mask])
 noise_sigma = np.std(noise[~combined_mask])
 
 noise_mask[noise < noise_mean - (noise_range[0] * noise_sigma)] = True
@@ -217,9 +217,9 @@ if not ('gains_range' in locals()):
 gains_mask = np.zeros((3, 352, 128, 512), dtype=bool)
 dset_gains_mask = masks.create_dataset("gain", shape=(3, 352, 128, 512), dtype=bool)
 
-gains_hi_mean = np.mean(gains[0, ~combined_mask])
-gains_med_mean = np.mean(gains[1, ~combined_mask])
-gains_low_mean = np.mean(gains[2, ~combined_mask])
+gains_hi_mean = np.median(gains[0, ~combined_mask])
+gains_med_mean = np.median(gains[1, ~combined_mask])
+gains_low_mean = np.median(gains[2, ~combined_mask])
 
 gains_hi_sigma = np.std(gains[0, ~combined_mask])
 gains_med_sigma = np.std(gains[1, ~combined_mask])
@@ -291,9 +291,9 @@ if not ('gainbit_stds_range' in locals()):
 gainbit_stds_mask = np.zeros((3, 352, 128, 512), dtype=bool)
 dset_gainbit_stds_mask = masks.create_dataset("gainbit", shape=(3, 352, 128, 512), dtype=bool)
 
-gainbit_stds_hi_mean = np.mean(gainbit_stds[0, ~combined_mask])
-gainbit_stds_med_mean = np.mean(gainbit_stds[1, ~combined_mask])
-gainbit_stds_low_mean = np.mean(gainbit_stds[2, ~combined_mask])
+gainbit_stds_hi_mean = np.median(gainbit_stds[0, ~combined_mask])
+gainbit_stds_med_mean = np.median(gainbit_stds[1, ~combined_mask])
+gainbit_stds_low_mean = np.median(gainbit_stds[2, ~combined_mask])
 
 gainbit_stds_hi_sigma = np.std(gainbit_stds[0, ~combined_mask])
 gainbit_stds_med_sigma = np.std(gainbit_stds[1, ~combined_mask])
@@ -406,7 +406,7 @@ if not ('photon_spacing_range' in locals()):
 photon_spacing_mask = np.zeros((128, 512), dtype=bool)
 dset_photon_spacing_mask = masks.create_dataset("photon_spacing", shape=(128, 512), dtype=bool)
 
-photon_spacing_mean = np.mean(photon_spacing[~combined_mask[175,::]])
+photon_spacing_mean = np.median(photon_spacing[~combined_mask[175,::]])
 photon_spacing_std = np.std(photon_spacing[~combined_mask[175,::]])
 
 photon_spacing_mask[( photon_spacing < (photon_spacing_mean - (photon_spacing_range[0] * photon_spacing_std)) )] = True
@@ -456,7 +456,7 @@ print('photon_spacing_range = \n', photon_spacing_range)
 
 combined_mask_file = h5py.File(save_filename, "r", libver='latest')
 combined_mask = combined_mask_file['combined_mask'][...]
-#pg.image(combined_mask.transpose(0, 2, 1))
+pg.image(combined_mask.transpose(0, 2, 1))
 
 print('\n\n percentage of masked cells: ', 100 * combined_mask.flatten().sum() / combined_mask.size)
 print('\n\n\npress enter to quit')
