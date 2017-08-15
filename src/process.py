@@ -183,6 +183,8 @@ class ProcessDrscs():
 
         self.digital_path = "/entry/instrument/detector/data_digital"
         self.analog_path = "/entry/instrument/detector/data"
+        self.frame_loss_analog_path = "/entry/instrument/detector/collection/frame_loss_analog"
+        self.frame_loss_digital_path = "/entry/instrument/detector/collection/frame_loss_digital"
 
         self.create_plot_type = create_plots
         self.plot_dir = plot_dir
@@ -427,12 +429,18 @@ class ProcessDrscs():
                slice(self.mem_cell_list[0], self.mem_cell_list[-1] + 1),
                slice(None))
 
-        # origin data is written as int16 which results in a integer overflow
-        # when handling the scaling
-        self.analog = source_file[self.analog_path][idx].astype("int32")
-        self.digital = source_file[self.digital_path][idx].astype("int32")
+        idx_frame_loss = (slice(None), idx[2], slice(None))
 
-        source_file.close()
+        try:
+            # origin data is written as int16 which results in a integer overflow
+            # when handling the scaling
+            self.analog = source_file[self.analog_path][idx].astype("int32")
+            self.digital = source_file[self.digital_path][idx].astype("int32")
+
+            self.frame_loss_analog = source_file[self.frame_loss_analog_path][idx_frame_loss]
+            self.frame_loss_digital = source_file[self.frame_loss_digital_path][idx_frame_loss]
+        finally:
+            source_file.close()
 
     def process_data_point(self, out_idx):
 
@@ -467,10 +475,20 @@ class ProcessDrscs():
             self.log.info("took time: {}".format(time.time() - t))
 
     def calc_gain_regions(self):
-        data_a = self.analog[self.in_idx[0], self.in_idx[1], self.in_idx[2], :]
+        data_a = self.analog[self.in_idx[0], self.in_idx[1], self.in_idx[2], :].astype(np.float)
+
+        # find out if the col was effected by frame loss
+        n_col_sets = self.frame_loss_analog.shape[0]
+        frame_loss = self.frame_loss_analog[self.in_idx[1] % n_col_sets, self.in_idx[2], :]
+
+        missing = np.array(np.where(frame_loss != 0))
+        data_a[missing] = np.NAN
 
         # calculates the difference between neighboring elements
         self.diff = np.diff(data_a)
+
+        # remove the ones with frameloss
+        self.diff = self.diff[~np.isnan(self.diff)]
 
         # an additional threshold is needed to catch cases like this:
         # safety factor : 450
@@ -543,12 +561,12 @@ class ProcessDrscs():
             if region_of_interest_before.size == 0:
                 mean_before = data_a[prev_stop]
             else:
-                mean_before = np.mean(region_of_interest_before)
+                mean_before = np.nanmean(region_of_interest_before)
 
             if region_of_interest_after.size == 0:
                 mean_after = data_a[pot_start]
             else:
-                mean_after = np.mean(region_of_interest_after)
+                mean_after = np.nanmean(region_of_interest_after)
 
 
             if self.use_debug:
@@ -578,7 +596,7 @@ class ProcessDrscs():
                         np.max(region_of_interest_before)
                         - np.min(region_of_interest_before) > self.safety_factor * 2):
                     # cut the region of interest into half
-                    mean_before = np.mean(region_of_interest_before[len(region_of_interest_before) / 2:])
+                    mean_before = np.nanmean(region_of_interest_before[len(region_of_interest_before) / 2:])
 
                     if self.use_debug:
                         self.log.debug("mean_before after cut down of region of interest: {}"
@@ -605,7 +623,7 @@ class ProcessDrscs():
                         if region_of_interest_before.size == 0:
                             mean_before = data_a[prev_stop]
                         else:
-                            mean_before = np.mean(region_of_interest_before)
+                            mean_before = np.nanmean(region_of_interest_before)
 
                         if self.use_debug:
                             self.log.debug("near_matches_before is not empty")
@@ -645,7 +663,7 @@ class ProcessDrscs():
                             if region_of_interest_after.size == 0:
                                 mean_after = data_a[pot_start]
                             else:
-                                mean_after = np.mean(region_of_interest_after)
+                                mean_after = np.nanmean(region_of_interest_after)
 
                             if self.use_debug:
                                 self.log.debug("near_matches_after is not empty")
@@ -726,6 +744,7 @@ class ProcessDrscs():
 
         if self.use_debug:
             self.log.debug("{}, found gain intervals {}".format(self.out_idx, gain_intervals))
+            x = np.arange(gain_intervals[-1][1] + 1)
             self.log.debug("len gain intervals {}".format(len(gain_intervals)))
 
         if len(gain_intervals) > 3:
@@ -864,22 +883,32 @@ class ProcessDrscs():
 
         # transform the problem y = mx + c
         # into the form y = Ap, where A = [[x 1]] and p = [[m], [c]]
-        # meaning  data_to_fit = coefficient_matrix * [slope, offset]
-        self.data_to_fit[gain][interval_idx] = self.analog[self.in_idx[0], self.in_idx[1],
-                                                           self.in_idx[2],
-                                                           lower_border:upper_border]
+        # meaning  data_to_fit = A * [slope, offset]
+        y = self.analog[self.in_idx[0], self.in_idx[1], self.in_idx[2],
+                        lower_border:upper_border].astype(np.float)
 
         self.x_values[gain][interval_idx] = np.arange(lower_border, upper_border)
         #TODO check that size of inteval is not to small, i.e. < 3
 
-        number_of_points = len(self.x_values[gain][interval_idx])
-
         # scaling
         self.scale_x_interval(gain, interval_idx)
 
+        # find out if the col was effected by frame loss
+        n_col_sets = self.frame_loss_analog.shape[0]
+        frame_loss = self.frame_loss_analog[self.in_idx[1] % n_col_sets, self.in_idx[2],
+                                            lower_border:upper_border]
+
+        lost_frames = np.array(np.where(frame_loss != 0))
+
+        y[lost_frames] = np.NAN
+
+        # remove the ones with frameloss
+        missing = np.isnan(y)
+        self.data_to_fit[gain][interval_idx] = y[~missing]
+        x = self.x_values[gain][interval_idx][~missing]
+
         # .T means transposed
-        self.coefficient_matrix = np.vstack([self.x_values[gain][interval_idx],
-                                             np.ones(number_of_points)]).T
+        A = np.vstack([x, np.ones(len(x))]).T
 
         # fit the data
         # reason to use numpy lstsq:
@@ -888,7 +917,7 @@ class ProcessDrscs():
         array_idx = self.out_idx + (interval_idx,)
         res = None
         try:
-            res = np.linalg.lstsq(self.coefficient_matrix, self.data_to_fit[gain][interval_idx])
+            res = np.linalg.lstsq(A, self.data_to_fit[gain][interval_idx])
 
             self.result["slope"]["individual"][gain][array_idx] = res[0][0]
             self.result["offset"]["individual"][gain][array_idx] = res[0][1]
@@ -900,7 +929,7 @@ class ProcessDrscs():
         except:
             if res is None:
                 self.log.debug("interval\n{}".format(interval))
-                self.log.debug("self.coefficient_matrix\n{}".format(self.coefficient_matrix))
+                self.log.debug("A\n{}".format(A))
                 self.log.debug("self.data_to_fit[{}][{}]\n{}"
                                .format(gain, interval_idx,
                                        self.data_to_fit[gain][interval_idx]))
@@ -915,7 +944,7 @@ class ProcessDrscs():
                 raise FitError("Failed to calculate residual")
             else:
                 self.log.debug("interval\n{}".format(interval))
-                self.log.debug("self.coefficient_matrix\n{}".format(self.coefficient_matrix))
+                self.log.debug("A\n{}".format(A))
                 self.log.debug("self.data_to_fit[{}][{}]\n{}"
                                .format(gain, interval_idx,
                                        self.data_to_fit[gain][interval_idx]))
@@ -1083,17 +1112,19 @@ if __name__ == "__main__":
 
     base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
 
-    asic = 5
-    module = "M234"
-    temperature = "temperature_m20C"
-    current = "itestc20"
+    asic = 2
+    module = "M215"
+    temperature = "temperature_m15C"
+    current = "itestc80"
     #safety_factor = 750
-    safety_factor = 450
+    safety_factor = 950
 
     input_fname = os.path.join(base_dir, module, temperature, "drscs", current, "gather",
                               "{}_drscs_{}_asic{}.h5".format(module, current, str(asic).zfill(2)))
     output_fname = os.path.join(base_dir, module, temperature, "drscs", current, "process",
-                               "{}_drscs_{}_asic{}_processed.h5".format(module, current, str(asic).zfill(2)))
+                               "{}_drscs_{}_asic{}_processed.h5".format(module, current,
+                                                                        str(asic).zfill(2)))
+
     plot_subdir = "pixel_investigation"
     plot_dir = os.path.join(base_dir, module, temperature, "drscs", "plots", current, plot_subdir)
 
@@ -1106,17 +1137,17 @@ if __name__ == "__main__":
     #pixel_u_list = np.arange(38,39)
     #mem_cell_list = np.arange(99,100)
 
-    pixel_v_list = np.arange(0, 1)
-    pixel_u_list = np.arange(64)
-    mem_cell_list = np.arange(352)
+    #pixel_v_list = np.arange(0, 1)
+    #pixel_u_list = np.arange(64)
+    #mem_cell_list = np.arange(352)
 
-    #pixel_v_list = np.array([0])
-    #pixel_u_list = np.array([8])
-    #mem_cell_list = np.array([0])
+    pixel_v_list = np.array([0])
+    pixel_u_list = np.array([0])
+    mem_cell_list = np.array([187])
 
     output_fname = False
     #create_plots can be set to False, "data", "fit", "combined" or "all"
-    create_plots = False #["data", "combined"]
+    create_plots = ["data", "combined"]
     create_error_plots = False #True
     #create_plots=["data", "combined"]
 
