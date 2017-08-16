@@ -5,7 +5,7 @@ import time
 
 
 class BatchProcessDarkData():
-    def __init__(self, fileName, safeFileName):
+    def __init__(self, fileName, saveFileName):
         self.fileName = fileName
         self.saveFileName = saveFileName
 

@@ -8,8 +8,9 @@ import sys
 import time
 import traceback
 from characterization.plotting import generate_data_plot, generate_fit_plot, generate_combined_plot, generate_all_plots
-import matplotlib.pyplot as plt
 from helpers import create_dir, check_file_exists, setup_logging
+import matplotlib.pyplot as plt
+import copy
 
 
 class IntervalError(Exception):
@@ -239,6 +240,7 @@ class ProcessDrscs():
         # 3    Not enough gain stages found
         # 4    Breaking infinite loop
         # 5    Failed to calculate slope and offset
+        # 6    Not enough point to fit {} gain
         #
         # warning_code:
         # 1    Failed to calculate residual
@@ -478,17 +480,16 @@ class ProcessDrscs():
         data_a = self.analog[self.in_idx[0], self.in_idx[1], self.in_idx[2], :].astype(np.float)
 
         # find out if the col was effected by frame loss
-        n_col_sets = self.frame_loss_analog.shape[0]
-        frame_loss = self.frame_loss_analog[self.in_idx[1] % n_col_sets, self.in_idx[2], :]
+        #n_col_sets = self.frame_loss_analog.shape[0]
+        #frame_loss = self.frame_loss_analog[self.in_idx[1] % n_col_sets, self.in_idx[2], :]
+        #lsot_frames = np.where(frame_loss != 0)
 
-        missing = np.array(np.where(frame_loss != 0))
-        data_a[missing] = np.NAN
+        lost_frames = np.where(data_a == 0)
+        #self.log.debug("lost_frames {}".format(lost_frames))
+        data_a[lost_frames] = np.nan
 
         # calculates the difference between neighboring elements
         self.diff = np.diff(data_a)
-
-        # remove the ones with frameloss
-        self.diff = self.diff[~np.isnan(self.diff)]
 
         # an additional threshold is needed to catch cases like this:
         # safety factor : 450
@@ -503,8 +504,17 @@ class ProcessDrscs():
 
         # other reason: all of the pixels with shadow lines would be passing the tests
 
-        self.diff_changes_idx = np.where((self.diff < self.diff_threshold) |
-                                         (self.diff > self.safety_factor))[0]
+        diff_nan_as_bigger = copy.deepcopy(self.diff)
+        diff_nan_as_bigger[np.isnan(self.diff)] = np.inf
+        #self.log.debug("diff_nan_as_bigger {}".format(diff_nan_as_bigger))
+
+        diff_nan_as_lesser = copy.deepcopy(self.diff)
+        diff_nan_as_lesser[np.isnan(self.diff)] = 0
+        #self.log.debug("diff_nan_as_lesser {}".format(diff_nan_as_lesser))
+
+        self.diff_changes_idx = np.where((diff_nan_as_bigger < self.diff_threshold) |
+                                         (diff_nan_as_lesser > self.safety_factor))[0]
+
         if self.use_debug:
             for i in self.diff_changes_idx:
                 self.log.debug("{} : {}".format(i, data_a[i:i+2]))
@@ -560,14 +570,19 @@ class ProcessDrscs():
             near_matches_after = near_matches_after[0]
             if region_of_interest_before.size == 0:
                 mean_before = data_a[prev_stop]
+            elif np.all(np.isnan(region_of_interest_before)):
+                region_of_interest_before = np.array([])
+                mean_before = np.nan
             else:
                 mean_before = np.nanmean(region_of_interest_before)
 
             if region_of_interest_after.size == 0:
                 mean_after = data_a[pot_start]
+            elif np.all(np.isnan(region_of_interest_after)):
+                region_of_interest_after = np.array([])
+                mean_after = np.nan
             else:
                 mean_after = np.nanmean(region_of_interest_after)
-
 
             if self.use_debug:
                 self.log.debug("\n")
@@ -596,7 +611,8 @@ class ProcessDrscs():
                         np.max(region_of_interest_before)
                         - np.min(region_of_interest_before) > self.safety_factor * 2):
                     # cut the region of interest into half
-                    mean_before = np.nanmean(region_of_interest_before[len(region_of_interest_before) / 2:])
+                    new_region = region_of_interest_before[region_of_interest_before.size / 2:]
+                    mean_before = np.nanmean(new_region)
 
                     if self.use_debug:
                         self.log.debug("mean_before after cut down of region of interest: {}"
@@ -622,6 +638,8 @@ class ProcessDrscs():
 
                         if region_of_interest_before.size == 0:
                             mean_before = data_a[prev_stop]
+                        elif np.all(np.isnan(region_of_interest_before)):
+                            mean_before = np.nan
                         else:
                             mean_before = np.nanmean(region_of_interest_before)
 
@@ -662,6 +680,8 @@ class ProcessDrscs():
 
                             if region_of_interest_after.size == 0:
                                 mean_after = data_a[pot_start]
+                            elif np.all(np.isnan(region_of_interest_after)):
+                                mean_after = np.nan
                             else:
                                 mean_after = np.nanmean(region_of_interest_after)
 
@@ -894,12 +914,12 @@ class ProcessDrscs():
         self.scale_x_interval(gain, interval_idx)
 
         # find out if the col was effected by frame loss
-        n_col_sets = self.frame_loss_analog.shape[0]
-        frame_loss = self.frame_loss_analog[self.in_idx[1] % n_col_sets, self.in_idx[2],
-                                            lower_border:upper_border]
+        #n_col_sets = self.frame_loss_analog.shape[0]
+        #frame_loss = self.frame_loss_analog[self.in_idx[1] % n_col_sets, self.in_idx[2],
+        #                                    lower_border:upper_border]
+        #lost_frames = np.array(np.where(frame_loss != 0))
 
-        lost_frames = np.array(np.where(frame_loss != 0))
-
+        lost_frames = np.where(y == 0)
         y[lost_frames] = np.NAN
 
         # remove the ones with frameloss
@@ -907,8 +927,15 @@ class ProcessDrscs():
         self.data_to_fit[gain][interval_idx] = y[~missing]
         x = self.x_values[gain][interval_idx][~missing]
 
+        number_of_points = len(x)
+
         # .T means transposed
-        A = np.vstack([x, np.ones(len(x))]).T
+        A = np.vstack([x, np.ones(number_of_points)]).T
+
+        if A.size == 0 or self.data_to_fit[gain][interval_idx].size == 0:
+            self.result["error_code"][self.out_idx] = 6
+            raise FitError("{}: Not enough point to fit {} gain (number available point: {})"
+                           .format(self.out_idx, gain, self.data_to_fit[gain][interval_idx].size))
 
         # fit the data
         # reason to use numpy lstsq:
@@ -1112,7 +1139,7 @@ if __name__ == "__main__":
 
     base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
 
-    asic = 2
+    asic = 1
     module = "M215"
     temperature = "temperature_m15C"
     current = "itestc80"
@@ -1141,17 +1168,18 @@ if __name__ == "__main__":
     #pixel_u_list = np.arange(64)
     #mem_cell_list = np.arange(352)
 
-    pixel_v_list = np.array([0])
-    pixel_u_list = np.array([0])
-    mem_cell_list = np.array([187])
+    pixel_v_list = np.array([30])
+    pixel_u_list = np.array([2])
+    mem_cell_list = np.array([258])
+    #mem_cell_list = np.arange(257,258)
 
     output_fname = False
     #create_plots can be set to False, "data", "fit", "combined" or "all"
     create_plots = ["data", "combined"]
-    create_error_plots = False #True
+    create_error_plots = True
     #create_plots=["data", "combined"]
 
-    #log_level = "info"
+    log_level = "info"
     log_level = "debug"
 
     cal = ProcessDrscs(asic,
