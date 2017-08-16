@@ -25,6 +25,9 @@ def get_arguments():
                         type=str,
                         choices = ["gather", "process", "merge"],
                         help="Run type of the analysis")
+    parser.add_argument("--no_slurm",
+                        action="store_true",
+                        help="The job(s) are not submitted to slurm but run interactively")
 
     args = parser.parse_args()
 
@@ -38,6 +41,7 @@ class SubmitJobs():
         args = get_arguments()
 
         config_name = args.config_file
+        self.no_slurm = args.no_slurm
 
         ini_file = os.path.join(conf_dir, "{}.ini".format(config_name))
         print("Using ini_file: {}".format(ini_file))
@@ -230,7 +234,8 @@ class SubmitJobs():
             cmd = [shell_script, batch_job_dir] + self.script_params + \
                   ["--asic_list", asic_set]
 
-            cmd = ["sbatch"] + self.sbatch_params + cmd
+            if not self.no_slurm:
+                cmd = ["sbatch"] + self.sbatch_params + cmd
 
             try:
                 subprocess.call(cmd)
