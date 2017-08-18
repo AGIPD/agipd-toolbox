@@ -92,6 +92,7 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
             "diff_changes_idx": None,
             "len_diff_changes_idx": None,
             "saturation_threshold": None,
+            "saturation_threshold_diff": None,
             "scaling_point": None,
             "scaling_factor": None,
             "n_gain_stages": None,
@@ -194,7 +195,8 @@ class ProcessDrscs():
 
         self.safety_factor = safety_factor
         self.n_diff_changes_stored = 10
-        self.saturation_threshold = 30
+        self.saturation_threshold = 14000
+        self.saturation_threshold_diff = 30,
 
         self.diff_threshold = -100
         self.region_range_in_percent = 2
@@ -310,6 +312,7 @@ class ProcessDrscs():
         self.result["collection"]["fit_cutoff_left"] = self.fit_cutoff_left
         self.result["collection"]["fit_cutoff_right"] = self.fit_cutoff_right
         self.result["collection"]["saturation_threshold"] = self.saturation_threshold
+        self.result["collection"]["saturation_threshold_diff"] = self.saturation_threshold_diff
 
         for pixel_v in self.pixel_v_list:
             #self.log.debug("start processing row {}".format(pixel_v))
@@ -835,7 +838,6 @@ class ProcessDrscs():
 
 
     def detect_saturation(self, interval):
-        self.saturation_threshold = 14000
 
         idx = (self.in_idx[0],
                self.in_idx[1],
@@ -852,15 +854,27 @@ class ProcessDrscs():
         #self.log.debug("sat_indices {}".format(sat_index))
         #self.log.debug("value {}".format(self.analog[self.in_idx[0], self.in_idx[1], self.in_idx[2], sat_index-5:sat_index+6])
 
-        self.result["intervals"]["saturation"][self.out_idx] = [sat_index, interval[1]]
+        new_interval = [interval[0], sat_index]
 
-        return [interval[0], sat_index]
+        # second iteration for saturation detection
+        new_gain_interval, new_sat_interval = self.detect_saturation_with_diff(new_interval)
+
+        #self.log.debug("new_gain_interval {}".format(new_gain_interval))
+        #self.log.debug("new_sat_interval {}".format(new_sat_interval))
+
+        self.result["intervals"]["saturation"][self.out_idx] = [new_sat_interval[0], interval[1]]
+
+        return new_gain_interval
+        #return [interval[0], sat_index]
 
 
-    def detect_saturation2(self, interval):
+    def detect_saturation_with_diff(self, interval):
         diff_det_interval = self.diff[interval[0]:interval[1]]
+        #self.log.debug("diff_det_interval {}".format(diff_det_interval))
+        #self.log.debug("saturation_threshold {}".format(self.saturation_threshold_diff))
 
-        sat_indices = np.where(np.absolute(diff_det_interval) < self.saturation_threshold)[0]
+        sat_indices = np.where(np.absolute(diff_det_interval) < self.saturation_threshold_diff)[0]
+        #self.log.debug("sat_indices {}".format(sat_indices))
 
         j = sat_indices[-1]
         for i in sat_indices[::-1]:
@@ -872,9 +886,10 @@ class ProcessDrscs():
         #self.log.debug("i {}".format(i))
         #self.log.debug("j {}".format(j))
 
-        self.result["intervals"]["saturation"][self.out_idx] = [interval[0] + i, interval[1]]
+        saturation_interval = [interval[0] + i, interval[1]]
+        new_gain_interval = [interval[0] + sat_indices[0], interval[0] + i]
 
-        return [interval[0] + sat_indices[0], interval[0] + i]
+        return new_gain_interval, saturation_interval
 
 
     def fit_gain(self, gain, interval, cut_off_ends):
@@ -988,9 +1003,9 @@ class ProcessDrscs():
             #self.log.debug("average_residual {}".format(self.result["average_residual"]["individual"][gain][array_idx]))
         except:
             if res is None:
-                self.log.debug("interval\n{}".format(interval))
-                self.log.debug("A\n{}".format(A))
-                self.log.debug("self.data_to_fit[{}][{}]\n{}"
+                self.log.debug("interval {}".format(interval))
+                self.log.debug("A {}".format(A))
+                self.log.debug("self.data_to_fit[{}][{}] {}"
                                .format(gain, interval_idx,
                                        self.data_to_fit[gain][interval_idx]))
 
