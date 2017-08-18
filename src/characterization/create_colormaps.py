@@ -121,7 +121,7 @@ def create_individual_plots(input_fname, mem_cell_list, plot_prefix, plot_ending
         colormap_matrix = create_matrix_individual(input_fname, gain_name, matrix_type)
 
         create_plots(mem_cell_list, colormap_matrix, plot_prefix, plot_ending,
-                     gain_name, matrix_type, splitted=False)
+                     gain_name, matrix_type, splitted=True)
     except OSError:
         print("OSError:", input_fname)
         pass
