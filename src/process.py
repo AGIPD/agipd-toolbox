@@ -350,16 +350,22 @@ class ProcessDrscs():
                         sys.exit(1)
                     except Exception as e:
                         if type(e) == IntervalError:
-                            #print("IntervalError")
+                            if self.use_debug:
+                                self.log.debug("IntervalError")
                             pass
                         elif type(e) == IntervalSplitError:
-                            #print("IntervalSplitError")
+                            if self.use_debug:
+                                self.log.debug("IntervalSplitError")
                             pass
                         elif type(e) == GainStageNumberError:
-                            #print("{}: GainStageNumberError".format(self.out_idx))
-                            #print("found number of diff_changes_idx={}".format(len(self.diff_changes_idx)))
+                            if self.use_debug:
+                                self.log.debug("{}: GainStageNumberError".format(self.out_idx))
+                                self.log.debug("found number of diff_changes_idx={}"
+                                               .format(len(self.diff_changes_idx)))
                             pass
                         elif type(e) == FitError:
+                            if self.use_debug:
+                                self.log.debug("FitError")
                             pass
                         else:
                             self.log.error("Failed to run for pixel [{}, {}] and mem_cell {}"
@@ -424,7 +430,11 @@ class ProcessDrscs():
 
     def load_data(self):
 
-        source_file = h5py.File(self.input_fname, "r")
+        try:
+            source_file = h5py.File(self.input_fname, "r")
+        except:
+            self.log.error("Unable to open file {}".format(input_fname))
+            raise
 
         idx = (slice(self.pixel_v_list[0], self.pixel_v_list[-1] + 1),
                slice(self.pixel_u_list[0], self.pixel_u_list[-1] + 1),
@@ -488,6 +498,13 @@ class ProcessDrscs():
         #self.log.debug("lost_frames {}".format(lost_frames))
         data_a[lost_frames] = np.nan
 
+#        print(type(data_a))
+
+        missing = np.isnan(data_a)
+        # remember the original indices
+        origin_idx = np.arange(data_a.size)[~missing]
+        data_a = data_a[~missing]
+
         # calculates the difference between neighboring elements
         self.diff = np.diff(data_a)
 
@@ -504,16 +521,19 @@ class ProcessDrscs():
 
         # other reason: all of the pixels with shadow lines would be passing the tests
 
-        diff_nan_as_bigger = copy.deepcopy(self.diff)
-        diff_nan_as_bigger[np.isnan(self.diff)] = np.inf
+#        diff_nan_as_bigger = copy.deepcopy(self.diff)
+#        diff_nan_as_bigger[np.isnan(self.diff)] = np.inf
         #self.log.debug("diff_nan_as_bigger {}".format(diff_nan_as_bigger))
 
-        diff_nan_as_lesser = copy.deepcopy(self.diff)
-        diff_nan_as_lesser[np.isnan(self.diff)] = 0
+#        diff_nan_as_lesser = copy.deepcopy(self.diff)
+#        diff_nan_as_lesser[np.isnan(self.diff)] = 0
         #self.log.debug("diff_nan_as_lesser {}".format(diff_nan_as_lesser))
 
-        self.diff_changes_idx = np.where((diff_nan_as_bigger < self.diff_threshold) |
-                                         (diff_nan_as_lesser > self.safety_factor))[0]
+#        self.diff_changes_idx = np.where((diff_nan_as_bigger < self.diff_threshold) |
+#                                         (diff_nan_as_lesser > self.safety_factor))[0]
+
+        self.diff_changes_idx = np.where((self.diff < self.diff_threshold) |
+                                         (self.diff > self.safety_factor))[0]
 
         if self.use_debug:
             for i in self.diff_changes_idx:
@@ -537,7 +557,7 @@ class ProcessDrscs():
             # exclude the found point
             pot_start = self.diff_changes_idx[i] + 1
 
-            range_len_tmp = np.ceil((prev_stop - gain_intervals[-1][0]) * self.region_range_in_percent / 100)
+            range_len_tmp = int(np.ceil((prev_stop - gain_intervals[-1][0]) * self.region_range_in_percent / 100))
             if range_len_tmp != 0:
                 region_range_before = range_len_tmp
             # the region before would be empty
@@ -611,7 +631,7 @@ class ProcessDrscs():
                         np.max(region_of_interest_before)
                         - np.min(region_of_interest_before) > self.safety_factor * 2):
                     # cut the region of interest into half
-                    new_region = region_of_interest_before[region_of_interest_before.size / 2:]
+                    new_region = region_of_interest_before[region_of_interest_before.size // 2:]
                     mean_before = np.nanmean(new_region)
 
                     if self.use_debug:
@@ -762,9 +782,17 @@ class ProcessDrscs():
         else:
             gain_intervals.append([pot_start, self.diff.size + 1])
 
+        # map the found indices back to the origin data
+        mapped_gain_intervals = []
+        for idx in np.arange(len(gain_intervals) - 1):
+            i = gain_intervals[idx]
+            mapped_gain_intervals.append([origin_idx[i[0]], origin_idx[i[1]]])
+        mapped_gain_intervals.append([origin_idx[gain_intervals[-1][0]], origin_idx[-1]])
+
+        gain_intervals = mapped_gain_intervals
+
         if self.use_debug:
             self.log.debug("{}, found gain intervals {}".format(self.out_idx, gain_intervals))
-            x = np.arange(gain_intervals[-1][1] + 1)
             self.log.debug("len gain intervals {}".format(len(gain_intervals)))
 
         if len(gain_intervals) > 3:
@@ -932,10 +960,15 @@ class ProcessDrscs():
         # .T means transposed
         A = np.vstack([x, np.ones(number_of_points)]).T
 
-        if A.size == 0 or self.data_to_fit[gain][interval_idx].size == 0:
+        if A.size <= 1 or self.data_to_fit[gain][interval_idx].size <= 1:
             self.result["error_code"][self.out_idx] = 6
-            raise FitError("{}: Not enough point to fit {} gain (number available point: {})"
-                           .format(self.out_idx, gain, self.data_to_fit[gain][interval_idx].size))
+            msg = ("{}: Not enough point to fit {} gain (number of point available: {})"
+                   .format(self.out_idx, gain, self.data_to_fit[gain][interval_idx].size))
+
+            if self.use_debug:
+                self.log.debug(msg)
+
+            raise FitError(msg)
 
         # fit the data
         # reason to use numpy lstsq:
@@ -965,10 +998,26 @@ class ProcessDrscs():
 
             if res[0].size != 2:
                 self.result["error_code"][self.out_idx] = 5
-                raise FitError("Failed to calculate slope and offset")
+                msg = "Failed to calculate slope and offset"
+
+                if self.use_debug:
+                    self.log.debug(msg)
+
+                raise FitError(msg)
+
             elif res[1].size != 1:
                 self.result["warning_code"][self.out_idx] = 1
-                raise FitError("Failed to calculate residual")
+                msg = "Failed to calculate residual"
+
+                if self.use_debug:
+                    self.log.debug("interval {}".format(interval))
+                    self.log.debug(res)
+                    self.log.debug("self.data_to_fit[{}][{}] {}"
+                                   .format(gain, interval_idx,
+                                           self.data_to_fit[gain][interval_idx]))
+                    self.log.debug(msg)
+
+                raise FitError(msg)
             else:
                 self.log.debug("interval\n{}".format(interval))
                 self.log.debug("A\n{}".format(A))
