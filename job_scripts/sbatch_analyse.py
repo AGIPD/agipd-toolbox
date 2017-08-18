@@ -63,6 +63,7 @@ class SubmitJobs():
         self.temperature = config["general"]["temperature"]
         self.measurement = config["general"]["measurement"]
         self.safety_factor = config["general"]["safety_factor"]
+        self.partition = config["general"]["partition"]
 
         self.current = None
         self.tint = None
@@ -106,7 +107,7 @@ class SubmitJobs():
             print("Creating sbatch working dir: {}\n".format(work_dir))
 
         self.sbatch_params = [
-            "--partition", "all",
+            "--partition", self.partition,
             "--time", self.time_limit,
             "--nodes", "1",
             "--mail-type", "END",
