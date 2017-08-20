@@ -20,7 +20,8 @@ def exec_process(asic, input_file, analog, digital, pixel_v_list, pixel_u_list, 
     #cal = ProcessDrscs(asic, analog=analog, digital=digital)
     cal = ProcessDrscs(asic, input_file, safety_factor=safety_factor)#,
     #                   plot_prefix=plot_prefix, plot_dir=plot_dir, create_plots=False)
-    cal.run(pixel_v_list, pixel_u_list, mem_cell_list, create_error_plots=create_error_plots)
+    cal.run(pixel_v_list, pixel_u_list, mem_cell_list,
+            create_error_plots=create_error_plots)
 
     return cal.result, pixel_v_list, pixel_u_list, mem_cell_list
 
@@ -165,7 +166,8 @@ class ParallelProcess():
             # if list to split is not a multiple of size, the rest is equaly
             # distributed over the remaining processes
             self.process_lists += [self.pixel_v_list[i:i+size+1]
-                for i in range(len(self.process_lists)*size, len(self.pixel_v_list), size+1)]
+                for i in range(len(self.process_lists)*size,
+                               len(self.pixel_v_list), size+1)]
 
         print("process_lists")
         for i in self.process_lists:
@@ -329,16 +331,22 @@ class ParallelProcess():
 
             for key in self.result:
                 if type(self.result[key]) != dict:
-                    save_file.create_dataset("/{}".format(key), data=self.result[key])
+                    path = "/{}".format(key)
+                    data = self.result[key]
+                    save_file.create_dataset(path, data=data)
                 else:
                     for subkey in self.result[key]:
                         if type(self.result[key][subkey]) != dict:
-                            save_file.create_dataset("/{}/{}".format(key, subkey),
-                                                     data=self.result[key][subkey])
+                            path = "/{}/{}".format(key, subkey)
+                            data = self.result[key][subkey]
+                            save_file.create_dataset(path,
+                                                     data=data)
                         else:
                             for gain in ["high", "medium", "low"]:
-                                save_file.create_dataset("/{}/{}/{}".format(key, subkey, gain),
-                                                         data=self.result[key][subkey][gain])
+                                path = "/{}/{}/{}".format(key, subkey, gain)
+                                data = self.result[key][subkey][gain]
+                                save_file.create_dataset(path,
+                                                         data=data)
 
             save_file.flush()
             print("took time: {}".format(time.time() - t))

@@ -185,8 +185,8 @@ class ProcessDrscs():
 
         self.digital_path = "/entry/instrument/detector/data_digital"
         self.analog_path = "/entry/instrument/detector/data"
-        self.frame_loss_analog_path = "/entry/instrument/detector/collection/frame_loss_analog"
-        self.frame_loss_digital_path = "/entry/instrument/detector/collection/frame_loss_digital"
+        #self.frame_loss_analog_path = "/entry/instrument/detector/collection/frame_loss_analog"
+        #self.frame_loss_digital_path = "/entry/instrument/detector/collection/frame_loss_digital"
 
         self.create_plot_type = create_plots
         self.plot_dir = plot_dir
@@ -436,7 +436,7 @@ class ProcessDrscs():
         try:
             source_file = h5py.File(self.input_fname, "r")
         except:
-            self.log.error("Unable to open file {}".format(input_fname))
+            self.log.error("Unable to open file {}".format(self.input_fname))
             raise
 
         idx = (slice(self.pixel_v_list[0], self.pixel_v_list[-1] + 1),
@@ -444,18 +444,21 @@ class ProcessDrscs():
                slice(self.mem_cell_list[0], self.mem_cell_list[-1] + 1),
                slice(None))
 
-        idx_frame_loss = (slice(None), idx[2], slice(None))
-
         try:
             # origin data is written as int16 which results in a integer overflow
             # when handling the scaling
             self.analog = source_file[self.analog_path][idx].astype("int32")
             self.digital = source_file[self.digital_path][idx].astype("int32")
-
-            self.frame_loss_analog = source_file[self.frame_loss_analog_path][idx_frame_loss]
-            self.frame_loss_digital = source_file[self.frame_loss_digital_path][idx_frame_loss]
         finally:
             source_file.close()
+
+        #idx_frame_loss = (slice(None), idx[2], slice(None))
+
+        #try:
+        #    self.frame_loss_analog = source_file[self.frame_loss_analog_path][idx_frame_loss]
+        #    self.frame_loss_digital = source_file[self.frame_loss_digital_path][idx_frame_loss]
+        #finally:
+        #    source_file.close()
 
     def process_data_point(self, out_idx):
 
@@ -539,6 +542,7 @@ class ProcessDrscs():
                                          (self.diff > self.safety_factor))[0]
 
         if self.use_debug:
+            self.log.debug("diff_changes_idx")
             for i in self.diff_changes_idx:
                 self.log.debug("{} : {}".format(i, data_a[i:i+2]))
 
