@@ -109,7 +109,17 @@ class GatherData():
         # reshaped data is split into analog and digital data + transposed
         self.target_shape = (self.asic_size, self.asic_size,
                              self.mem_cells, self.charges)
-        self.chunksize = self.target_shape
+
+        # determine chunksize
+        total_data_size = np.prod(self.target_shape)
+        chunk_size_limit = np.prod(64*64*352*1300) # ~4GB
+        if total_data_size > chunk_size_limit:
+            s = np.arange(self.asic_size) * np.prod(self.target_shape[1:])
+            self.rows_per_chunk = np.where(s <= chunk_size_limit)[0][-1]
+        else:
+            self.rows_per_chunk = self.target_shape[0]
+        self.chunksize = (self.rows_per_chunk,)+ self.target_shape[1:]
+        print("chunksize: {}".format(self.chunksize))
 
         self.raw_frame_loss_shape = (self.charges, self.mem_cells)
 
