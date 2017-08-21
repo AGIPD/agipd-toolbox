@@ -77,6 +77,10 @@ def get_arguments():
                         nargs='+',
                         default=False,
                         help="If only a subset of the columns should be gathered")
+    parser.add_argument("--current_list",
+                        type=str,
+                        nargs='+',
+                        help="Lists of currents to analyse")
 
     args = parser.parse_args()
 
@@ -123,6 +127,7 @@ class StartAnalyse():
         self.max_part = args.max_part
         self.column_spec = args.column_spec
         self.reduced_columns = args.reduced_columns
+        self.current_list = args.current_list
 
         self.run()
 
@@ -154,7 +159,8 @@ class StartAnalyse():
                     self.safety_factor,
                     self.column_spec,
                     self.reduced_columns,
-                    self.max_part)
+                    self.max_part,
+                    self.current_list)
         else:
             for asic in self.asic_list:
                 print("Starting script for asic {}\n".format(asic))

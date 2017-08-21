@@ -24,12 +24,12 @@ import numpy as np
 from string import Template
 
 from gather import GatherData
+from parallel_process import ParallelProcess
+from merge_drscs import ParallelMerge
 from dark_and_xray.gatherDarkData import GatherDarkData
 from dark_and_xray.batchProcessDarkData import BatchProcessDarkData
 from dark_and_xray.batchProcessXRayTubeData import BatchProcessXRayTubeData
 from dark_and_xray.gatherXRayTubeData import GatherXRayTubeData
-from parallel_process import ParallelProcess
-from merge_drscs import ParallelMerge
 
 def get_arguments():
     parser = argparse.ArgumentParser()
@@ -94,6 +94,10 @@ def get_arguments():
                         nargs='+',
                         default=False,
                         help="If only a subset of the columns should be gathered")
+    parser.add_argument("--current_list",
+                        type=str,
+                        nargs='+',
+                        help="Lists of currents to analyse")
 
     args = parser.parse_args()
 
@@ -145,7 +149,8 @@ def create_dir(directory_name):
 class Analyse():
     def __init__(self, run_type, meas_type, input_base_dir, output_base_dir,
                  n_processes, module, temperature, current, tint, element,
-                 asic, asic_list, safety_factor, column_spec, reduced_columns, max_part):
+                 asic, asic_list, safety_factor, column_spec, reduced_columns,
+                 max_part, current_list=None):
         print("started Analyse")
 
         self.run_type = run_type
@@ -162,6 +167,7 @@ class Analyse():
         self.asic_list = asic_list
         self.safety_factor = safety_factor
         self.reduced_columns = reduced_columns
+        self.current_list =current_list
 
         if column_spec and len(column_spec) == 4:
             # [[<column>, <file index>],...]
@@ -202,6 +208,7 @@ class Analyse():
         print("output_dir: ", self.output_base_dir)
         print("column_specs: ", self.column_specs)
         print("max_part: ", self.max_part)
+        print("current_list: ", self.current_list)
 
         # Usually the input directory and file names correspond to the meas_type
         self.meas_input = {}
@@ -404,7 +411,7 @@ class Analyse():
 
         create_dir(output_dir)
 
-        ParallelMerge(input_template, output_template, asic_list, self.n_processes)
+        ParallelMerge(input_template, output_template, asic_list, self.n_processes, self.current_list)
 
 if __name__ == "__main__":
 

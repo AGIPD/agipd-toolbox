@@ -12,12 +12,13 @@ from parallel_process import integrate_result
 from multiprocessing import Pool
 
 class ParallelMerge():
-    def __init__(self, input_template, output_template, asic_list, n_processes):
+    def __init__(self, input_template, output_template, asic_list, n_processes, current_list):
         self.input_template = input_template
         self.output_template = output_template
 
         self.asic_list = asic_list
         self.n_processes = n_processes
+        self.current_list = current_list
 
         self.run()
 
@@ -33,12 +34,14 @@ class ParallelMerge():
                 print("merge asic", asic)
 #                exec_merge(self.input_template,
 #                             self.output_template,
-#                             asic)
+#                             asic,
+#                             self.current_list)
                 result_list.append(
                     pool.apply_async(exec_merge,
                                      (self.input_template,
                                       self.output_template,
-                                      asic)))
+                                      asic,
+                                      self.current_list)))
 
             for pool_result in result_list:
                 pool_result.get()
@@ -48,12 +51,12 @@ class ParallelMerge():
         print("process pool took time:", time.time() - t)
 
 
-def exec_merge(input_template, output_template, asic):
+def exec_merge(input_template, output_template, asic, current_list):
     output_fname = output_template.substitute(a=str(asic).zfill(2))
 
     obj = None
     try:
-        obj = MergeDrscs(input_template, output_fname, asic)
+        obj = MergeDrscs(input_template, output_fname, asic, current_list)
     except:
         pass
 
@@ -63,7 +66,7 @@ def exec_merge(input_template, output_template, asic):
 
 
 class MergeDrscs():
-    def __init__(self, cs_input_template, output_fname, asic):
+    def __init__(self, cs_input_template, output_fname, asic, current_list):
 
         self.cs_input_template = cs_input_template
 
@@ -74,7 +77,8 @@ class MergeDrscs():
 
         self.error_path = "/error_code"
 
-        self.current_list = ["itestc150", "itestc80", "itestc20"]
+        self.current_list = current_list
+        #self.current_list = ["itestc150", "itestc80", "itestc20"]
         self.fit_info = dict()
         self.sorted_fit_info = None
 

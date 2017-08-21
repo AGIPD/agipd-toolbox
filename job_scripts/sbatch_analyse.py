@@ -138,7 +138,9 @@ class SubmitJobs():
         if self.run_type == "merge" and self.measurement == "drscs":
             # missuse current to set merge as the job name
             self.current = self.run_type
-            self.script_params = script_params
+            current_list = current.replace(",", "")
+            self.script_params = script_params + \
+                                 ["--current_list", current_list]
 
             print("run merge")
             self.run()
