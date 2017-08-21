@@ -182,9 +182,9 @@ class GatherData():
                 if index not in indices[i]:
                     indices[i].append(index)
 
-        for index_list in indices:
+        for i, index_list in enumerate(indices):
             if len(index_list) < 1:
-                print("Too few indeces found: {}\n".format(index_list))
+                print("Too few indeces found for col{}\n".format(self.column_specs[i]))
                 sys.exit(1)
             elif len(index_list) > 1:
                 print("More than one index found: {}\n".format(index_list))
