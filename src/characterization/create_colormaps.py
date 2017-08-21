@@ -118,10 +118,10 @@ def generate_matrix(result, gain_name, matrix_type):
 
 def create_individual_plots(input_fname, mem_cell_list, plot_prefix, plot_ending, gain_name, matrix_type):
     try:
-        colormap_matrix = create_matrix_individual(input_fname, gain_name, matrix_type)
+        colormap_matrix, safety_factor = create_matrix_individual(input_fname, gain_name, matrix_type)
 
         create_plots(mem_cell_list, colormap_matrix, plot_prefix, plot_ending,
-                     gain_name, matrix_type, splitted=True)
+                     gain_name, matrix_type, safety_factor, splitted=True)
     except OSError:
         print("OSError:", input_fname)
         pass
@@ -165,13 +165,14 @@ def create_matrix_individual(input_fname, gain_name, matrix_type):
         process_result[key]["individual"]["low"] = source_file["/{}/individual/low".format(key)][()]
 
     process_result["error_code"] = source_file["/error_code"][()]
+    safety_factor = source_file["/collection/safety_factor"][()]
     source_file.close()
 
     # calcurate matrix
-    return generate_matrix(process_result, gain_name, matrix_type)
+    return generate_matrix(process_result, gain_name, matrix_type), safety_factor
 
 def create_plots(mem_cell_list, colormap_matrix, plot_file_prefix, plot_ending,
-                 gain_name, matrix_type, splitted=False):
+                 gain_name, matrix_type, safety_factor, splitted=False):
     plot_size = (27, 7)
                 # [left, bottom, width, height]
     ax_location = [0.91, 0.11, 0.01, 0.75]
@@ -204,9 +205,9 @@ def create_plots(mem_cell_list, colormap_matrix, plot_file_prefix, plot_ending,
                 plt.colorbar(cax=colorbar_ax)
 
             title_prefix = plot_file_prefix.rsplit("/", 1)[1]
-            plt.suptitle("{}_{} {}".format(title_prefix, gain_name, key), fontsize=24)
+            plt.suptitle("{}_{} {} sf{}".format(title_prefix, gain_name, key, safety_factor), fontsize=24)
 
-            fig.savefig("{}_{}_{}{}".format(plot_file_prefix, gain_name, key, plot_ending),
+            fig.savefig("{}_{}_{}_sf{}{}".format(plot_file_prefix, gain_name, key, safety_factor, plot_ending),
                         bbox_inches='tight')
             fig.clf()
             plt.close(fig)
@@ -282,7 +283,7 @@ class CreateColormaps():
                 self.get_data()
                 create_plots(self.mem_cell_list, self.colormap_matrix,
                              self.plot_prefix, self.plot_ending, self.gain_name,
-                             self.matrix_type, splitted=True)
+                             self.matrix_type, self.safety_factor, splitted=True)
 
             print("\nFinished at {} after {}"
                   .format(datetime.datetime.now(), time.time() - t))
@@ -349,7 +350,7 @@ class CreateColormaps():
         # build matrix for whole module
         for i in range(asic_list.size):
 
-            generated_matrix = result_list[i].get()
+            generated_matrix, self.safety_factor = result_list[i].get()
 
             if matrix["slope"] is None:
                 for key in matrix.keys():
