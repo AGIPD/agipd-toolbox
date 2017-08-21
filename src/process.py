@@ -315,7 +315,7 @@ class ProcessDrscs():
         self.result["collection"]["saturation_threshold_diff"] = self.saturation_threshold_diff
 
         for pixel_v in self.pixel_v_list:
-            #self.log.debug("start processing row {}".format(pixel_v))
+            #self.log.info("start processing row {} of {}".format(pixel_v, self.pixel_v_list))
             for pixel_u in self.pixel_u_list:
                 #t = time.time()
                 for mem_cell in self.mem_cell_list:
@@ -880,20 +880,24 @@ class ProcessDrscs():
         sat_indices = np.where(np.absolute(diff_det_interval) < self.saturation_threshold_diff)[0]
         #self.log.debug("sat_indices {}".format(sat_indices))
 
-        j = sat_indices[-1]
-        for i in sat_indices[::-1]:
-            if i == j:
-                j -= 1
-            else:
-                #self.log.debug("not true for {} {}".format(i, diff_det_interval[i-1:i+2]))
-                break
-        #self.log.debug("i {}".format(i))
-        #self.log.debug("j {}".format(j))
+        if sat_indices.size != 0:
+            j = sat_indices[-1]
+            for i in sat_indices[::-1]:
+                if i == j:
+                    j -= 1
+                else:
+                    #self.log.debug("not true for {} {}".format(i, diff_det_interval[i-1:i+2]))
+                    break
+            #self.log.debug("i {}".format(i))
+            #self.log.debug("j {}".format(j))
 
-        saturation_interval = [interval[0] + i, interval[1]]
-        new_gain_interval = [interval[0] + sat_indices[0], interval[0] + i]
+            saturation_interval = [interval[0] + i, interval[1]]
+            new_gain_interval = [interval[0] + sat_indices[0], interval[0] + i]
 
-        return new_gain_interval, saturation_interval
+            return new_gain_interval, saturation_interval
+        else:
+            return interval, [interval[1], interval[1]]
+
 
 
     def fit_gain(self, gain, interval, cut_off_ends):
