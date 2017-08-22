@@ -30,7 +30,10 @@ def read_data(filename, dataset_list):
 
     f.close()
 
-    return dset_list
+    if len(dataset_list) > 1:
+        return dset_list
+    else:
+        return dset
 
 
 class CreateMasks():
@@ -60,7 +63,8 @@ class CreateMasks():
 
         create_dir(self.output_dir)
         create_dir(self.plot_dir)
-        self.f_out = h5py.File(self.outfile_name, "w", libver='latest')
+        self.outfile_path = os.path.join(self.output_dir, self.outfile_name)
+        self.f_out = h5py.File(self.outfile_path, "w", libver='latest')
         self.dset_combined_mask = self.f_out.create_dataset("combined_mask", shape=self.combined_mask.shape, dtype=bool)
         self.masks = self.f_out.create_group("masks")
         
