@@ -223,6 +223,9 @@ class CreateColormaps():
         self.matrix_type = matrix_type
         self.mem_cell_list = mem_cell_list
 
+        self.module = module
+        self.current = current
+
         self.plot_ending = ".png"
 
         self.input_template = input_template
@@ -265,8 +268,8 @@ class CreateColormaps():
                 self.plot_template = (
                     Template("${p}/individual/${m}_${c}_asic${a}_${mc}_${mt}")
                     .safe_substitute(p=plot_dir,
-                                     m=module,
-                                     c=current,
+                                     m=self.module,
+                                     c=self.current,
                                      mc=str(mem_cell).zfill(3),
                                      mt=self.matrix_type))
                 # make a template out of this string
@@ -275,8 +278,8 @@ class CreateColormaps():
             else:
                 self.plot_prefix = ("{}/{}_{}_{}_{}"
                                     .format(plot_dir,
-                                            module,
-                                            current,
+                                            self.module,
+                                            self.current,
                                             str(mem_cell).zfill(3),
                                             self.matrix_type))
 
