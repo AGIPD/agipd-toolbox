@@ -13,13 +13,13 @@ import matplotlib.pyplot as plt
 import copy
 
 
-class IntervalError(Exception):
-    pass
-
 class FitError(Exception):
     pass
 
 class IntervalSplitError(Exception):
+    pass
+
+class DataQualityError(Exception):
     pass
 
 class GainStageNumberError(Exception):
@@ -201,6 +201,7 @@ class ProcessDrscs():
         self.diff_threshold = -100
         self.region_range_in_percent = 2
         self.region_range = 10
+        self.max_diff_changes = 150
 
         self.scaling_point = 200
         self.scaling_factor = 10
@@ -243,6 +244,8 @@ class ProcessDrscs():
         # 4    Breaking infinite loop
         # 5    Failed to calculate slope and offset
         # 6    Not enough point to fit {} gain
+        # 7    Interval has not enough points to split
+        # 8    Too many fluctuations in the data found
         #
         # warning_code:
         # 1    Failed to calculate residual
@@ -315,10 +318,12 @@ class ProcessDrscs():
         self.result["collection"]["saturation_threshold_diff"] = self.saturation_threshold_diff
 
         for pixel_v in self.pixel_v_list:
-            #self.log.info("start processing row {} of {}".format(pixel_v, self.pixel_v_list))
+            self.log.info("start processing row {} of {}".format(pixel_v, self.pixel_v_list))
             for pixel_u in self.pixel_u_list:
                 #t = time.time()
+                #self.log.info("start processing cal {}".format(pixel_u))
                 for mem_cell in self.mem_cell_list:
+                    #self.log.info("start processing mem_cell {}".format(mem_cell))
                     try:
                         # location in the input data
                         self.in_idx = (pixel_v - self.pixel_v_list[0],
@@ -352,13 +357,13 @@ class ProcessDrscs():
                     except KeyboardInterrupt:
                         sys.exit(1)
                     except Exception as e:
-                        if type(e) == IntervalError:
-                            if self.use_debug:
-                                self.log.debug("IntervalError")
-                            pass
-                        elif type(e) == IntervalSplitError:
+                        if type(e) == IntervalSplitError:
                             if self.use_debug:
                                 self.log.debug("IntervalSplitError")
+                            pass
+                        elif type(e) == DataQualityError:
+                            if self.use_debug:
+                                self.log.debug("DataQualityError")
                             pass
                         elif type(e) == GainStageNumberError:
                             if self.use_debug:
@@ -407,10 +412,13 @@ class ProcessDrscs():
                                 self.log.error("Failed to generate plot")
                                 raise
 
-#                        if type(e) not in [IntervalError, IntervalSplitError, GainStageNumberError]:
+#                        if type(e) not in [IntervalSplitError, GainStageNumberError]:
 #                            raise
 
                 #self.log.debug("Process pixel {} took time: {}".format([pixel_v, pixel_u], time.time() - t))
+
+            # flush prints
+            sys.stdout.flush()
 
         if self.output_fname is not None:
             self.log.info("writing data")
@@ -541,6 +549,16 @@ class ProcessDrscs():
         self.diff_changes_idx = np.where((self.diff < self.diff_threshold) |
                                          (self.diff > self.safety_factor))[0]
 
+        if self.diff_changes_idx.size >= self.max_diff_changes:
+            msg = "Too many fluctuations in the data found"
+
+            if self.use_debug:
+                self.log.error(msg)
+                self.log.debug(self.diff_changes_idx)
+
+            self.result["error_code"][self.out_idx] = 8
+            raise DataQualityError(msg)
+
         if self.use_debug:
             self.log.debug("diff_changes_idx")
             for i in self.diff_changes_idx:
@@ -556,7 +574,7 @@ class ProcessDrscs():
         iteration_check = 0
         last_iteration_borders = []
         region_range_before = 0
-        while i < len(self.diff_changes_idx):
+        while i < self.diff_changes_idx.size:
 
             if set_stop_flag:
                 prev_stop = self.diff_changes_idx[i]
@@ -924,6 +942,7 @@ class ProcessDrscs():
             self.log.debug("out_idx {}".format(self.out_idx))
             self.log.debug("nsplits {}".format(nsplits))
             self.log.debug("interval={}".format(interval))
+            self.result["error_code"][self.out_idx] = 7
             raise IntervalSplitError("Interval has not enough points to split")
 
         splitted_intervals = [
