@@ -202,10 +202,11 @@ class CreateCalMasks(CreateMasks):
         
         self.get_gain_data()
         dark_dset_list = ["/darkOffset", "/darkStandardDeviation"]
-        self.dark_offset, self.noise = read_data(self.dark_filepath, dark_dset_list)
+        result = read_data(self.dark_filepath, dark_dset_list)
+        self.dark_offset, self.noise = result
         xray_dset_list = ["/photonSpacing"]
-        self.photon_spacing = read_data(self.xray_filepath, xray_dset_list)
-
+        result = read_data(self.xray_filepath, xray_dset_list)
+        self.photon_spacing = result[0]
 
     def get_gain_data(self):
         

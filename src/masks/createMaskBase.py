@@ -30,10 +30,7 @@ def read_data(filename, dataset_list):
 
     f.close()
 
-    if len(dataset_list) > 1:
-        return dset_list
-    else:
-        return dset
+    return dset_list
 
 
 class CreateMasks():
