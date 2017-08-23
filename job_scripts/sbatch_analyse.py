@@ -201,25 +201,26 @@ class SubmitJobs():
             # map to string to be able to call shell script
             asic_set = " ".join(map(str, asic_set))
             print("Starting job for asics {}\n".format(asic_set))
+            short_temperature = self.temperature[len("temperature_"):]
 
             self.sbatch_params += [
                 "--job-name", "{}_{}_{}_{}_{}_{}".format(self.run_type,
                                                    self.measurement,
                                                    self.module,
-                                                   self.temperature,
+                                                   short_temperature,
                                                    self.current,
                                                    asic_set),
                 "--output", "{}_{}_{}_{}_{}_{}_{}_%j.out".format(self.run_type,
                                                            self.measurement,
                                                            self.module,
-                                                           self.temperature,
+                                                           short_temperature,
                                                            self.current,
                                                            asic_set,
                                                            dt),
                 "--error", "{}_{}_{}_{}_{}_{}_{}_%j.err".format(self.run_type,
                                                           self.measurement,
                                                           self.module,
-                                                          self.temperature,
+                                                          short_temperature,
                                                           self.current,
                                                           asic_set,
                                                           dt)
