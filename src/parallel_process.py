@@ -186,8 +186,13 @@ class ParallelProcess():
         #print("n_intervals", n_intervals)
         #print("n_bins", n_bins)
 
-        self.result = initiate_result(self.pixel_v_list, self.pixel_u_list,
-                                      self.mem_cell_list, n_gain_stages,
+        # +1 because counting starts with zero
+        self.dim_v = self.pixel_v_list.max() + 1
+        self.dim_u = self.pixel_u_list.max() + 1
+        self.dim_mem_cell = self.mem_cell_list.max() + 1
+
+        self.result = initiate_result(self.dim_v, self.dim_u,
+                                      self.dim_mem_cell, n_gain_stages,
                                       n_intervals, n_diff_changes_stored)
 
     def load_data(self):
@@ -257,23 +262,23 @@ class ParallelProcess():
         for key in ["slope", "offset", "residual", "average_residual"]:
             for gain in ["high", "medium", "low"]:
                 self.result[key]["individual"][gain][idx] = (
-                    p_result[key]["individual"][gain][idx])
+                    p_result[key]["individual"][gain][...])
 
         for gain in ["high", "medium", "low"]:
             self.result["intervals"]["subintervals"][gain][idx] = (
-                p_result["intervals"]["subintervals"][gain][idx])
+                p_result["intervals"]["subintervals"][gain][...])
 
         for key in ["diff_changes_idx"]:
             try:
                 self.result["collection"][key][idx] = (
-                    p_result["collection"][key][idx])
+                    p_result["collection"][key][...])
             except:
                 print(key, idx)
                 print(p_result["collection"][key][idx])
                 print(self.result["collection"][key][idx])
 
         self.result["intervals"]["saturation"][idx] = (
-            p_result["intervals"]["saturation"][idx])
+            p_result["intervals"]["saturation"][...])
 
         # idx at end: mean, medians, threshold
         idx = (Ellipsis,
@@ -283,12 +288,12 @@ class ParallelProcess():
 
         for key in ["slope", "offset", "residual", "average_residual"]:
             self.result[key]["mean"][idx] = (
-                p_result[key]["mean"][idx])
+                p_result[key]["mean"][...])
 
         self.result["medians"][idx] = (
-            p_result["medians"][idx])
+            p_result["medians"][...])
         self.result["thresholds"][idx] = (
-            p_result["thresholds"][idx])
+            p_result["thresholds"][...])
 
         # only idx: error_code, warning_code, len_diff_changes_idx
         idx = (Ellipsis,
@@ -297,15 +302,15 @@ class ParallelProcess():
                slice(m_start, m_stop))
 
         for key in ["error_code", "warning_code"]:
-            self.result[key][idx] = p_result[key][idx]
+            self.result[key][idx] = p_result[key][...]
 
         for key in ["len_diff_changes_idx"]:
             try:
                 self.result["collection"][key][idx] = (
-                    p_result["collection"][key][idx])
+                    p_result["collection"][key][...])
             except:
                 print(key, idx)
-                print(p_result["collection"][key][idx])
+                print(p_result["collection"][key][...])
                 print(self.result["collection"][key][idx])
 
         # special: gain_stages
@@ -316,7 +321,7 @@ class ParallelProcess():
                slice(None))
 
         self.result["intervals"]["gain_stages"][idx] = (
-            p_result["intervals"]["gain_stages"][idx])
+            p_result["intervals"]["gain_stages"][...])
 
     def write_data(self):
         if self.result is None:

@@ -32,7 +32,7 @@ class InfiniteLoopNumberError(Exception):
     pass
 
 # not defined inside the class to let other classes reuse this
-def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
+def initiate_result(dim_v, dim_u, dim_mem_cell, n_gain_stages,
                     n_intervals, n_diff_changes_stored):
 
     result = {
@@ -101,10 +101,7 @@ def initiate_result(pixel_v_list, pixel_u_list, mem_cell_list, n_gain_stages,
         }
     }
 
-    # +1 because counting starts with zero
-    shape_tmp = (pixel_v_list.max() + 1,
-                 pixel_u_list.max() + 1,
-                 mem_cell_list.max() + 1)
+    shape_tmp = (dim_v, dim_u, dim_mem_cell)
 
     shape = (n_gain_stages, ) + shape_tmp
     print("result shape: {}".format(shape))
@@ -218,7 +215,7 @@ class ProcessDrscs():
 
         self.use_digital = False
 
-        self.in_idx = None
+        self.current_idx = None
         self.out_idx = None
 
         self.gain_idx = None
@@ -299,10 +296,15 @@ class ProcessDrscs():
 
         self.scale_full_x_axis()
 
+        # +1 because counting starts with zero
+        self.dim_v = self.pixel_v_list.max() - self.pixel_v_list[0] + 1
+        self.dim_u = self.pixel_u_list.max() - self.pixel_u_list[0] + 1
+        self.dim_mem_cell = self.mem_cell_list.max() - self.mem_cell_list[0] + 1
+
         # initiate
-        self.result = initiate_result(self.pixel_v_list, self.pixel_u_list,
-                                      self.mem_cell_list, self.n_gain_stages,
-                                      self.n_intervals, self.n_diff_changes_stored)
+        self.result = initiate_result(self.dim_v, self.dim_u, self.dim_mem_cell,
+                                      self.n_gain_stages, self.n_intervals,
+                                      self.n_diff_changes_stored)
 
         self.result["collection"]["diff_threshold"] = self.diff_threshold
         self.result["collection"]["region_range_in_percent"] = self.region_range_in_percent
@@ -326,33 +328,34 @@ class ProcessDrscs():
                     #self.log.info("start processing mem_cell {}".format(mem_cell))
                     try:
                         # location in the input data
-                        self.in_idx = (pixel_v - self.pixel_v_list[0],
-                                       pixel_u - self.pixel_u_list[0],
-                                       mem_cell - self.mem_cell_list[0])
+                        self.current_idx = (pixel_v - self.pixel_v_list[0],
+                                            pixel_u - self.pixel_u_list[0],
+                                            mem_cell - self.mem_cell_list[0])
                         # location where to write the data to
                         self.out_idx = (pixel_v, pixel_u, mem_cell)
+
                         self.gain_idx = {
-                            "high": (0, ) + self.out_idx,
-                            "medium": (1, ) + self.out_idx,
-                            "low": (2, ) + self.out_idx
+                            "high": (0, ) + self.current_idx,
+                            "medium": (1, ) + self.current_idx,
+                            "low": (2, ) + self.current_idx
                         }
 
-                        self.process_data_point(self.out_idx)
+                        self.process_data_point()
 
                         for gain in self.gain_idx:
                             l = self.fit_cutoff_left
                             r = self.fit_cutoff_right
-                            if len(self.result["slope"]["individual"][gain][self.out_idx]) >= l + r + 1:
+                            if len(self.result["slope"]["individual"][gain][self.current_idx]) >= l + r + 1:
                                 for t in ["slope", "offset", "residual", "average_residual"]:
                                     self.result[t]["mean"][self.gain_idx[gain]] = (
-                                        np.mean(self.result[t]["individual"][gain][self.out_idx][l:-r]))
+                                        np.mean(self.result[t]["individual"][gain][self.current_idx][l:-r]))
                             else:
                                 for t in ["slope", "offset", "residual", "average_residual"]:
                                     self.result[t]["mean"][self.gain_idx[gain]] = (
-                                        np.mean(self.result[t]["individual"][gain][self.out_idx]))
+                                        np.mean(self.result[t]["individual"][gain][self.current_idx]))
 
-                        if self.result["error_code"][self.out_idx] < 0:
-                            self.result["error_code"][self.out_idx] = 0
+                        if self.result["error_code"][self.current_idx] < 0:
+                            self.result["error_code"][self.current_idx] = 0
 
                     except KeyboardInterrupt:
                         sys.exit(1)
@@ -381,12 +384,12 @@ class ProcessDrscs():
                             self.log.error(traceback.format_exc())
                             #TODO self.log.exception ?
 
-                            if self.result["error_code"][self.out_idx] <= 0:
-                                self.result["error_code"][self.out_idx] = 1
+                            if self.result["error_code"][self.current_idx] <= 0:
+                                self.result["error_code"][self.current_idx] = 1
 
                         if create_error_plots:
                             try:
-                                idx = self.in_idx + (slice(None),)
+                                idx = self.current_idx + (slice(None),)
 
                                 plot_file_prefix = ("{}_[{}, {}]_{}"
                                                     .format(self.plot_file_prefix,
@@ -402,7 +405,7 @@ class ProcessDrscs():
                                 plot_name = "{}_data{}".format(plot_file_prefix,
                                                                self.plot_ending)
 
-                                generate_data_plot(self.out_idx,
+                                generate_data_plot(self.current_idx,
                                                    self.scaled_x_values,
                                                    self.analog[idx],
                                                    self.digital[idx],
@@ -468,23 +471,23 @@ class ProcessDrscs():
         #finally:
         #    source_file.close()
 
-    def process_data_point(self, out_idx):
+    def process_data_point(self):
 
-        data = self.digital[self.in_idx[0], self.in_idx[1], self.in_idx[2], :]
+        data = self.digital[self.current_idx[0], self.current_idx[1], self.current_idx[2], :]
 
         self.calc_gain_regions()
 
-        self.result["intervals"]["subintervals"]["high"][self.out_idx] = (
+        self.result["intervals"]["subintervals"]["high"][self.current_idx] = (
             self.fit_gain("high",
                           self.result["intervals"]["gain_stages"][self.gain_idx["high"]],
                           cut_off_ends=False))
 
-        self.result["intervals"]["subintervals"]["medium"][self.out_idx] = (
+        self.result["intervals"]["subintervals"]["medium"][self.current_idx] = (
             self.fit_gain("medium",
                           self.result["intervals"]["gain_stages"][self.gain_idx["medium"]],
                           cut_off_ends=False))
 
-        self.result["intervals"]["subintervals"]["low"][self.out_idx] = (
+        self.result["intervals"]["subintervals"]["low"][self.current_idx] = (
             self.fit_gain("low",
                           self.result["intervals"]["gain_stages"][self.gain_idx["low"]],
                           cut_off_ends=False))
@@ -501,11 +504,11 @@ class ProcessDrscs():
             self.log.info("took time: {}".format(time.time() - t))
 
     def calc_gain_regions(self):
-        data_a = self.analog[self.in_idx[0], self.in_idx[1], self.in_idx[2], :].astype(np.float)
+        data_a = self.analog[self.current_idx[0], self.current_idx[1], self.current_idx[2], :].astype(np.float)
 
         # find out if the col was effected by frame loss
         #n_col_sets = self.frame_loss_analog.shape[0]
-        #frame_loss = self.frame_loss_analog[self.in_idx[1] % n_col_sets, self.in_idx[2], :]
+        #frame_loss = self.frame_loss_analog[self.current_idx[1] % n_col_sets, self.current_idx[2], :]
         #lsot_frames = np.where(frame_loss != 0)
 
         lost_frames = np.where(data_a == 0)
@@ -556,7 +559,7 @@ class ProcessDrscs():
                 self.log.error(msg)
                 self.log.debug(self.diff_changes_idx)
 
-            self.result["error_code"][self.out_idx] = 8
+            self.result["error_code"][self.current_idx] = 8
             raise DataQualityError(msg)
 
         if self.use_debug:
@@ -707,7 +710,7 @@ class ProcessDrscs():
                             # prevent an infinite loop
                             if last_iteration_borders == [prev_stop, pot_start]:
                                 if iteration_check >= 10:
-                                    self.result["error_code"][self.out_idx] = 4
+                                    self.result["error_code"][self.current_idx] = 4
                                     raise InfiniteLoopNumberError("Breaking infinite loop")
                                 iteration_check += 1
                             else:
@@ -743,7 +746,7 @@ class ProcessDrscs():
                                 # prevent an infinite loop
                                 if last_iteration_borders == [prev_stop, pot_start]:
                                     if iteration_check >= 10:
-                                        self.result["error_code"][self.out_idx] = 4
+                                        self.result["error_code"][self.current_idx] = 4
                                         raise InfiniteLoopNumberError("Breaking infinite loop")
                                     iteration_check += 1
                                 else:
@@ -771,7 +774,7 @@ class ProcessDrscs():
                             # prevent an infinite loop
                             if last_iteration_borders == [prev_stop, pot_start]:
                                 if iteration_check >= 10:
-                                    self.result["error_code"][self.out_idx] = 4
+                                    self.result["error_code"][self.current_idx] = 4
                                     raise InfiniteLoopNumberError("Breaking infinite loop")
                                 iteration_check += 1
                             else:
@@ -817,29 +820,29 @@ class ProcessDrscs():
         gain_intervals = mapped_gain_intervals
 
         if self.use_debug:
-            self.log.debug("{}, found gain intervals {}".format(self.out_idx, gain_intervals))
+            self.log.debug("{}, found gain intervals {}".format(self.current_idx, gain_intervals))
             self.log.debug("len gain intervals {}".format(len(gain_intervals)))
 
         if len(gain_intervals) > 3:
-            self.result["error_code"][self.out_idx] = 2
+            self.result["error_code"][self.current_idx] = 2
             raise GainStageNumberError("Too many gain stages found: {}"
                                      .format(gain_intervals))
 
         if len(gain_intervals) < 3:
-            self.result["error_code"][self.out_idx] = 3
+            self.result["error_code"][self.current_idx] = 3
             raise GainStageNumberError("Not enough gain stages found: {}"
                                      .format(gain_intervals))
 
-        # store out_idx dependent results in the final matrices
+        # store current_idx dependent results in the final matrices
         try:
-            self.result["collection"]["diff_changes_idx"][self.out_idx] = (
+            self.result["collection"]["diff_changes_idx"][self.current_idx] = (
                 self.diff_changes_idx)
         except ValueError:
             # it is not fixed how many diff_changes indices are found
             # but the size of np.arrays has to be fixed
             l = len(self.diff_changes_idx)
             f_diff_changes_idx = (
-                self.result["collection"]["diff_changes_idx"][self.out_idx])
+                self.result["collection"]["diff_changes_idx"][self.current_idx])
 
             # fill up with found ones, rest of the array stays NAN
             if l < self.n_diff_changes_stored:
@@ -848,7 +851,7 @@ class ProcessDrscs():
             else:
                 f_diff_changes_idx = self.diff_changes_idx[:self.n_diff_changes_stored]
 
-        self.result["collection"]["len_diff_changes_idx"][self.out_idx] = (
+        self.result["collection"]["len_diff_changes_idx"][self.current_idx] = (
             len(self.diff_changes_idx))
 
         self.result["intervals"]["gain_stages"][self.gain_idx["high"]] = gain_intervals[0]
@@ -861,9 +864,9 @@ class ProcessDrscs():
 
     def detect_saturation(self, interval):
 
-        idx = (self.in_idx[0],
-               self.in_idx[1],
-               self.in_idx[2],
+        idx = (self.current_idx[0],
+               self.current_idx[1],
+               self.current_idx[2],
                slice(interval[0], interval[1]))
 
         sat_index = np.where(self.analog[idx] >= self.saturation_threshold)[0]
@@ -874,7 +877,7 @@ class ProcessDrscs():
         else:
             sat_index = interval[0] + sat_index[0]
         #self.log.debug("sat_indices {}".format(sat_index))
-        #self.log.debug("value {}".format(self.analog[self.in_idx[0], self.in_idx[1], self.in_idx[2], sat_index-5:sat_index+6])
+        #self.log.debug("value {}".format(self.analog[self.current_idx[0], self.current_idx[1], self.current_idx[2], sat_index-5:sat_index+6])
 
         new_interval = [interval[0], sat_index]
 
@@ -884,7 +887,7 @@ class ProcessDrscs():
         #self.log.debug("new_gain_interval {}".format(new_gain_interval))
         #self.log.debug("new_sat_interval {}".format(new_sat_interval))
 
-        self.result["intervals"]["saturation"][self.out_idx] = [new_sat_interval[0], interval[1]]
+        self.result["intervals"]["saturation"][self.current_idx] = [new_sat_interval[0], interval[1]]
 
         return new_gain_interval
         #return [interval[0], sat_index]
@@ -939,10 +942,10 @@ class ProcessDrscs():
         #self.log.debug("step {}".format(step))
 
         if step == 0:
-            self.log.debug("out_idx {}".format(self.out_idx))
+            self.log.debug("current_idx {}".format(self.current_idx))
             self.log.debug("nsplits {}".format(nsplits))
             self.log.debug("interval={}".format(interval))
-            self.result["error_code"][self.out_idx] = 7
+            self.result["error_code"][self.current_idx] = 7
             raise IntervalSplitError("Interval has not enough points to split")
 
         splitted_intervals = [
@@ -974,7 +977,7 @@ class ProcessDrscs():
         # transform the problem y = mx + c
         # into the form y = Ap, where A = [[x 1]] and p = [[m], [c]]
         # meaning  data_to_fit = A * [slope, offset]
-        y = self.analog[self.in_idx[0], self.in_idx[1], self.in_idx[2],
+        y = self.analog[self.current_idx[0], self.current_idx[1], self.current_idx[2],
                         lower_border:upper_border].astype(np.float)
 
         self.x_values[gain][interval_idx] = np.arange(lower_border, upper_border)
@@ -985,7 +988,7 @@ class ProcessDrscs():
 
         # find out if the col was effected by frame loss
         #n_col_sets = self.frame_loss_analog.shape[0]
-        #frame_loss = self.frame_loss_analog[self.in_idx[1] % n_col_sets, self.in_idx[2],
+        #frame_loss = self.frame_loss_analog[self.current_idx[1] % n_col_sets, self.current_idx[2],
         #                                    lower_border:upper_border]
         #lost_frames = np.array(np.where(frame_loss != 0))
 
@@ -1003,9 +1006,9 @@ class ProcessDrscs():
         A = np.vstack([x, np.ones(number_of_points)]).T
 
         if A.size <= 1 or self.data_to_fit[gain][interval_idx].size <= 1:
-            self.result["error_code"][self.out_idx] = 6
+            self.result["error_code"][self.current_idx] = 6
             msg = ("{}: Not enough point to fit {} gain (number of point available: {})"
-                   .format(self.out_idx, gain, self.data_to_fit[gain][interval_idx].size))
+                   .format(self.current_idx, gain, self.data_to_fit[gain][interval_idx].size))
 
             if self.use_debug:
                 self.log.debug(msg)
@@ -1016,7 +1019,7 @@ class ProcessDrscs():
         # reason to use numpy lstsq:
         # https://stackoverflow.com/questions/29372559/what-is-the-difference-between-numpy-linalg-lstsq-and-scipy-linalg-lstsq
         #lstsq returns: Least-squares solution (i.e. slope and offset), residuals, rank, singular values
-        array_idx = self.out_idx + (interval_idx,)
+        array_idx = self.current_idx + (interval_idx,)
         res = None
         try:
             res = np.linalg.lstsq(A, self.data_to_fit[gain][interval_idx])
@@ -1039,7 +1042,7 @@ class ProcessDrscs():
                 raise
 
             if res[0].size != 2:
-                self.result["error_code"][self.out_idx] = 5
+                self.result["error_code"][self.current_idx] = 5
                 msg = "Failed to calculate slope and offset"
 
                 if self.use_debug:
@@ -1048,7 +1051,7 @@ class ProcessDrscs():
                 raise FitError(msg)
 
             elif res[1].size != 1:
-                self.result["warning_code"][self.out_idx] = 1
+                self.result["warning_code"][self.current_idx] = 1
                 msg = "Failed to calculate residual"
 
                 if self.use_debug:
@@ -1075,9 +1078,9 @@ class ProcessDrscs():
 
     def calc_gain_median(self):
         for gain in ["high", "medium", "low"]:
-            idx = (self.in_idx[0],
-                   self.in_idx[1],
-                   self.in_idx[2],
+            idx = (self.current_idx[0],
+                   self.current_idx[1],
+                   self.current_idx[2],
                    slice(self.result["intervals"]["gain_stages"][self.gain_idx[gain]][0],
                          self.result["intervals"]["gain_stages"][self.gain_idx[gain]][1]))
 
@@ -1085,12 +1088,12 @@ class ProcessDrscs():
 
     def calc_thresholds(self):
         # threshold between high and medium
-        self.result["thresholds"][(0, ) + self.out_idx] = np.mean([
+        self.result["thresholds"][(0, ) + self.current_idx] = np.mean([
                 self.result["medians"][self.gain_idx["high"]],
                 self.result["medians"][self.gain_idx["medium"]]])
 
         # threshold between medium and low
-        self.result["thresholds"][(1, ) + self.out_idx] = np.mean([
+        self.result["thresholds"][(1, ) + self.current_idx] = np.mean([
                 self.result["medians"][self.gain_idx["medium"]],
                 self.result["medians"][self.gain_idx["low"]]])
 
@@ -1138,7 +1141,7 @@ class ProcessDrscs():
             save_file.close()
 
     def create_plots(self):
-        idx = self.in_idx + (slice(None),)
+        idx = self.current_idx + (slice(None),)
 
         plot_file_prefix = "{}_[{}, {}]_{}".format(self.plot_file_prefix,
                                                    self.out_idx[0],
@@ -1153,19 +1156,19 @@ class ProcessDrscs():
 
             if "all" in self.create_plot_type:
                 generate_all_plots(self.out_idx,
-                               self.scaled_x_values,
-                               self.analog[idx],
-                               self.digital[idx],
-                               self.x_values,
-                               self.data_to_fit,
-                               self.result["slope"]["individual"],
-                               self.result["offset"]["individual"],
-                               self.n_intervals,
-                               self.fit_cutoff_left,
-                               self.fit_cutoff_right,
-                               plot_title_prefix,
-                               plot_file_prefix,
-                               self.plot_ending)
+                                   self.scaled_x_values,
+                                   self.analog[idx],
+                                   self.digital[idx],
+                                   self.x_values,
+                                   self.data_to_fit,
+                                   self.result["slope"]["individual"],
+                                   self.result["offset"]["individual"],
+                                   self.n_intervals,
+                                   self.fit_cutoff_left,
+                                   self.fit_cutoff_right,
+                                   plot_title_prefix,
+                                   plot_file_prefix,
+                                   self.plot_ending)
 
             else:
                 if "data" in self.create_plot_type:
