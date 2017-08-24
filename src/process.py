@@ -371,15 +371,15 @@ class ProcessDrscs():
                             if n_intvs >= l + r + 1:
                                 for t in ["slope", "offset", "residual",
                                           "average_residual"]:
-                                    mean = self.restult[t]["mean"]
-                                    indv = self.restult[t]["individual"][gain]
+                                    mean = self.result[t]["mean"]
+                                    indv = self.result[t]["individual"][gain]
                                     mean[self.gain_idx[gain]] = np.mean(
                                         indv[self.current_idx][l:-r])
                             else:
                                 for t in ["slope", "offset", "residual",
                                           "average_residual"]:
-                                    mean = self.restult[t]["mean"]
-                                    indv = self.restult[t]["individual"][gain]
+                                    mean = self.result[t]["mean"]
+                                    indv = self.result[t]["individual"][gain]
 
                                     mean[self.gain_idx[gain]] = np.mean(
                                         indv[self.current_idx])
@@ -1281,11 +1281,28 @@ if __name__ == "__main__":
 
     base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
 
-    asic = 1
-    module = "M215"
-    temperature = "temperature_m15C"
-    current = "itestc80"
-    safety_factor = 950
+    asic = 9
+    module = "M301"
+    temperature = "temperature_m20C"
+    current = "itestc20"
+    safety_factor = 700
+
+    pixel_v_list = np.arange(64)
+    pixel_u_list = np.arange(64)
+    mem_cell_list = np.arange(352)
+
+#    pixel_v_list = np.array([30])
+#    pixel_u_list = np.array([2])
+#    mem_cell_list = np.array([258])
+#    mem_cell_list = np.arange(257,258)
+
+    output_fname = False
+    # create_plots can be set to False, "data", "fit", "combined" or "all"
+    create_plots = False #["data", "combined"]
+    create_error_plots = False #True
+
+    log_level = "info"
+#    log_level = "debug"
 
     input_fname = os.path.join(base_dir,
                                module,
@@ -1311,27 +1328,6 @@ if __name__ == "__main__":
     plot_prefix = "{}_{}".format(module, current)
 
     create_dir(plot_dir)
-
-#   pixel_v_list = np.arange(2,3)
-#   pixel_u_list = np.arange(38,39)
-#   mem_cell_list = np.arange(99,100)
-
-#    pixel_v_list = np.arange(0, 1)
-#    pixel_u_list = np.arange(64)
-#    mem_cell_list = np.arange(352)
-
-    pixel_v_list = np.array([30])
-    pixel_u_list = np.array([2])
-    mem_cell_list = np.array([258])
-#    mem_cell_list = np.arange(257,258)
-
-    output_fname = False
-    # create_plots can be set to False, "data", "fit", "combined" or "all"
-    create_plots = ["data", "combined"]
-    create_error_plots = True
-
-    log_level = "info"
-    log_level = "debug"
 
     cal = ProcessDrscs(asic,
                        input_fname,

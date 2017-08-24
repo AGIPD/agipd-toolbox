@@ -191,9 +191,9 @@ class SubmitJobs():
             # if list to split is not a multiple of size, the rest is equaly
             # distributed over the remaining jobs
             start = len(self.asic_lists) * size
-            stop = len(asic_set), size + 1
+            stop = len(asic_set)
             self.asic_lists += [asic_set[i:i + size + 1]
-                                for i in range(start, stop)]
+                                for i in range(start, stop, size + 1)]
 
     def run(self):
         global batch_job_dir
