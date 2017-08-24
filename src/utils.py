@@ -6,14 +6,17 @@ import sys
 import logging
 from logging.config import dictConfig
 
+
 def create_dir(directory_name):
     if not os.path.exists(directory_name):
         try:
             os.makedirs(directory_name)
-            print("Dir '{0}' does not exist. Create it.".format(directory_name))
+            print("Dir '{0}' does not exist. Create it."
+                  .format(directory_name))
         except IOError:
             if os.path.isdir(directory_name):
                 pass
+
 
 def check_file_exists(file_name):
     print("save_file = {}".format(file_name))
@@ -40,19 +43,19 @@ def setup_logging(name, level):
         print("log level {} not supported".format(level))
 
     logging_config = dict(
-        version = 1,
-        formatters = {
+        version=1,
+        formatters={
             'f': {'format':
                   '[%(asctime)s] > %(name)-12s %(levelname)-8s %(message)s',
-                  'datefmt':'%Y-%m-%d %H:%M:%S'}
+                  'datefmt': '%Y-%m-%d %H:%M:%S'}
 
             },
-        handlers = {
+        handlers={
             'h': {'class': 'logging.StreamHandler',
                   'formatter': 'f',
                   'level': log_level}
             },
-        root = {
+        root={
             'handlers': ['h'],
             'level': log_level,
             },

@@ -2,17 +2,17 @@ from __future__ import print_function
 
 import h5py
 import time
-import sys
 import numpy as np
-import glob
 import os
 from string import Template
 from process import check_file_exists
 from parallel_process import integrate_result
 from multiprocessing import Pool
 
+
 class ParallelMerge():
-    def __init__(self, input_template, output_template, asic_list, n_processes, current_list):
+    def __init__(self, input_template, output_template, asic_list,
+                 n_processes, current_list):
         self.input_template = input_template
         self.output_template = output_template
 
@@ -78,7 +78,6 @@ class MergeDrscs():
         self.error_path = "/error_code"
 
         self.current_list = current_list
-        #self.current_list = ["itestc150", "itestc80", "itestc20"]
         self.fit_info = dict()
         self.sorted_fit_info = None
 
@@ -101,24 +100,28 @@ class MergeDrscs():
 
     def get_failed_fits(self):
         for current in self.current_list:
-            input_fname = self.cs_input_template.substitute(c=current, a=self.asic)
+            input_fname = self.cs_input_template.substitute(c=current,
+                                                            a=self.asic)
             source_file = h5py.File(input_fname, "r")
 
             try:
                 self.fit_info[current] = dict()
-                self.fit_info[current]["error_code"] = source_file[self.error_path][()]
+                self.fit_info[current]["error_code"] = (
+                    source_file[self.error_path][()])
             finally:
                 source_file.close()
 
-            self.fit_info[current]["failed_fits"] = np.where(self.fit_info[current]["error_code"] != 0)
-            self.fit_info[current]["n_failed_fits"] = self.fit_info[current]["failed_fits"][0].size
+            condition = self.fit_info[current]["error_code"] != 0
+            self.fit_info[current]["failed_fits"] = np.where(condition)
+            self.fit_info[current]["n_failed_fits"] = (
+                self.fit_info[current]["failed_fits"][0].size)
 
-            #print("asic", self.asic, current, "n_failed_fits", self.fit_info[current]["n_failed_fits"])
-
-        # sort from the current with the most successful fits to the one with the least
-        self.sorted_fit_info = [i[0] for i in sorted(self.fit_info.items(),
-                                                     key=lambda j: j[1]["n_failed_fits"])]
-        #print("asic", self.asic, "sorted_fit_info", self.sorted_fit_info)
+        # sort from the current with the most successful fits to the one
+        # with the least
+        self.sorted_fit_info = [i[0]
+                                for i in sorted(
+                                    self.fit_info.items(),
+                                    key=lambda j: j[1]["n_failed_fits"])]
 
     def load_least_failed(self):
         current = self.sorted_fit_info[0]
@@ -132,24 +135,29 @@ class MergeDrscs():
                 if isinstance(source_file[source_key], h5py.Dataset):
                     self.result[key] = source_file[source_key][()]
                 else:
-                    if key not in self.result: self.result[key] = dict()
+                    if key not in self.result:
+                        self.result[key] = dict()
                     for subkey in source_file[source_key].keys():
                         source_key2 = source_key + "/" + subkey
                         if isinstance(source_file[source_key2], h5py.Dataset):
-                            self.result[key][subkey] = source_file[source_key2][()]
+                            self.result[key][subkey] = (
+                                source_file[source_key2][()])
                         else:
-                            if subkey not in self.result[key]: self.result[key][subkey] = dict()
+                            if subkey not in self.result[key]:
+                                self.result[key][subkey] = dict()
                             for gain in source_file[source_key2].keys():
                                 source_key3 = source_key2 + "/" + gain
-                                self.result[key][subkey][gain] = source_file[source_key3][()]
+                                self.result[key][subkey][gain] = (
+                                    source_file[source_key3][()])
         finally:
             source_file.close()
 
         current_as_number = self.convert_current_to_number(current)
         shape = self.result["error_code"].shape
 
-        self.result["chosen_current"] = current_as_number * np.ones(shape, dtype=np.int)
-        #TODO set all failed ones to nan
+        self.result["chosen_current"] = (
+            current_as_number * np.ones(shape, dtype=np.int))
+        # TODO set all failed ones to nan
         failed_fits = self.fit_info[current]["failed_fits"]
         self.result["chosen_current"][failed_fits] = 0
 
@@ -161,7 +169,8 @@ class MergeDrscs():
         failed_fits = self.fit_info[current]["failed_fits"]
 
         for c in self.sorted_fit_info[1:]:
-            recoverable = np.where(self.fit_info[c]["error_code"][failed_fits] == 0)
+            condition = self.fit_info[c]["error_code"][failed_fits] == 0
+            recoverable = np.where(condition)
 
             self.recovered_fits[c] = (failed_fits[0][recoverable],
                                       failed_fits[1][recoverable],
@@ -169,18 +178,20 @@ class MergeDrscs():
 
     def recover_failed_fits(self):
         for current in self.recovered_fits:
-            if self.recovered_fits[current] and self.recovered_fits[current][0].size != 0:
-                input_fname = self.cs_input_template.substitute(c=current, a=self.asic)
+            if (self.recovered_fits[current] and
+                    self.recovered_fits[current][0].size != 0):
+                input_fname = self.cs_input_template.substitute(c=current,
+                                                                a=self.asic)
                 source_file = h5py.File(input_fname, "r")
 
                 try:
                     idx = self.recovered_fits[current]
 
                     integrate_result(idx, self.result, source_file)
-                    self.result["chosen_current"][idx] = self.convert_current_to_number(current)
+                    self.result["chosen_current"][idx] = (
+                        self.convert_current_to_number(current))
                 finally:
                     source_file.close()
-
 
     def write_data(self):
         output_file = h5py.File(self.output_fname, "w", libver="latest")
@@ -191,16 +202,20 @@ class MergeDrscs():
 
             for key in self.result:
                 if type(self.result[key]) != dict:
-                    output_file.create_dataset("/{}".format(key), data=self.result[key])
+                    output_file.create_dataset(
+                        "/{}".format(key),
+                        data=self.result[key])
                 else:
                     for subkey in self.result[key]:
                         if type(self.result[key][subkey]) != dict:
-                            output_file.create_dataset("/{}/{}".format(key, subkey),
-                                                       data=self.result[key][subkey])
+                            output_file.create_dataset(
+                                "/{}/{}".format(key, subkey),
+                                data=self.result[key][subkey])
                         else:
                             for gain in ["high", "medium", "low"]:
-                                output_file.create_dataset("/{}/{}/{}".format(key, subkey, gain),
-                                                           data=self.result[key][subkey][gain])
+                                output_file.create_dataset(
+                                    "/{}/{}/{}".format(key, subkey, gain),
+                                    data=self.result[key][subkey][gain])
 
             output_file.flush()
             print("took time: {}".format(time.time() - t))
@@ -211,28 +226,24 @@ if __name__ == "__main__":
     base_path = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
     module = "M234"
     temperature = "temperature_m20C"
-    #asic_list = [1]
     asic_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
     n_processes = 10
 
     input_path = os.path.join(base_path, module, temperature, "drscs")
     # substitute all except current and asic
-    input_template = Template("${p}/${c}/process/${m}_drscs_${c}_asic${a}_processed.h5").safe_substitute(p=input_path, m=module)
+    input_template = (
+        Template("${p}/${c}/process/${m}_drscs_${c}_asic${a}_processed.h5")
+        .safe_substitute(p=input_path, m=module)
+    )
     # make a template out of this string to let Merge set current and asic
     input_template = Template(input_template)
 
-
-    output_path = os.path.join(base_path, module, temperature, "drscs", "merged")
-    output_template = Template("${p}/${m}_drscs_asic${a}_merges.h5").safe_substitute(p=output_path, m=module, t=temperature)
+    output_path = os.path.join(base_path, module, temperature, "drscs",
+                               "merged")
+    output_template = (
+        Template("${p}/${m}_drscs_asic${a}_merges.h5")
+        .safe_substitute(p=output_path, m=module, t=temperature)
+    )
     output_template = Template(output_template)
 
     ParallelMerge(input_template, output_template, asic_list, n_processes)
-
-#    for asic in asic_list:
-#        output_fname = os.path.join(base_path, module, temperature, "drscs", "merged",
-#                                    "{}_{}_drsc_asic{}_mergd.h5".format(module, temperature,
-#                                                                       str(asic).zfill(2)))
-
-#        obj = MergeDrscs(input_template, output_fname, asic)
-#        obj.run()
-

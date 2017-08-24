@@ -5,8 +5,8 @@
 import os
 import sys
 import argparse
-import subprocess
 import multiprocessing
+
 
 def get_arguments():
     parser = argparse.ArgumentParser()
@@ -23,8 +23,10 @@ def get_arguments():
     parser.add_argument("--measurement",
                         type=str,
                         required=True,
-                        choices=["dark", "xray", "clamped_gain", "drscs", "drscs_dark"],
-                        help="Which measurement to analyse: dark, xray, clamped_gain, drscs, drscs_dark")
+                        choices=["dark", "xray", "clamped_gain", "drscs",
+                                 "drscs_dark"],
+                        help="Which measurement to analyse: dark, xray, "
+                             "clamped_gain, drscs, drscs_dark")
     parser.add_argument("--input_dir",
                         type=str,
                         required=True,
@@ -67,7 +69,8 @@ def get_arguments():
     parser.add_argument("--column_spec",
                         type=int,
                         nargs='+',
-                        help="Which index files to use for which column, e.g. 9, 10, 11, 12")
+                        help="Which index files to use for which column, "
+                             "e.g. 9, 10, 11, 12")
     parser.add_argument("--max_part",
                         default=False,
                         type=int,
@@ -76,7 +79,8 @@ def get_arguments():
                         type=int,
                         nargs='+',
                         default=False,
-                        help="If only a subset of the columns should be gathered")
+                        help="If only a subset of the columns should be "
+                             "gathered")
     parser.add_argument("--current_list",
                         type=str,
                         nargs='+',
@@ -101,11 +105,13 @@ def get_arguments():
         print("The element must be defined for xray!")
         sys.exit(1)
 
-    if args.measurement == "drscs" and not args.current and args.run_type != "merge":
+    if args.measurement == "drscs" and not args.current \
+            and args.run_type != "merge":
         print("The current must be defined for drscs!")
         sys.exit(1)
 
     return args
+
 
 class StartAnalyse():
     def __init__(self):
@@ -133,7 +139,7 @@ class StartAnalyse():
 
     def run(self):
 
-        #TODO check for required parameters and stop if they are not set
+        # TODO check for required parameters and stop if they are not set
 
         script_dir = os.path.join(self.base_dir, "src")
 

@@ -4,12 +4,14 @@ from plotting import GeneratePlots
 import argparse
 from string import Template
 
+
 def get_arguments():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--base_dir",
                         type=str,
-                        default="/gpfs/cfel/fsds/labs/agipd/calibration/processed/",
+                        default="/gpfs/cfel/fsds/labs/agipd/calibration/"
+                                "processed/",
                         help="Processing directory base")
     parser.add_argument("--n_processes",
                         type=int,
@@ -36,7 +38,7 @@ def get_arguments():
                         help="Subdir in which the plots should be stored")
     parser.add_argument("--pixel",
                         type=int,
-                        nargs = 3,
+                        nargs=3,
                         help="Pixel and memory cell to create a plot from")
 
     args = parser.parse_args()
@@ -50,17 +52,12 @@ def condition_function(error_code):
     return indices
 
 
-def condition_function(error_code):
-    indices = np.where(error_code != 0)
-
-    return indices
-
-
 def create_dir(directory_name):
     if not os.path.exists(directory_name):
         try:
             os.makedirs(directory_name)
-            print("Dir '{0}' does not exist. Create it.".format(directory_name))
+            print("Dir '{0}' does not exist. Create it."
+                  .format(directory_name))
         except IOError:
             if os.path.isdir(directory_name):
                 pass
@@ -80,46 +77,59 @@ if __name__ == "__main__":
         idx = None
     print("idx", idx)
 
-    #base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
-    #asic = 3
-    #module = "M303"
-    #temperature = "temperature_m15C"
-    #current = "itestc20"
-
-    #plot_subdir = "asic{}_failed".format(str(asic).zfill(2))
-    #plot_subdir = "manu_test"
-
     n_processes = 10
 
-    gather_path = os.path.join(base_dir, module, temperature, "drscs", "itestc${c}", "gather")
-    gather_template = (Template("${p}/${m}_drscs_itestc${c}_asic${a}.h5")
-                       .safe_substitute(p=gather_path, m=module, a=str(asic).zfill(2)))
+    gather_path = os.path.join(base_dir,
+                               module,
+                               temperature,
+                               "drscs",
+                               "itestc${c}",
+                               "gather")
+    gather_template = (
+        Template("${p}/${m}_drscs_itestc${c}_asic${a}.h5")
+        .safe_substitute(p=gather_path, m=module, a=str(asic).zfill(2))
+    )
     gather_template = Template(gather_template)
-    #gather_fname = os.path.join(base_dir, module, temperature, "drscs", current, "gather",
-    #                            "{}_drscs_{}_asic{}.h5"
-    #                            .format(module, current, str(asic).zfill(2)))
 
     plot_subdir = args.plot_dir or "asic{}_failed".format(str(asic).zfill(2))
 
     if current == "merged":
-        process_fname = os.path.join(base_dir, module, temperature, "drscs", "merged",
+        process_fname = os.path.join(base_dir,
+                                     module,
+                                     temperature,
+                                     "drscs",
+                                     "merged",
                                      "{}_drscs_asic{}_merged.h5"
                                      .format(module, str(asic).zfill(2)))
     else:
-        process_fname = os.path.join(base_dir, module, temperature, "drscs", current, "process",
-                                      "{}_drscs_{}_asic{}_processed.h5"
-                                      .format(module, current, str(asic).zfill(2)))
+        process_fname = os.path.join(base_dir,
+                                     module,
+                                     temperature,
+                                     "drscs",
+                                     current,
+                                     "process",
+                                     "{}_drscs_{}_asic{}_processed.h5"
+                                     .format(module,
+                                             current,
+                                             str(asic).zfill(2)))
 
     plot_prefix = module
 
-    plot_dir = os.path.normpath(os.path.join(base_dir, module, temperature,
-                                             "drscs", "plots", current,
+    plot_dir = os.path.normpath(os.path.join(base_dir,
+                                             module,
+                                             temperature,
+                                             "drscs",
+                                             "plots",
+                                             current,
                                              plot_subdir))
     create_dir(plot_dir)
 
-    obj = GeneratePlots(asic, current, gather_template, plot_prefix, plot_dir, n_processes)
-
-    #idx = (5,5,1)
+    obj = GeneratePlots(asic,
+                        current,
+                        gather_template,
+                        plot_prefix,
+                        plot_dir,
+                        n_processes)
 
     if idx is not None:
         current_value = int(current[len("itestc"):])

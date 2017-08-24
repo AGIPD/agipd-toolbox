@@ -1,7 +1,6 @@
 from __future__ import print_function
 
 import os
-import sys
 import argparse
 import datetime
 import numpy as np
@@ -13,16 +12,19 @@ from multiprocessing import Pool
 from numpy.ma import masked_array
 from matplotlib import cm
 
+
 def get_arguments():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--input_dir",
                         type=str,
-                        default="/gpfs/cfel/fsds/labs/agipd/calibration/processed",
+                        default="/gpfs/cfel/fsds/labs/agipd/calibration/"
+                                "processed",
                         help="Directory to get data from")
     parser.add_argument("--output_dir",
                         type=str,
-                        default="/gpfs/cfel/fsds/labs/agipd/calibration/processed",
+                        default="/gpfs/cfel/fsds/labs/agipd/calibration/"
+                                "processed",
                         help="Base directory to write results to")
     parser.add_argument("--module",
                         type=str,
@@ -52,10 +54,12 @@ def create_dir(directory_name):
     if not os.path.exists(directory_name):
         try:
             os.makedirs(directory_name)
-            print("Dir '{0}' does not exist. Create it.".format(directory_name))
+            print("Dir '{0}' does not exist. Create it."
+                  .format(directory_name))
         except IOError:
             if os.path.isdir(directory_name):
                 pass
+
 
 def generate_matrix(result, gain_name, matrix_type):
     gain_d = {
@@ -71,7 +75,7 @@ def generate_matrix(result, gain_name, matrix_type):
         "average_residual": None,
     }
 
-    #TODO generic (get from file)
+    # TODO generic (get from file)
     n_used_fits = 3
 
     # gain, pixel_v, pixel_u, mem_cell
@@ -88,21 +92,25 @@ def generate_matrix(result, gain_name, matrix_type):
         for v in np.arange(n_pixel_v):
             for u in np.arange(n_pixel_u):
                 for mem_cell in np.arange(n_mem_cell):
-                    #print("pixel [{},{}], mem_cell {}".format(v, u, mem_cell))
 
                     for key in ["slope", "offset"]:
-                        mean = result[key]["mean"][gain, v, u, mem_cell]
-                        values = result[key]["individual"][gain_name][v, u, mem_cell][1:-1]
-                        #print(key)
-                        #print("mean={}, values={}".format(mean, values))
+                        mean = result[key]["mean"]
+                        indv = result[key]["individual"][gain_name]
+
+                        mean = mean[gain, v, u, mem_cell]
+                        values = indv[v, u, mem_cell][1:-1]
 
                         try:
                             if mean != 0:
+                                diff = values - mean
+                                scale = n_used_fits * mean
+
                                 matrix[key][v, u, mem_cell] = (
-                                    np.linalg.norm(values - mean)/np.absolute(n_used_fits * mean))
+                                    np.linalg.norm(diff) / np.absolute(scale))
                         except Exception as e:
                             print("Error was: ", e)
-                            print("pixel {}, mem_cell {}".format(mem_cell, v, u))
+                            print("pixel {}, mem_cell {}"
+                                  .format(mem_cell, v, u))
                             print(key)
                             print("mean={}".format(mean))
                             print("values={}".format(values))
@@ -116,25 +124,32 @@ def generate_matrix(result, gain_name, matrix_type):
     return matrix
 
 
-def create_individual_plots(input_fname, mem_cell_list, plot_prefix, plot_ending, gain_name, matrix_type):
+def create_individual_plots(input_fname, mem_cell_list, plot_prefix,
+                            plot_ending, gain_name, matrix_type):
     try:
-        colormap_matrix, safety_factor = create_matrix_individual(input_fname, gain_name, matrix_type)
+        colormap_matrix, safety_factor = create_matrix_individual(input_fname,
+                                                                  gain_name,
+                                                                  matrix_type)
 
-        create_plots(mem_cell_list, colormap_matrix, plot_prefix, plot_ending,
-                     gain_name, matrix_type, safety_factor, splitted=True)
+        create_plots(mem_cell_list,
+                     colormap_matrix,
+                     plot_prefix,
+                     plot_ending,
+                     gain_name,
+                     matrix_type,
+                     safety_factor,
+                     splitted=True)
     except OSError:
         print("OSError:", input_fname)
         pass
 
 
 def create_matrix_individual(input_fname, gain_name, matrix_type):
-    t = time.time()
-
     process_result = {
         "slope": {
             "mean": None,
             "individual": {
-                "high" : None,
+                "high": None,
                 "medium": None,
                 "low": None
             }
@@ -142,7 +157,7 @@ def create_matrix_individual(input_fname, gain_name, matrix_type):
         "offset": {
             "mean": None,
             "individual": {
-                "high" : None,
+                "high": None,
                 "medium": None,
                 "low": None
             }
@@ -150,7 +165,7 @@ def create_matrix_individual(input_fname, gain_name, matrix_type):
         "average_residual": {
             "mean": None,
             "individual": {
-                "high" : None,
+                "high": None,
                 "medium": None,
                 "low": None
             }
@@ -161,20 +176,25 @@ def create_matrix_individual(input_fname, gain_name, matrix_type):
     source_file = h5py.File(input_fname, "r")
 
     for key in process_result.keys():
-        process_result[key]["mean"] = source_file["/{}/mean".format(key)][()]
-        process_result[key]["individual"]["low"] = source_file["/{}/individual/low".format(key)][()]
+        r = process_result[key]
+        low_path = "/{}/individual/low".format(key)
+
+        r["mean"] = source_file["/{}/mean".format(key)][()]
+        r["individual"]["low"] = source_file[low_path][()]
 
     process_result["error_code"] = source_file["/error_code"][()]
     safety_factor = source_file["/collection/safety_factor"][()]
     source_file.close()
 
     # calcurate matrix
-    return generate_matrix(process_result, gain_name, matrix_type), safety_factor
+    return (generate_matrix(process_result, gain_name, matrix_type),
+            safety_factor)
+
 
 def create_plots(mem_cell_list, colormap_matrix, plot_file_prefix, plot_ending,
                  gain_name, matrix_type, safety_factor, splitted=False):
     plot_size = (27, 7)
-                # [left, bottom, width, height]
+    #             [left, bottom, width, height]
     ax_location = [0.91, 0.11, 0.01, 0.75]
     ax2_location = [0.94, 0.11, 0.01, 0.75]
 
@@ -183,7 +203,8 @@ def create_plots(mem_cell_list, colormap_matrix, plot_file_prefix, plot_ending,
         for key in colormap_matrix:
             m = colormap_matrix[key][..., mem_cell]
 
-            if splitted and matrix_type == "quality" and np.where(m >= 1)[0].size != 0:
+            if splitted and matrix_type == "quality" \
+                    and np.where(m >= 1)[0].size != 0:
 
                 m_a = masked_array(m, m < 1)
                 m_b = masked_array(m, m >= 1)
@@ -205,9 +226,16 @@ def create_plots(mem_cell_list, colormap_matrix, plot_file_prefix, plot_ending,
                 plt.colorbar(cax=colorbar_ax)
 
             title_prefix = plot_file_prefix.rsplit("/", 1)[1]
-            plt.suptitle("{}_{} {} sf{}".format(title_prefix, gain_name, key, safety_factor), fontsize=24)
+            plt.suptitle("{}_{} {} sf{}".format(title_prefix,
+                                                gain_name,
+                                                key,
+                                                safety_factor),
+                         fontsize=24)
 
-            fig.savefig("{}_{}_{}_sf{}{}".format(plot_file_prefix, gain_name, key, safety_factor, plot_ending),
+            fig.savefig("{}_{}_{}_sf{}{}".format(plot_file_prefix,
+                                                 gain_name, key,
+                                                 safety_factor,
+                                                 plot_ending),
                         bbox_inches='tight')
             fig.clf()
             plt.close(fig)
@@ -231,13 +259,12 @@ class CreateColormaps():
         self.input_template = input_template
         self.output_template = output_template
 
-        self.asics_in_upper_row = np.arange(16,8,-1)
-        self.asics_in_lower_row = np.arange(1,9)
+        self.asics_in_upper_row = np.arange(16, 8, -1)
+        self.asics_in_lower_row = np.arange(1, 9)
 
         self.asic_list = np.concatenate((self.asics_in_upper_row,
                                          self.asics_in_lower_row))
-        #self.asic_list = [2]
-        self.asic_list = np.arange(1,17)
+        self.asic_list = np.arange(1, 17)
 
         self.individual_plots = individual_plots
 
@@ -261,7 +288,7 @@ class CreateColormaps():
         for mem_cell in self.mem_cell_list:
 
             print("\nStarted at", str(datetime.datetime.now()))
-            t= time.time()
+            t = time.time()
 
             if self.individual_plots:
                 # substitute all except asic
@@ -284,9 +311,14 @@ class CreateColormaps():
                                             self.matrix_type))
 
                 self.get_data()
-                create_plots(self.mem_cell_list, self.colormap_matrix,
-                             self.plot_prefix, self.plot_ending, self.gain_name,
-                             self.matrix_type, self.safety_factor, splitted=True)
+                create_plots(self.mem_cell_list,
+                             self.colormap_matrix,
+                             self.plot_prefix,
+                             self.plot_ending,
+                             self.gain_name,
+                             self.matrix_type,
+                             self.safety_factor,
+                             splitted=True)
 
             print("\nFinished at {} after {}"
                   .format(datetime.datetime.now(), time.time() - t))
@@ -327,7 +359,7 @@ class CreateColormaps():
                   colormap_matrix_lower_row[key]), axis=0)
 
     def create_row(self, asic_list):
-        print ("asic_list={}".format(asic_list))
+        print("asic_list={}".format(asic_list))
 
         generated_matrix = [[] for asic in asic_list]
 
@@ -348,7 +380,9 @@ class CreateColormaps():
             # calcurate matrix
             result_list.append(
                 self.pool.apply_async(
-                     create_matrix_individual, (input_fname, self.gain_name, self.matrix_type)))
+                     create_matrix_individual, (input_fname,
+                                                self.gain_name,
+                                                self.matrix_type)))
 
         # build matrix for whole module
         for i in range(asic_list.size):
@@ -378,12 +412,6 @@ if __name__ == "__main__":
     current = args.current
     individual_plots = args.individual_plots
 
-    #input_base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
-    #output_base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
-    #module = "M314"
-    #temperature = "temperature_m15C"
-    #current = "itestc150"
-
     print("Configured parameter:")
     print("input_dir: ", input_base_dir)
     print("output_dir: ", output_base_dir)
@@ -393,24 +421,52 @@ if __name__ == "__main__":
     print("individual_plots: ", individual_plots)
 
     if current == "merged":
-        input_path = os.path.join(input_base_dir, module, temperature, "drscs", "merged")
+        input_path = os.path.join(input_base_dir,
+                                  module,
+                                  temperature,
+                                  "drscs",
+                                  "merged")
         # substitute all except current and asic
-        input_template = Template("${p}/${m}_drscs_asic${a}_merged.h5").safe_substitute(p=input_path, m=module)
+        input_template = (
+            Template("${p}/${m}_drscs_asic${a}_merged.h5")
+            .safe_substitute(p=input_path, m=module)
+        )
 
     else:
-        input_path = os.path.join(input_base_dir, module, temperature, "drscs", current, "process")
+        input_path = os.path.join(input_base_dir,
+                                  module,
+                                  temperature,
+                                  "drscs",
+                                  current,
+                                  "process")
         # substitute all except current and asic
-        input_template = Template("${p}/${m}_drscs_${c}_asic${a}_processed.h5").safe_substitute(p=input_path, m=module, c=current)
+        input_template = (
+            Template("${p}/${m}_drscs_${c}_asic${a}_processed.h5")
+            .safe_substitute(p=input_path, m=module, c=current)
+        )
 
-    plot_dir = os.path.join(output_base_dir, module, temperature, "drscs", "plots", current, "colormaps")
+    plot_dir = os.path.join(output_base_dir,
+                            module,
+                            temperature,
+                            "drscs",
+                            "plots",
+                            current,
+                            "colormaps")
     print("plot_dir", plot_dir)
 
     # make a template out of this string to let Combine set current and asic
     input_template = Template(input_template)
 
-    output_path = os.path.join(output_base_dir, module, temperature, "drscs", current)
+    output_path = os.path.join(output_base_dir,
+                               module,
+                               temperature,
+                               "drscs",
+                               current)
     # substitute all except current and asic
-    output_template = Template("${m}_drscs_${c}_asic${a}_colormap.h5").safe_substitute(m=module, c=current)
+    output_template = (
+        Template("${m}_drscs_${c}_asic${a}_colormap.h5")
+        .safe_substitute(m=module, c=current)
+    )
     # make a template out of this string to let Combine set current and asic
     output_template = Template(output_template)
 
@@ -420,7 +476,7 @@ if __name__ == "__main__":
         create_dir(os.path.join(plot_dir, "individual"))
 
     create_error_plots = False
-    mem_cell_list = np.arange(1,2)
+    mem_cell_list = np.arange(1, 2)
 
     n_processes = 8
 

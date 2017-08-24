@@ -1,13 +1,13 @@
 import os
-import matplotlib
-matplotlib.use('Agg') # Must be before importing matplotlib.pyplot or pylab!
-import matplotlib.pyplot as plt
 import numpy as np
 import h5py
 from multiprocessing import Pool
+import matplotlib
+matplotlib.use('Agg')  # Must be before importing matplotlib.pyplot or pylab!
+import matplotlib.pyplot as plt  # noqa E402
 
 
-def gerenate_data_hist(current_idx, scaled_x_values, digital,
+def gerenate_data_hist(scaled_x_values, analog, digital,
                        plot_title, plot_name):
 
     nbins = 30
@@ -19,7 +19,7 @@ def gerenate_data_hist(current_idx, scaled_x_values, digital,
     else:
         nbins = nbins
 
-    hist, bins = np.histogram(data, bins=nbins)
+    hist, bins = np.histogram(digital, bins=nbins)
 
     width = 0.7 * (bins[1] - bins[0])
     center = (bins[:-1] + bins[1:]) / 2
@@ -29,8 +29,6 @@ def gerenate_data_hist(current_idx, scaled_x_values, digital,
     ax = fig.add_subplot(121)
     ax.bar(center, hist, align="center", width=width, label="hist digital")
     ax.legend()
-
-    idx = current_idx + (slice(None),)
 
     ax = fig.add_subplot(122)
     ax.plot(scaled_x_values, analog, ".", markersize=0.5, label="analog")
@@ -43,10 +41,8 @@ def gerenate_data_hist(current_idx, scaled_x_values, digital,
     plt.close(fig)
 
 
-def generate_data_plot(current_idx, scaled_x_values, analog,
-                       digital, plot_title, plot_name):
-
-    idx = current_idx + (slice(None),)
+def generate_data_plot(scaled_x_values, analog, digital,
+                       plot_title, plot_name):
 
     fig = plt.figure(figsize=None)
     plt.plot(scaled_x_values, analog, ".", markersize=0.5, label="analog")
@@ -73,15 +69,15 @@ def generate_failed_images_plot(data, plot_title, plot_name):
 
 def remove_legend_dubplicates():
     # Remove duplicates in legend
-    # https://stackoverflow.com/questions/26337493/pyplot-combine-multiple-line-labels-in-legend
+    # https://stackoverflow.com/questions/26337493/pyplot-combine-multiple-line-labels-in-legend  # noqa E501
     handles, labels = plt.gca().get_legend_handles_labels()
-    i =1
-    while i<len(labels):
+    i = 1
+    while i < len(labels):
         if labels[i] in labels[:i]:
             del(labels[i])
             del(handles[i])
         else:
-            i +=1
+            i += 1
 
     return handles, labels
 
@@ -131,9 +127,12 @@ def generate_combined_plot(current_idx, scaled_x_values, analog, digital,
                 b = offsets[gain][array_idx]
                 x = x_values[gain][i]
 
-                plt.plot(x, m * x + b, "r", alpha=0.3, label="Fitted line (unused)")
+                plt.plot(x, m * x + b, "r", alpha=0.3,
+                         label="Fitted line (unused)")
             # display the used fits
-            for i in np.arange(fit_cutoff_left, len(x_values[gain]) - fit_cutoff_right):
+            start = fit_cutoff_left
+            stop = len(x_values[gain]) - fit_cutoff_right
+            for i in np.arange(start, stop):
                 array_idx = current_idx + (i,)
 
                 m = slopes[gain][array_idx]
@@ -150,7 +149,8 @@ def generate_combined_plot(current_idx, scaled_x_values, analog, digital,
                 b = offsets[gain][array_idx]
                 x = x_values[gain][i]
 
-                plt.plot(x, m * x + b, "r", alpha=0.3, label="Fitted line (unused)")
+                plt.plot(x, m * x + b, "r", alpha=0.3,
+                         label="Fitted line (unused)")
         else:
             # display all fits
             for i in np.arange(len(x_values[gain])):
@@ -178,8 +178,7 @@ def generate_all_plots(current_idx, scaled_x_values, analog,
 
     plot_title = "{} data".format(plot_title_prefix)
     plot_name = "{}_data{}".format(plot_name_prefix, plot_ending)
-    generate_data_plot(current_idx,
-                       scaled_x_values,
+    generate_data_plot(scaled_x_values,
                        analog,
                        digital,
                        plot_title,
@@ -212,8 +211,9 @@ def generate_all_plots(current_idx, scaled_x_values, analog,
                            plot_title,
                            plot_name)
 
-def generate_idx_plot(plot_file_prefix, plot_title_prefix, plot_ending, plot_idx,
-                      analog, digital, x_values):
+
+def generate_idx_plot(plot_file_prefix, plot_title_prefix, plot_ending,
+                      plot_idx, analog, digital, x_values):
     idx = plot_idx + (slice(None),)
 
     plot_file_prefix = "{}_[{}, {}]_{}".format(plot_file_prefix,
@@ -229,15 +229,16 @@ def generate_idx_plot(plot_file_prefix, plot_title_prefix, plot_ending, plot_idx
                                    plot_ending)
 
     print("generate plot:", plot_idx)
-    generate_data_plot(idx,
-                       x_values,
+    generate_data_plot(x_values,
                        analog,
                        digital,
                        plot_title,
                        plot_name)
 
+
 class GeneratePlots():
-    def __init__(self, asic, current, input_template, plot_prefix, plot_dir, n_processes):
+    def __init__(self, asic, current, input_template, plot_prefix, plot_dir,
+                 n_processes):
 
         self.asic = asic
         self.input_template = input_template
@@ -248,16 +249,14 @@ class GeneratePlots():
 
         if current.startswith("itestc"):
             self.current = int(current[len("itestc"):])
-
-            #print("plot_prefix", plot_prefix)
-            #self.plot_file_prefix = "{}_asic{}".format(plot_prefix, str(asic).zfill(2))
         else:
             self.current = None
 
         print("plot_prefix", plot_prefix)
         self.plot_file_prefix = plot_prefix
 
-        self.plot_file_prefix = os.path.join(self.plot_dir, self.plot_file_prefix)
+        self.plot_file_prefix = os.path.join(self.plot_dir,
+                                             self.plot_file_prefix)
 
         self.plot_title_prefix = self.plot_file_prefix.rsplit("/", 1)[1]
         print("plot_file_prefix", self.plot_file_prefix)
@@ -284,14 +283,18 @@ class GeneratePlots():
         process_file.close()
 
     def load_raw_data(self, input_fname, idx=None):
+
+        analog_path = "/entry/instrument/detector/data"
+        digital_path = "/entry/instrument/detector/data_digital"
+
         source_file = h5py.File(input_fname, "r")
 
         if idx is not None:
-            analog = source_file["/entry/instrument/detector/data"][idx]
-            digital = source_file["/entry/instrument/detector/data_digital"][idx]
+            analog = source_file[analog_path][idx]
+            digital = source_file[digital_path][idx]
         else:
-            analog = source_file["/entry/instrument/detector/data"][()]
-            digital = source_file["/entry/instrument/detector/data_digital"][()]
+            analog = source_file[analog_path][()]
+            digital = source_file[digital_path][()]
         source_file.close()
 
         return analog, digital
@@ -299,7 +302,7 @@ class GeneratePlots():
     def scale_full_x_axis(self, s):
         number_of_x_values = s
 
-        lower  = np.arange(self.scaling_point)
+        lower = np.arange(self.scaling_point)
         upper = (np.arange(self.scaling_point, number_of_x_values)
                  * self.scaling_factor
                  - self.scaling_point * self.scaling_factor
@@ -316,24 +319,31 @@ class GeneratePlots():
 
         scaled_x_values = self.scale_full_x_axis(number_of_x_values)
 
-        plot_file_prefix = "{}_itestc{}_asic{}".format(self.plot_file_prefix, current, str(self.asic).zfill(2))
-        plot_title_prefix = "{}_itestc{}_asic{}".format(self.plot_title_prefix, current, str(self.asic).zfill(2))
+        plot_file_prefix = ("{}_itestc{}_asic{}"
+                            .format(self.plot_file_prefix,
+                                    current,
+                                    str(self.asic).zfill(2)))
+        plot_title_prefix = ("{}_itestc{}_asic{}"
+                             .format(self.plot_title_prefix,
+                                     current,
+                                     str(self.asic).zfill(2)))
 
-        generate_idx_plot(self.plot_file_prefix, self.plot_title_prefix,
+        generate_idx_plot(plot_file_prefix, plot_title_prefix,
                           self.plot_ending, idx, analog, digital,
                           scaled_x_values)
 
     def check_current(self, current):
 
-        if current == 0 :
+        if current == 0:
             idx_candidates = np.where(self.chosen_current != 0)
-            idx = (idx_candidates[0][0], idx_candidates[1][0], idx_candidates[2][0])
+            idx = (idx_candidates[0][0],
+                   idx_candidates[1][0],
+                   idx_candidates[2][0])
             current = self.chosen_current[idx]
 
         current = int(current)
 
         return current
-
 
     def run_condition(self, process_fname, condition_function):
         self.process_fname = process_fname
@@ -359,16 +369,17 @@ class GeneratePlots():
 
         for i in np.arange(len(plot_indices[0])):
             idx = (plot_indices[0][i], plot_indices[1][i], plot_indices[2][i])
-            #print('idx', idx)
 
             current = self.check_current(self.chosen_current[idx])
             input_fname = self.input_template.substitute(c=current)
-            plot_file_prefix = "{}_itestc{}_asic{}".format(self.plot_file_prefix,
-                                                           current,
-                                                           str(self.asic).zfill(2))
-            plot_title_prefix = "{}_itestc{}_asic{}".format(self.plot_title_prefix,
-                                                            current,
-                                                            str(self.asic).zfill(2))
+            plot_file_prefix = ("{}_itestc{}_asic{}"
+                                .format(self.plot_file_prefix,
+                                        current,
+                                        str(self.asic).zfill(2)))
+            plot_title_prefix = ("{}_itestc{}_asic{}"
+                                 .format(self.plot_title_prefix,
+                                         current,
+                                         str(self.asic).zfill(2)))
 
             analog, digital = self.load_raw_data(input_fname, idx)
 

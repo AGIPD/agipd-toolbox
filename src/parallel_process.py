@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from multiprocessing import Pool, TimeoutError
+from multiprocessing import Pool
 import numpy as np
 import os
 import time
@@ -9,19 +9,12 @@ from process import ProcessDrscs, initiate_result, check_file_exists
 from functools import reduce  # forward compatibility for Python 3
 import operator
 
-def exec_process(asic, input_file, analog, digital, pixel_v_list, pixel_u_list, mem_cell_list, safety_factor):
 
-    create_error_plots=False
+def exec_process(asic, input_file, analog, digital, pixel_v_list, pixel_u_list,
+                 mem_cell_list, safety_factor):
 
-    #plot_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/M314/temperature_m15C/drscs/plots/itestc150/manu_test/asic01_failed/"
-    #plot_prefix = "M314_itestc150"
-    #create_error_plots=True
-
-    #cal = ProcessDrscs(asic, analog=analog, digital=digital)
-    cal = ProcessDrscs(asic, input_file, safety_factor=safety_factor)#,
-    #                   plot_prefix=plot_prefix, plot_dir=plot_dir, create_plots=False)
-    cal.run(pixel_v_list, pixel_u_list, mem_cell_list,
-            create_error_plots=create_error_plots)
+    cal = ProcessDrscs(asic, input_file, safety_factor=safety_factor)
+    cal.run(pixel_v_list, pixel_u_list, mem_cell_list)
 
     return cal.result, pixel_v_list, pixel_u_list, mem_cell_list
 
@@ -31,7 +24,7 @@ def map_to_dict(map_list, result):
 
 
 def map_to_hdf5(map_list, result):
-    return  np.array(result["/" + "/".join(map_list)])
+    return np.array(result["/" + "/".join(map_list)])
 
 
 def integrate_result(idx, result, source):
@@ -57,8 +50,6 @@ def integrate_result(idx, result, source):
                 result["collection"][key] = source["collection"][key]
     else:
         raise("Source to intergate of unsupported format")
-
-
 
     # idx at start: individual, subintervals, diff_changes_idx, saturation
     index = idx + (Ellipsis,)
@@ -117,7 +108,6 @@ def integrate_result(idx, result, source):
         map_to_format(source_key, source)[index])
 
 
-
 class ParallelProcess():
     def __init__(self, asic, input_fname, pixel_v_list, pixel_u_list,
                  mem_cell_list, n_processes, safety_factor, output_fname):
@@ -147,7 +137,7 @@ class ParallelProcess():
 
         self.generate_process_lists()
 
-        #self.load_data()
+#        self.load_data()
 
         self.run()
 
@@ -160,14 +150,16 @@ class ParallelProcess():
             rest = len(self.pixel_v_list) % self.n_processes
 
             # distribute the workload
-            self.process_lists = [self.pixel_v_list[i:i+size]
-                for i in range(0, len(self.pixel_v_list) - size*(rest+1), size)]
+            stop = len(self.pixel_v_list) - size*(rest+1)
+            self.process_lists = [self.pixel_v_list[i:i + size]
+                                  for i in range(0, stop, size)]
 
             # if list to split is not a multiple of size, the rest is equaly
             # distributed over the remaining processes
+            start = len(self.process_lists)*size
+            stop = len(self.pixel_v_list)
             self.process_lists += [self.pixel_v_list[i:i+size+1]
-                for i in range(len(self.process_lists)*size,
-                               len(self.pixel_v_list), size+1)]
+                                   for i in range(start, stop, size + 1)]
 
         print("process_lists")
         for i in self.process_lists:
@@ -181,10 +173,6 @@ class ParallelProcess():
             "low": p_result["slope"]["individual"]["low"].shape[-1]
         }
         n_diff_changes_stored = p_result["collection"]["n_diff_changes_stored"]
-
-        #print("n_gain_stages", n_gain_stages)
-        #print("n_intervals", n_intervals)
-        #print("n_bins", n_bins)
 
         # +1 because counting starts with zero
         self.dim_v = self.pixel_v_list.max() + 1
@@ -243,7 +231,7 @@ class ParallelProcess():
         v_start = v_list[0]
         v_stop = v_list[-1] + 1
         u_start = u_list[0]
-        u_stop = u_list[-1] +1
+        u_stop = u_list[-1] + 1
         m_start = mem_cell_list[0]
         m_stop = mem_cell_list[-1] + 1
 
@@ -363,28 +351,34 @@ if __name__ == "__main__":
     base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
 
     asic = 10
-    #asic = 15
-    #asic = 1
     module = "M303"
-    #module = "M314"
     temperature = "temperature_m15C"
-    #current = "itestc150"
     current = "itestc20"
     safety_factor = 1000
 
-    input_fname = os.path.join(base_dir, module, temperature, "drscs", current, "gather",
-                              "{}_drscs_{}_asic{}.h5".format(module, current, str(asic).zfill(2)))
-    output_fname = os.path.join(base_dir, module, temperature, "drscs", current, "process",
-                               "{}_drscs_{}_asic{}_processed.h5".format(module, current, str(asic).zfill(2)))
+    input_fname = os.path.join(base_dir,
+                               module,
+                               temperature,
+                               "drscs",
+                               current,
+                               "gather",
+                               "{}_drscs_{}_asic{}.h5"
+                               .format(module, current, str(asic).zfill(2)))
+    output_fname = os.path.join(base_dir,
+                                module,
+                                temperature,
+                                "drscs",
+                                current,
+                                "process",
+                                "{}_drscs_{}_asic{}_processed.h5"
+                                .format(module, current, str(asic).zfill(2)))
 
     pixel_v_list = np.arange(64)
     pixel_u_list = np.arange(64)
     mem_cell_list = np.arange(352)
-    #pixel_v_list = np.arange(0, 2)
-    #pixel_u_list = np.arange(0, 1)
-    #mem_cell_list = np.arange(0, 1)
 
     n_processes = 10
 
     proc = ParallelProcess(asic, input_fname, pixel_v_list, pixel_u_list,
-                           mem_cell_list, n_processes, safety_factor, output_fname)
+                           mem_cell_list, n_processes, safety_factor,
+                           output_fname)
