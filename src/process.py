@@ -8,7 +8,7 @@ import sys
 import time
 import traceback
 from characterization.plotting import generate_data_plot, generate_fit_plot, generate_combined_plot, generate_all_plots
-from helpers import create_dir, check_file_exists, setup_logging
+from utils import create_dir, check_file_exists, setup_logging
 import matplotlib.pyplot as plt
 import copy
 
