@@ -1,107 +1,164 @@
 """
-Create user-defined mask
-
-For example: beam stop, ASIC edges, known bad regions, etc.
+Create user-defined mask; for example: beam stop, ASIC edges, known bad regions, etc.
+- inherits from CreateMasks
 
 combinedMask: logical OR of all sub-masks
-
-Note: when no pixels/cells are masked, plotting throws an exception!
 
 """
 
 import h5py
 import numpy as np
 import os
-
+import sys
+import argparse
 import matplotlib.pyplot as plt
 import pyqtgraph as pg
+from string import Template
+# need to tell python where to look for helpers.py
+BASE_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+SRC_PATH = os.path.join(BASE_PATH, "src")
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
+# now we can import functions from files in src directory
+from helpers import create_dir
+from createMaskBase import CreateMasks, read_data
 
 
-module_id = 'M314'
-module_number = 'm7'
-temperature = 'temperature_m15C'
-base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/{}/{}".format(module_id, temperature)
 
-# Flags for which masks to create
-manual = False
-systematic = True # memory cell 0
-asic_edge = False
+def get_arguments():
+    parser = argparse.ArgumentParser()
 
-# Input files
+    parser.add_argument("--base_dir",
+                        type=str,
+                        default="/gpfs/cfel/fsds/labs/agipd/calibration/processed",
+                        help="Directory to get data from")
+    parser.add_argument("--outfile_name",
+                        type=str,
+                        default="mask.h5",
+                        help="Filename for output mask file")
+    parser.add_argument("--module",
+                        type=str,
+                        required=True,
+                        help="Module ID and position, e.g M310_m3")
+    parser.add_argument("--temperature",
+                        type=str,
+                        required=True,
+                        help="temperature to gather, e.g. temperature_30C")
+    parser.add_argument("--manual",
+                        type=str,
+                        default=None,
+                        help="Use manually defined mask, e.g. beamstop")
+    parser.add_argument("--asic_edge",
+                        default=False,
+                        action="store_true",
+                        help="Mask ASIC edges")
+    args = parser.parse_args()
 
-
-# Output mask file
-save_filename = os.path.join(base_dir, 'cal_output/user_mask_{}_{}_{}.h5'.format(module_id, module_number, temperature))
-
-# Create output file
-f_out = h5py.File(save_filename, "w", libver='latest')
-dset_combined_mask = f_out.create_dataset("combined_mask", shape=(352, 128, 512), dtype=bool)
-masks = f_out.create_group("masks")
-
-combined_mask = np.zeros((352, 128, 512), dtype=bool)
-
-
-################# manual mask - please edit (e.g. beamstop) ############
-manual_mask = np.zeros((128, 512), dtype=bool)
-dset_manual_mask = masks.create_dataset("manual_mask", shape=(352, 128, 512), dtype=bool)
-
-if manual:
-    # !!Here is an example, edit to reflect your needs/setup!!
-    manual_mask[65:105, 200:260] = True
-    manual_mask[80:105, 200:511] = True
-
-    manual_mask[80:86, 22:43] = True
-    manual_mask[75:100, 31:43] = True
-
-    manual_mask[64:127, 127:195] = True
-
-dset_manual_mask[...] = manual_mask
-
-combined_mask = np.logical_or(manual_mask, combined_mask)
-########################################################################
+    return args
 
 
-######### systematic mask - please edit ################################
-systematic_mask = np.zeros((128, 512, 11, 32), dtype=bool)
-dset_systematic_mask = masks.create_dataset("systematic_mask", shape=(352, 128, 512), dtype=bool)
-
-if systematic:
-    # systematic_mask[..., 27:29] = True  # 32-column tips
-    systematic_mask[..., 0, 0] = True # memory cell 0
-
-systematic_mask = systematic_mask.reshape((128, 512, 352)).transpose(2, 0, 1)
-dset_systematic_mask[...] = systematic_mask
-
-combined_mask = np.logical_or(systematic_mask, combined_mask)
-########################################################################
 
 
-######### bad asic borders mask - please edit ##########################
-asic_edge_mask = np.zeros((352, 128, 512), dtype=bool)
-dset_asic_edge_mask = masks.create_dataset("asic_edge_mask", shape=(352, 128, 512), dtype=bool)
+def create_manual_mask(maskfile, manual_mask):
+    """
+    Create a manually-defined mask from user input 
+    
+    Input format:
+    memcell, x, y
+    
+    TODO: also input ranges?
+    memcell1:memcell2, x1:x2, y1:y2
 
-if asic_edge:
+    """
+
+    cells = []
+    f = open(maskfile, "r")
+    for line in f:
+        cells.append(line.split(","))
+    f.close()
+
+    for c in cells:
+        manual_mask[int(c[0]), int(c[1]), int(c[2])] = True
+
+    return manual_mask
+
+
+def create_asic_edge_mask(asic_edge_mask):
+    """
+    Mask asic edges
+
+    """
     asic_edge_mask[:, (0, 63, 64, 127), :] = True
     for column in np.arange(8):
         asic_edge_mask[:, :, (column * 64, column * 64 + 63)] = True
-
-dset_asic_edge_mask[...] = asic_edge_mask
-
-combined_mask = np.logical_or(asic_edge_mask, combined_mask)
-########################################################################
+    
+    return asic_edge_mask
 
 
-##################### the rest can be left untouched ###################
+class CreateUserMasks(CreateMasks):
 
-dset_combined_mask[...] = combined_mask
-f_out.flush()
-f_out.close()
-print('combined_mask saved in ', save_filename)
+    def __init__(self, base_dir, module, temperature, outfile_name, manual, asic_edge):
+        
+        CreateMasks.__init__(self, base_dir, module, temperature, outfile_name)
 
-combined_mask_file = h5py.File(save_filename, "r", libver='latest')
-combined_mask = combined_mask_file['combined_mask'][...]
-pg.image(combined_mask.transpose(0, 2, 1))
+        self.manual = manual
+        self.asic_edge = asic_edge
+        self.manual_file = None
 
-print('\n\npercentage of masked cells: ', 100 * combined_mask.flatten().sum() / combined_mask.size)
-print('\n\n\npress enter to quit')
-tmp = input()
+        if self.manual is not None:
+            self.manual_file = os.path.join(self.input_dir, self.manual)
+
+
+
+
+    def run(self):
+
+        # Manually-defined mask
+        manual_mask = np.zeros((352, 128, 512), dtype=bool)
+        dset_manual_mask = self.masks.create_dataset("manual", shape=(352, 128, 512), dtype=bool)
+        if self.manual is not None:
+            manual_mask = create_manual_mask(self.manual_file, manual_mask)
+        dset_manual_mask[...] = manual_mask
+        self.mask_list.append(manual_mask)
+        print("Manual % of cells masked: ", 100 * manual_mask.flatten().sum() / manual_mask.size)
+
+        # ASIC edges
+        asic_edge_mask = np.zeros((352, 128, 512), dtype=bool)
+        dset_asic_edge_mask = self.masks.create_dataset("asic_edges", shape=(352, 128, 512), dtype=bool)
+        if self.asic_edge:
+            asic_edge_mask = create_asic_edge_mask(asic_edge_mask)
+        dset_asic_edge_mask[...] = asic_edge_mask
+        self.mask_list.append(asic_edge_mask)
+        print("ASIC edges masked, %: ", 100 * asic_edge_mask.flatten().sum() / asic_edge_mask.size)
+
+        # combine all generated masks
+        self.combine_masks()
+        
+        self.f_out.flush()
+        self.f_out.close()
+        print("\nAll masks saved in ", self.outfile_path)
+
+
+if __name__ == "__main__":
+    
+    args = get_arguments()
+
+    base_dir = args.base_dir
+    outfile_name = args.outfile_name
+    module = args.module
+    temperature = args.temperature
+    manual = args.manual
+    asic_edge = args.asic_edge
+
+    print("Configured parameter:")
+    print("base_dir: ", base_dir)
+    print("outfile_name: ", outfile_name)
+    print("module: ", module)
+    print("temperature: ", temperature)
+    print("manual: ", manual)
+    print("asic_edge: ", asic_edge)
+
+
+    obj = CreateUserMasks(base_dir, module, temperature, outfile_name, manual, asic_edge)
+
+    obj.run()
