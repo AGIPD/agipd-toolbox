@@ -8,9 +8,16 @@ from algorithms.xRayTubeDataFitting import *
 
 def computePhotonSpacingOnePixel(analog, linearIndex, perMillInterval, memcell):
     localityRadius = 800
+    #localityRadius = 800
     samplePointsCount = 1000
 
-    (photonSpacing, quality, peakStdDevs, peakErrors, spacingError) = getOnePhotonAdcCountsXRayTubeData(analog, localityRadius, samplePointsCount)
+    (photonSpacing,
+     quality,
+     peakStdDevs,
+     peakErrors,
+     spacingError) = getOnePhotonAdcCountsXRayTubeData(analog,
+                                                       localityRadius=localityRadius,
+                                                       lwopassSamplePointsCount=samplePointsCount)
 
     # if np.mod(linearIndex, perMillInterval) == 0:
     #     print(0.1 * linearIndex / perMillInterval, '%')
@@ -58,7 +65,7 @@ class BatchProcessXRayTubeData():
         for memcell in range(n_memcells):
             print("Processing memcell", memcell)
 
-            analog = analog_data[:300, memcell, ...]
+            analog = analog_data[:, memcell, ...]
             print("analog.shape", analog.shape)
 
             print("create perMillInterval")
@@ -69,7 +76,7 @@ class BatchProcessXRayTubeData():
                                   i,
                                   perMillInterval, memcell))
             print("pixelList")
-            print(pixelList[0])
+            print(len(pixelList))
 
             # computePhotonSpacingOnePixel(*pixelList[0])
             #computePhotonSpacingOnePixel(analog[:, 5, 20], 1, 1)
@@ -132,10 +139,10 @@ if __name__ == "__main__":
 
     base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/M302/temperature_m15C/xray/"
 
-    input_fname = os.path.join(base_dir, "test.h5")
-    output_fname = os.path.join(base_dir, "test_processed.h5")
+    #input_fname = os.path.join(base_dir, "test.h5")
+    #output_fname = os.path.join(base_dir, "test_processed.h5")
 
-    #input_fname = os.path.join(base_dir, "test_AGIPD00_s00000.h5")
-    #output_fname = os.path.join(base_dir, "test_AGIPD00_s00000_processed.h5")
+    input_fname = os.path.join(base_dir, "test_AGIPD00_s00000.h5")
+    output_fname = os.path.join(base_dir, "test_AGIPD00_s00000_processed.h5")
 
     obj = BatchProcessXRayTubeData(input_fname, output_fname)

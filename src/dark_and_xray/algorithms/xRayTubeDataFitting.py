@@ -17,7 +17,7 @@ def getPhotonHistogramLowpassCorrected(analog, localityRadius, lowpassSamplePoin
 
     # expect localityRadius to be small enough
     if (data.size <= 2 * localityRadius):
-        return ValueError
+        raise ValueError("No enough data points to analyse")
 
     # compute small local histogram
     localData = data[2 * localityRadius:6 * localityRadius]
@@ -47,7 +47,6 @@ def getPhotonHistogramLowpassCorrected(analog, localityRadius, lowpassSamplePoin
 
     # plt.figure(2)
     # plt.plot(lowPassData)
-
 
     correctedData = data - lowPassData
 
@@ -200,7 +199,6 @@ def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=
     photonHistogramValuesSmooth = convolve(photonHistoramValues, np.ones((smoothWindowSize,)), mode='same')
     # plt.plot(photonHistogramBins[0:-1], photonHistogramValuesSmooth)
     # plt.show()
-
 
     # plt.figure(4)
     # plt.plot(photonHistogramBins[0:-1],photonHistoramValues)
