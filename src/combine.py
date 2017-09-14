@@ -5,7 +5,7 @@ import time
 import numpy as np
 import os
 from string import Template
-from process import check_file_exists
+from utils import check_file_exists
 
 
 class Combine():
@@ -35,11 +35,6 @@ class Combine():
         self.asic_mapping = [[16, 15, 14, 13, 12, 11, 10, 9],
                              [1,   2,  3,  4,  5,  6,  7, 8]]
         self.n_asics = 16
-
-        self.current = ["itestc150", "itestc150", "itestc150", "itestc150",
-                        "itestc150", "itestc150", "itestc150", "itestc150",
-                        "itestc150", "itestc150", "itestc150", "itestc150",
-                        "itestc150", "itestc150", "itestc150", "itestc150"]
 
         #                       [rows, columns]
         self.asics_per_module = [len(self.asic_mapping),
@@ -141,8 +136,7 @@ class Combine():
     def load_cs_data(self):
         for asic in np.arange(self.n_asics):
             input_fname = (self.cs_input_template
-                           .substitute(c=self.current[asic],
-                                       a=str(self.rev_mapped_asic[asic]).zfill(2)))
+                           .substitute(a=str(self.rev_mapped_asic[asic]).zfill(2)))
             source_file = h5py.File(input_fname, "r")
 
             try:
@@ -160,7 +154,7 @@ class Combine():
         cs_slope_upper = self.a_cs_slope[asic_row[0] - 1]
         thresholds_upper = self.a_thresholds[asic_row[0] - 1]
 
-        for asic in asic_row[1:]:            
+        for asic in asic_row[1:]:
             cs_offset_upper = np.concatenate((cs_offset_upper,
                                              self.a_cs_offset[asic - 1]),
                                              axis=2)
@@ -223,7 +217,7 @@ class Combine():
     def calc_gains(self):
         # convert xray slope from ADU to ADU/keV
         self.xray_slope = self.xray_slope / self.element_energy
-                
+
         # move memory cells index to front, makes calc easier
         if len(self.xray_slope.shape) > 2:
             self.xray_slope = np.rollaxis(self.xray_slope, -1, 0) #now shape = (1 or 352, 128, 512)
@@ -233,8 +227,10 @@ class Combine():
 
         if self.single_cell:
             # xray_gain_h175 / cs_gain_h175
-            factor = np.divide(self.xray_slope,
-                               self.cs_slope[0, self.xray_mem_cell, :, :])
+            cs_slope = self.cs_slope[0, self.xray_mem_cell, :, :]
+            # set all failed pixels to 1
+            cs_slope[np.where(cs_slope == 0)] = 1
+            factor = np.divide(self.xray_slope, cs_slope)
 
             # xray_gain_h = cs_gain_h * xray_gain_h175 / cs_gain_h175
             # np.newaxis is required to match shape, because we use same factor for all memcells
@@ -301,8 +297,10 @@ class Combine():
 
 if __name__ == "__main__":
     base_path = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
-    module = "M314"
+    module = "M215"
+    module_pos = "m6"
     temperature = "temperature_m15C"
+    probe_type = "Mo"
     #single_cell = True
 
     cs_input_path = os.path.join(base_path,
@@ -311,7 +309,7 @@ if __name__ == "__main__":
                                  "drscs")
     # substitute all except current and asic
     cs_input_template = (
-        Template("${p}/${c}/process/${m}_drscs_${c}_asic${a}_processed.h5")
+        Template("${p}/merged/${m}_drscs_asic${a}_merged.h5")
         .safe_substitute(p=cs_input_path, m=module)
     )
     # make a template out of this string to let Combine set current and asic
@@ -321,8 +319,8 @@ if __name__ == "__main__":
                                     module,
                                     temperature,
                                     "xray",
-                                    "photonSpacing_M314_m7_xray_Cu.h5")
-    xray_input_fname = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/M302/temperature_m15C/xray/test_AGIPD00_s00000_processed.h5"
+                                    "photonSpacing_{}_{}_xray_{}.h5".format(module, module_pos, probe_type))
+#    xray_input_fname = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/M302/temperature_m15C/xray/test_AGIPD00_s00000_processed.h5"
     output_fname = os.path.join(base_path,
                                 module,
                                 temperature,
