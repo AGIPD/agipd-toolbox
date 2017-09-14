@@ -16,6 +16,7 @@ def computePhotonSpacingOnePixel(analog, linearIndex, perMillInterval, memcell):
      peakStdDevs,
      peakErrors,
      spacingError) = getOnePhotonAdcCountsXRayTubeData(analog,
+                                                       applyLowpass=False,
                                                        localityRadius=localityRadius,
                                                        lwopassSamplePointsCount=samplePointsCount)
 
@@ -50,7 +51,7 @@ class BatchProcessXRayTubeData():
 
         # is of shape (<frames>, <memcells>, <pixel rows>, <pixel cols>)
         n_memcells = analog_data.shape[1]
-        n_memcells = 1
+        #n_memcells = 1
 
         photonSpacing = np.zeros((128, 512, n_memcells))
         quality = np.zeros((128, 512, n_memcells))
@@ -81,10 +82,22 @@ class BatchProcessXRayTubeData():
             # computePhotonSpacingOnePixel(*pixelList[0])
             #computePhotonSpacingOnePixel(analog[:, 5, 20], 1, 1)
 
-            # for i in np.arange(linearIndices.size):
-            #     print(i)
-            #     computePhotonSpacingOnePixel(*pixelList[i])
+        # for i in np.arange(linearIndices.size):
+        #     print(i)
+        #     computePhotonSpacingOnePixel(*pixelList[i])
 
+#        for i in pixelList:
+#            print(i)
+#            parallelResult = computePhotonSpacingOnePixel(i[0], i[1], i[2], i[3])
+#            print(parallelResult)
+#
+#            for i in np.arange(linearIndices.size):
+#                (photonSpacing[matrixIndexY[i], matrixIndexX[i], memcell],
+#                 quality[matrixIndexY[i], matrixIndexX[i], memcell],
+#                 peakStdDevs[matrixIndexY[i], matrixIndexX[i], :, memcell],
+#                 peakErrors[matrixIndexY[i], matrixIndexX[i], :, memcell],
+#                 spacingError[matrixIndexY[i], matrixIndexX[i], memcell]) = \
+#                parallelResult[i]
 
         print('start parallel computation')
         p = Pool()
@@ -100,6 +113,7 @@ class BatchProcessXRayTubeData():
              peakErrors[matrixIndexY[i], matrixIndexX[i], :, memcell],
              spacingError[matrixIndexY[i], matrixIndexX[i], memcell]) = \
             parallelResult[i]
+
 
         print('start saving results at', self.output_fname)
 

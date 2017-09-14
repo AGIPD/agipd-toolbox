@@ -3,6 +3,7 @@ import numpy as np
 import os
 import sys
 import time
+import glob
 
 class Gather():
     def __init__(self, input_fname, output_fname, use_xfel_format=False):
@@ -28,7 +29,11 @@ class Gather():
         self.run()
 
     def get_parts(self):
-        self.n_parts = 2
+
+        part_files = glob.glob("{}*".format(self.input_fname[:-9]))
+
+        self.n_parts = len(part_files)
+        #self.n_parts = 2
 
     def intiate(self):
         if self.use_xfel_format:
@@ -131,3 +136,15 @@ class Gather():
         saveFile.close()
 
         print('gatherXRayTubeData took time:  ', time.time() - totalTime, '\n\n')
+
+if __name__ == "__main__":
+    #input_fname = "/gpfs/cfel/fsds/labs/agipd/calibration/raw/302-303-314-305/temperature_m15C/xray/M302_m3_xray_Cu_mc112_00000.nxs"
+    #output_fname = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/M302/temperature_m15C/xray/test.h5"
+    #use_xfel_format = False
+
+    #{}/RAW-{}-AGIPD{:02d}-S{:05d}.h5"
+    input_fname = "/gpfs/exfel/exp/SPB/201730/p900009/raw/r0377/RAW-R0377-AGIPD00-S{:05d}.h5"
+    output_fname = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/M302/temperature_m15C/xray/test_AGIPD00_s00000.h5"
+    use_xfel_format = True
+
+    obj = Gather(input_fname, output_fname, use_xfel_format)

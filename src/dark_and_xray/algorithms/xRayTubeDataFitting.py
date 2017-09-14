@@ -172,7 +172,8 @@ def interpolate_peakutilsManuallyAdjusted(x, y, ind, width, func):
 
     out = []
     pcov = []
-    for slice_ in (slice(max((0, i - width)), min((x.size, i + width))) for i in ind):  # Addition by yaroslav.gevorkov@desy.de: added border checking
+    # Addition by yaroslav.gevorkov@desy.de: added border checking
+    for slice_ in (slice(max((0, i - width)), min((x.size, i + width))) for i in ind):
         fit, pcov_slice = func(x[slice_], y[slice_])
         #print("fit: ", fit)
         #print("pcov_slice: ", pcov_slice)
@@ -188,9 +189,16 @@ def interpolate_peakutilsManuallyAdjusted(x, y, ind, width, func):
 # apply lowpass, if temperature drift available:
 #   localityRadius should be local enough to be assumed as homogenous
 #   lwopassSamplePointsCount < 2*localityRadius, is used to speed up computation by using only a subset of the samples
-def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=801, lwopassSamplePointsCount=1000):
+def getOnePhotonAdcCountsXRayTubeData(analog,
+                                      applyLowpass=True,
+                                      localityRadius=801,
+                                      lwopassSamplePointsCount=1000):
     if applyLowpass:
-        (photonHistoramValues, photonHistogramBins) = getPhotonHistogramLowpassCorrected(analog, localityRadius, lwopassSamplePointsCount)
+        (photonHistoramValues, photonHistogramBins) = (
+            getPhotonHistogramLowpassCorrected(analog,
+                                               localityRadius,
+                                               lwopassSamplePointsCount))
+
     else:
         photonHistogramBins = np.arange(np.min(analog), np.max(analog), 1, dtype='int16')
         (photonHistoramValues, _) = np.histogram(analog, photonHistogramBins)
@@ -204,7 +212,6 @@ def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=
     # plt.plot(photonHistogramBins[0:-1],photonHistoramValues)
     # plt.show()
 
-
     # compute rough peak locations by finding maxima
     minPeakDistance = 40
     x = np.arange(len(photonHistoramValues))
@@ -215,10 +222,17 @@ def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=
     peakWidth = 31
     pcov = np.zeros((3,3))
     try:
-        interpolatedPeakParameters, pcov = interpolate_peakutilsManuallyAdjusted(x, y, ind=roughPeakLocations, width=peakWidth, func=manual_gaussian_fit)
+        interpolatedPeakParameters, pcov = (
+            interpolate_peakutilsManuallyAdjusted(x, y,
+                                                  ind=roughPeakLocations,
+                                                  width=peakWidth,
+                                                  func=manual_gaussian_fit))
     except:
+        #print("interpolate peakutilsManuellyAdjusted (pixel{} {})".format(x, y))
         return (0, 0, (0, 0), (0, 0), 0)
+
     if interpolatedPeakParameters.size < 2:
+        #print("interpolatedPeakParameters.size < 2 (size={})".format(interpolatedPeakParameters.size))
         return (0, 0, (0, 0), (0, 0), 0)
 
     #print("interpolatedPeakParameters: ", interpolatedPeakParameters)
@@ -235,6 +249,7 @@ def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=
     realPeakPcov = pcov[validIndices]
 
     if peakLocations.size < 2:
+        #print("peakLocations.size < 2 (size: {})".format(peakLocations.size))
         return (0, 0, (0, 0), (0, 0), 0)
 
     peakIndices = np.round(peakLocations).astype(int)
@@ -253,7 +268,8 @@ def getOnePhotonAdcCountsXRayTubeData(analog, applyLowpass=True, localityRadius=
     # take biggest peak and second biggest peak to compute the photon spacing
     onePhotonAdcCounts = np.abs(sizeSortedPeakLocations[1] - sizeSortedPeakLocations[0])
     #print("diag: ", np.diag(sizeSortedPcov[0]))
-    errors = (np.sqrt(np.diag(sizeSortedPcov[0])), np.sqrt(np.diag(sizeSortedPcov[1]))) #errors for all peaks all parameters = sqrt( diag(cov. matrix) )
+    # errors for all peaks all parameters = sqrt( diag(cov. matrix) )
+    errors = (np.sqrt(np.diag(sizeSortedPcov[0])), np.sqrt(np.diag(sizeSortedPcov[1])))
     #print("errors: ", errors)
     peakErrors = (errors[0][1], errors[1][1])
     #print("peak errors: ", peakErrors)
