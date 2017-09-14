@@ -14,7 +14,7 @@ class Combine():
         self.offset_path = "/slope/mean"
         self.slope_path = "/slope/mean"
         self.thresholds_path = "/thresholds"
-        self.xray_slope_path = "/photon_spacing"
+        self.xray_slope_path = "/photonSpacing"
 
         self.cs_input_template = cs_input_template
         self.xray_input_fname = xray_input_fname
@@ -28,6 +28,7 @@ class Combine():
         self.asic_size = 64  # in pixels
 
         self.xray_mem_cell = 175
+        self.single_cell = None
         self.element_energy = 8  # Cu
 
         # how the asics are located on the module
@@ -125,23 +126,23 @@ class Combine():
 
         self.load_cs_data()
         self.concatenate_to_module()
-        print(self.result["thresholds"])
+        #print(self.result["thresholds"])
 
         self.load_xray_data()
 
         self.calc_gains()
-        print(self.result["gains"])
+        #print(self.result["gain"])
 
-        self.calc_offsets()
-        print(self.result["offsets"])
+        self.calc_offset_diffs()
+        #print(self.result["offset"])
 
-        # self.write_data()
+        self.write_data()
 
     def load_cs_data(self):
         for asic in np.arange(self.n_asics):
             input_fname = (self.cs_input_template
                            .substitute(c=self.current[asic],
-                                       a=self.rev_mapped_asic[asic]))
+                                       a=str(self.rev_mapped_asic[asic]).zfill(2)))
             source_file = h5py.File(input_fname, "r")
 
             try:
@@ -155,49 +156,49 @@ class Combine():
         # upper row
         asic_row = self.asic_mapping[0]
 
-        cs_offset_upper = self.a_cs_offset[asic_row[0]]
-        cs_slope_upper = self.a_cs_slope[asic_row[0]]
-        thresholds_upper = self.a_thresholds[asic_row[0]]
+        cs_offset_upper = self.a_cs_offset[asic_row[0] - 1] # index goes from 0 to 15
+        cs_slope_upper = self.a_cs_slope[asic_row[0] - 1]
+        thresholds_upper = self.a_thresholds[asic_row[0] - 1]
 
-        for asic in asic_row[1:]:
-            cs_offset_upper = np.concatenate(cs_offset_upper,
-                                             self.a_cs_offset[asic],
-                                             axis=1)
-            cs_slope_upper = np.concatenate(cs_slope_upper,
-                                            self.a_cs_slope[asic],
-                                            axis=1)
-            thresholds_upper = np.concatenate(thresholds_upper,
-                                              self.a_thresholds[asic],
-                                              axis=1)
+        for asic in asic_row[1:]:            
+            cs_offset_upper = np.concatenate((cs_offset_upper,
+                                             self.a_cs_offset[asic - 1]),
+                                             axis=2)
+            cs_slope_upper = np.concatenate((cs_slope_upper,
+                                            self.a_cs_slope[asic - 1]),
+                                            axis=2)
+            thresholds_upper = np.concatenate((thresholds_upper,
+                                              self.a_thresholds[asic - 1]),
+                                              axis=2)
 
         # lower row
         asic_row = self.asic_mapping[1]
 
-        cs_offset_lower = self.a_cs_offset[asic_row[0]]
-        cs_slope_lower = self.a_cs_slope[asic_row[0]]
-        thresholds_lower = self.a_thresholds[asic_row[0]]
+        cs_offset_lower = self.a_cs_offset[asic_row[0] - 1]
+        cs_slope_lower = self.a_cs_slope[asic_row[0] - 1]
+        thresholds_lower = self.a_thresholds[asic_row[0] - 1]
 
         for asic in asic_row[1:]:
-            cs_offset_lower = np.concatenate(cs_offset_lower,
-                                             self.a_cs_offset[asic],
-                                             axis=1)
-            cs_slope_lower = np.concatenate(cs_slope_lower,
-                                            self.a_cs_slope[asic],
-                                            axis=1)
-            thresholds_lower = np.concatenate(thresholds_lower,
-                                              self.a_thresholds[asic],
-                                              axis=1)
+            cs_offset_lower = np.concatenate((cs_offset_lower,
+                                             self.a_cs_offset[asic - 1]),
+                                             axis=2)
+            cs_slope_lower = np.concatenate((cs_slope_lower,
+                                            self.a_cs_slope[asic - 1]),
+                                            axis=2)
+            thresholds_lower = np.concatenate((thresholds_lower,
+                                              self.a_thresholds[asic - 1]),
+                                              axis=2)
 
         # combine them
-        self.cs_offset = np.concatenate(cs_offset_upper,
-                                        cs_offset_lower,
-                                        axis=0)
-        self.cs_slope = np.concatenate(cs_slope_upper,
-                                       cs_slope_lower,
-                                       axis=0)
-        self.result["thresholds"] = np.concatenate(thresholds_upper,
-                                                   thresholds_lower,
-                                                   axis=0)
+        self.cs_offset = np.concatenate((cs_offset_upper,
+                                        cs_offset_lower),
+                                        axis=1)
+        self.cs_slope = np.concatenate((cs_slope_upper,
+                                       cs_slope_lower),
+                                       axis=1)
+        self.result["thresholds"] = np.concatenate((thresholds_upper,
+                                                   thresholds_lower),
+                                                   axis=1)
 
     def load_xray_data(self):
         source_file = h5py.File(self.xray_input_fname, "r")
@@ -208,20 +209,56 @@ class Combine():
         finally:
             source_file.close()
 
+        # determine whether one or all memcells used in xray
+        if len(self.xray_slope.shape) == 2:
+            self.single_cell = True
+        elif len(self.xray_slope.shape) == 3:
+            if self.xray_slope.shape[2] == 1:
+                self.single_cell = True
+        else:
+            print("Unknown xray_slope dataset shape!")
+            sys.exit(1)
+
+
     def calc_gains(self):
         # convert xray slope from ADU to ADU/keV
         self.xray_slope = self.xray_slope / self.element_energy
+                
+        # move memory cells index to front, makes calc easier
+        if len(self.xray_slope.shape) > 2:
+            self.xray_slope = np.rollaxis(self.xray_slope, -1, 0) #now shape = (1 or 352, 128, 512)
+        print(self.xray_slope.shape)
+        self.cs_slope = np.rollaxis(self.cs_slope, -1, 1) #now shape = (3, 352, 128, 512)
+        self.result["gain"] = np.rollaxis(self.result["gain"], -1, 1)
 
-        # xray_gain_h175 / cs_gain_h175
-        factor = np.divide(self.xray_slope,
-                           self.cs_slope[0, :, :, self.xray_mem_cell])
+        if self.single_cell:
+            # xray_gain_h175 / cs_gain_h175
+            factor = np.divide(self.xray_slope,
+                               self.cs_slope[0, self.xray_mem_cell, :, :])
 
-        # xray_gain_h = cs_gain_h * xray_gain_h175 / cs_gain_h175
-        self.result["gain"][0, ...] = self.cs_slope[0, ...] * factor
-        # xray_gain_m = cs_gain_m * xray_gain_h175 / cs_gain_h175
-        self.result["gain"][1, ...] = self.cs_slope[1, ...] * factor
-        # xray_gain_l = cs_gain_l * xray_gain_h175 / cs_gain_h175
-        self.result["gain"][2, ...] = self.cs_slope[2, ...] * factor
+            # xray_gain_h = cs_gain_h * xray_gain_h175 / cs_gain_h175
+            # np.newaxis is required to match shape, because we use same factor for all memcells
+            self.result["gain"][0, ...] = np.multiply(self.cs_slope[0, ...], factor[np.newaxis, :, :])
+            # xray_gain_m = cs_gain_m * xray_gain_h175 / cs_gain_h175
+            self.result["gain"][1, ...] = np.multiply(self.cs_slope[1, ...], factor[np.newaxis, :, :])
+            # xray_gain_l = cs_gain_l * xray_gain_h175 / cs_gain_h175
+            self.result["gain"][2, ...] = np.multiply(self.cs_slope[2, ...], factor[np.newaxis, :, :])
+
+        else:
+            # xray gain info for all memory cells
+            self.result["gain"][0, ...] = self.xray_slope
+            # gain_m = (cs_m / cs_h) * xray
+            cs_mh_ratio = np.divide(self.cs_slope[1, ...], self.cs_slope[0, ...])
+            self.result["gain"][1, ...] = np.multiply(cs_mh_ratio, self.xray_slope)
+            # gain_l = (cs_l / cs_h) * xray
+            cs_lh_ratio = np.divide(self.cs_slope[2, ...], self.cs_slope[0, ...])
+            self.result["gain"][2, ...] = np.multiply(cs_lh_ratio, self.xray_slope)
+
+
+        # move memory cells index back to original position
+        self.cs_slope = np.rollaxis(self.cs_slope, 1, 4)
+        self.result["gain"] = np.rollaxis(self.result["gain"], 1, 4)
+
 
     def calc_offset_diffs(self):
 
@@ -230,6 +267,7 @@ class Combine():
         offset[0, ...] = self.cs_offset[1, ...] - self.cs_offset[0, ...]
         # offset_low - offset_high
         offset[1, ...] = self.cs_offset[2, ...] - self.cs_offset[0, ...]
+
 
     def write_data(self):
         output_file = h5py.File(self.output_fname, "w", libver="latest")
@@ -260,10 +298,12 @@ class Combine():
         finally:
             output_file.close()
 
+
 if __name__ == "__main__":
     base_path = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
     module = "M314"
     temperature = "temperature_m15C"
+    #single_cell = True
 
     cs_input_path = os.path.join(base_path,
                                  module,
@@ -271,7 +311,7 @@ if __name__ == "__main__":
                                  "drscs")
     # substitute all except current and asic
     cs_input_template = (
-        Template("${p}/${c}/process/${m}_drscs_${c}_asic${a}_processed")
+        Template("${p}/${c}/process/${m}_drscs_${c}_asic${a}_processed.h5")
         .safe_substitute(p=cs_input_path, m=module)
     )
     # make a template out of this string to let Combine set current and asic
@@ -282,6 +322,7 @@ if __name__ == "__main__":
                                     temperature,
                                     "xray",
                                     "photonSpacing_M314_m7_xray_Cu.h5")
+    xray_input_fname = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/M302/temperature_m15C/xray/test_AGIPD00_s00000_processed.h5"
     output_fname = os.path.join(base_path,
                                 module,
                                 temperature,
