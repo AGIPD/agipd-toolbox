@@ -28,6 +28,7 @@ class Combine():
         self.asic_size = 64  # in pixels
 
         self.xray_mem_cell = 175
+        self.single_cell = None
         self.element_energy = 8  # Cu
 
         # how the asics are located on the module
@@ -208,25 +209,51 @@ class Combine():
         finally:
             source_file.close()
 
+        # determine whether one or all memcells used in xray
+        if len(self.xray_slope.shape) == 2:
+            self.single_cell = True
+        elif len(self.xray_slope.shape) == 3:
+            if self.xray_slope.shape[2] == 1:
+                self.single_cell = True
+        else:
+            print("Unknown xray_slope dataset shape!")
+            sys.exit(1)
+
+
     def calc_gains(self):
         # convert xray slope from ADU to ADU/keV
         self.xray_slope = self.xray_slope / self.element_energy
                 
         # move memory cells index to front, makes calc easier
+        if len(self.xray_slope.shape) > 2:
+            self.xray_slope = np.rollaxis(self.xray_slope, -1, 0) #now shape = (1 or 352, 128, 512)
+        print(self.xray_slope.shape)
         self.cs_slope = np.rollaxis(self.cs_slope, -1, 1) #now shape = (3, 352, 128, 512)
         self.result["gain"] = np.rollaxis(self.result["gain"], -1, 1)
 
-        # xray_gain_h175 / cs_gain_h175
-        factor = np.divide(self.xray_slope,
-                           self.cs_slope[0, self.xray_mem_cell, :, :])
+        if self.single_cell:
+            # xray_gain_h175 / cs_gain_h175
+            factor = np.divide(self.xray_slope,
+                               self.cs_slope[0, self.xray_mem_cell, :, :])
 
-        # xray_gain_h = cs_gain_h * xray_gain_h175 / cs_gain_h175
-        # np.newaxis is required to match shape, because we use same factor for all memcells
-        self.result["gain"][0, ...] = np.multiply(self.cs_slope[0, ...], factor[np.newaxis, :, :])
-        # xray_gain_m = cs_gain_m * xray_gain_h175 / cs_gain_h175
-        self.result["gain"][1, ...] = np.multiply(self.cs_slope[1, ...], factor[np.newaxis, :, :])
-        # xray_gain_l = cs_gain_l * xray_gain_h175 / cs_gain_h175
-        self.result["gain"][2, ...] = np.multiply(self.cs_slope[2, ...], factor[np.newaxis, :, :])
+            # xray_gain_h = cs_gain_h * xray_gain_h175 / cs_gain_h175
+            # np.newaxis is required to match shape, because we use same factor for all memcells
+            self.result["gain"][0, ...] = np.multiply(self.cs_slope[0, ...], factor[np.newaxis, :, :])
+            # xray_gain_m = cs_gain_m * xray_gain_h175 / cs_gain_h175
+            self.result["gain"][1, ...] = np.multiply(self.cs_slope[1, ...], factor[np.newaxis, :, :])
+            # xray_gain_l = cs_gain_l * xray_gain_h175 / cs_gain_h175
+            self.result["gain"][2, ...] = np.multiply(self.cs_slope[2, ...], factor[np.newaxis, :, :])
+
+        else:
+            # xray gain info for all memory cells
+            self.result["gain"][0, ...] = self.xray_slope
+            # gain_m = (cs_m / cs_h) * xray
+            cs_mh_ratio = np.divide(self.cs_slope[1, ...], self.cs_slope[0, ...])
+            self.result["gain"][1, ...] = np.multiply(cs_mh_ratio, self.xray_slope)
+            # gain_l = (cs_l / cs_h) * xray
+            cs_lh_ratio = np.divide(self.cs_slope[2, ...], self.cs_slope[0, ...])
+            self.result["gain"][2, ...] = np.multiply(cs_lh_ratio, self.xray_slope)
+
 
         # move memory cells index back to original position
         self.cs_slope = np.rollaxis(self.cs_slope, 1, 4)
@@ -276,6 +303,7 @@ if __name__ == "__main__":
     base_path = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
     module = "M314"
     temperature = "temperature_m15C"
+    #single_cell = True
 
     cs_input_path = os.path.join(base_path,
                                  module,
@@ -294,6 +322,7 @@ if __name__ == "__main__":
                                     temperature,
                                     "xray",
                                     "photonSpacing_M314_m7_xray_Cu.h5")
+    xray_input_fname = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/M302/temperature_m15C/xray/test_AGIPD00_s00000_processed.h5"
     output_fname = os.path.join(base_path,
                                 module,
                                 temperature,
