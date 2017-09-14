@@ -1,118 +1,39 @@
-from __future__ import print_function
-
+import builtins
+import copy
 from multiprocessing import Pool
-import numpy as np
 import os
 import time
+
 import h5py
-from process import ProcessDrscs, initiate_result, check_file_exists
-from functools import reduce  # forward compatibility for Python 3
-import operator
+import numpy as np
 
+from .util import check_file_exists
 
-def exec_process(asic, input_file, analog, digital, pixel_v_list, pixel_u_list,
-                 mem_cell_list, safety_factor):
+debug_mode = False
+def print(*args):
+    if debug_mode:
+        builtins.print(args)
 
-    cal = ProcessDrscs(asic, input_file, safety_factor=safety_factor)
+def exec_process(asic, input_fname, pixel_v_list, pixel_u_list,
+                 mem_cell_list, safety_factor, input_file_handle):
+
+    cal = ProcessDrscs(asic,
+                       input_fname=input_fname,
+                       safety_factor=safety_factor,
+                       input_handle=input_file_handle)
+
     cal.run(pixel_v_list, pixel_u_list, mem_cell_list)
 
     return cal.result, pixel_v_list, pixel_u_list, mem_cell_list
 
 
-def map_to_dict(map_list, result):
-    return reduce(operator.getitem, map_list, result)
-
-
-def map_to_hdf5(map_list, result):
-    return np.array(result["/" + "/".join(map_list)])
-
-
-def integrate_result(idx, result, source):
-
-    if type(source) == h5py._hl.files.File:
-        map_to_format = map_to_hdf5
-
-        # these have to be treated differently because it contains ints/floats
-        for key in source["collection"].keys():
-            # do not do this for array time entries because otherwise it would
-            # overwrite self.results with a pointer to p_results
-            if key not in ["diff_changes_idx", "len_diff_changes_idx"]:
-                result["collection"][key] = source["/collection/" + key][()]
-
-    elif type(source) == dict():
-        map_to_format = map_to_dict
-
-        # these have to be treated differently because it contains ints/floats
-        for key in source["collection"]:
-            # do not do this for array time entries because otherwise it would
-            # overwrite self.results with a pointer to p_results
-            if key not in ["diff_changes_idx", "len_diff_changes_idx"]:
-                result["collection"][key] = source["collection"][key]
-    else:
-        raise("Source to intergate of unsupported format")
-
-    # idx at start: individual, subintervals, diff_changes_idx, saturation
-    index = idx + (Ellipsis,)
-
-    for key in ["slope", "offset", "residual", "average_residual"]:
-        for gain in ["high", "medium", "low"]:
-            source_key = [key, "individual", gain]
-            map_to_dict(source_key, result)[index] = (
-                map_to_format(source_key, source)[index])
-
-    for gain in ["high", "medium", "low"]:
-        source_key = ["intervals", "subintervals", gain]
-        map_to_dict(source_key, result)[index] = (
-            map_to_format(source_key, source)[index])
-
-    for key in ["diff_changes_idx"]:
-        source_key = ["collection", key]
-        map_to_dict(source_key, result)[index] = (
-            map_to_format(source_key, source)[index])
-
-    source_key = ["intervals", "saturation"]
-    map_to_dict(source_key, result)[index] = (
-        map_to_format(source_key, source)[index])
-
-    # idx at end: mean, medians, threshold
-    index = (Ellipsis, ) + idx
-
-    for key in ["slope", "offset", "residual", "average_residual"]:
-        source_key = [key, "mean"]
-        map_to_dict(source_key, result)[index] = (
-            map_to_format(source_key, source)[index])
-
-    for key in ["medians", "thresholds"]:
-        source_key = [key]
-        map_to_dict(source_key, result)[index] = (
-            map_to_format(source_key, source)[index])
-
-    # only idx: error_code, warning_code, len_diff_changes_idx
-    index = (Ellipsis,) + idx
-
-    for key in ["error_code", "warning_code"]:
-        source_key = [key]
-        map_to_dict(source_key, result)[index] = (
-            map_to_format(source_key, source)[index])
-
-    for key in ["len_diff_changes_idx"]:
-        source_key = ["collection", key]
-        map_to_dict(source_key, result)[index] = (
-            map_to_format(source_key, source)[index])
-
-    # special: gain_stages
-    index = (Ellipsis,) + idx + (slice(None),)
-
-    source_key = ["intervals", "gain_stages"]
-    map_to_dict(source_key, result)[index] = (
-        map_to_format(source_key, source)[index])
-
-
-class ParallelProcess():
+class ParallelProcess()i:
     def __init__(self, asic, input_fname, pixel_v_list, pixel_u_list,
-                 mem_cell_list, n_processes, safety_factor, output_fname):
+                 mem_cell_list, n_processes, safety_factor, output_fname,
+                 gather_file_handle, reuse_results):
         self.asic = asic
         self.input_fname = input_fname
+        self.input_handle = gather_file_handle
 
         self.pixel_v_list = pixel_v_list
         self.pixel_u_list = pixel_u_list
@@ -130,16 +51,17 @@ class ParallelProcess():
         self.digital_path = "/entry/instrument/detector/data_digital"
         self.analog_path = "/entry/instrument/detector/data"
 
-        self.analog = None
-        self.digital = None
+        self.do_process = True
+        if not reuse_results:
+            check_file_exists(self.output_fname)
+        else:
+            if not os.path.exists(self.output_fname):
+                print("Result file didn't exist, processing results")
+            else:
+                self.do_process = False
 
-        check_file_exists(self.output_fname)
-
-        self.generate_process_lists()
-
-#        self.load_data()
-
-        self.run()
+        if self.do_process:
+            self.generate_process_lists()
 
     def generate_process_lists(self):
 
@@ -183,49 +105,44 @@ class ParallelProcess():
                                       self.dim_mem_cell, n_gain_stages,
                                       n_intervals, n_diff_changes_stored)
 
-    def load_data(self):
-
-        source_file = h5py.File(self.input_fname, "r")
-
-        # origin data is written as int16 which results in a integer overflow
-        # when handling the scaling
-        self.analog = source_file[self.analog_path][()].astype("int32")
-        self.digital = source_file[self.digital_path][()].astype("int32")
-
-        source_file.close()
-
     def run(self):
-        # start worker processes
-        pool = Pool(processes=self.n_processes)
+        if self.do_process:
+            # start worker processes
+            pool = Pool(processes=self.n_processes)
 
-        print("\nStart process pool")
-        t = time.time()
-        try:
-            result_list = []
-            for pixel_v_sublist in self.process_lists:
-                print("process pixel_v_sublist", pixel_v_sublist)
-                result_list.append(
-                    pool.apply_async(exec_process,
-                                     (self.asic, self.input_fname,
-                                      self.analog, self.digital,
-                                      pixel_v_sublist, self.pixel_u_list,
-                                      self.mem_cell_list,
-                                      self.safety_factor)))
+            print("\nStart process pool")
+            t = time.time()
+            try:
+                result_list = []
+                for pixel_v_sublist in self.process_lists:
+                    print("process pixel_v_sublist", pixel_v_sublist)
+                    result_list.append(
+                        pool.apply_async(exec_process,
+                                         (self.asic, self.input_fname,
+                                          pixel_v_sublist, self.pixel_u_list,
+                                          self.mem_cell_list,
+                                          self.safety_factor,
+                                          self.input_handle)))
 
-            for process_result in result_list:
-                p_result, v_list, u_list, mem_cell_list = process_result.get()
+                for process_result in result_list:
+                    p_result, v_list, u_list, mem_cell_list = process_result.get()
 
-                if self.result is None:
-                    self.initiate_result(p_result)
+                    if self.result is None:
+                        self.initiate_result(p_result)
 
-                self.integrate_result(p_result, v_list, u_list, mem_cell_list)
+                    self.integrate_result(p_result, v_list, u_list, mem_cell_list)
 
-        finally:
-            pool.terminate()
+            finally:
+                pool.terminate()
 
-        self.write_data()
+            if self.input_handle is None:
+                self.write_data()
 
-        print("process pool took time:", time.time() - t)
+            print("process pool took time:", time.time() - t)
+        else:
+            self.read_data()
+
+        return self.get_data()
 
     def integrate_result(self, p_result, v_list, u_list, mem_cell_list):
         v_start = v_list[0]
@@ -262,7 +179,7 @@ class ParallelProcess():
                     p_result["collection"][key][...])
             except:
                 print(key, idx)
-                print(p_result["collection"][key][idx])
+                print(p_result["collection"][key][...])
                 print(self.result["collection"][key][idx])
 
         self.result["intervals"]["saturation"][idx] = (
@@ -311,6 +228,29 @@ class ParallelProcess():
         self.result["intervals"]["gain_stages"][idx] = (
             p_result["intervals"]["gain_stages"][...])
 
+    def read_data(self):
+        self.result = {}
+        source_file = h5py.File(self.output_fname, "r")
+
+        try:
+            for key in source_file["/"].keys():
+                source_key = "/" + key
+                if isinstance(source_file[source_key], h5py.Dataset):
+                    self.result[key] = source_file[source_key][()]
+                else:
+                    if key not in self.result: self.result[key] = dict()
+                    for subkey in source_file[source_key].keys():
+                        source_key2 = source_key + "/" + subkey
+                        if isinstance(source_file[source_key2], h5py.Dataset):
+                            self.result[key][subkey] = source_file[source_key2][()]
+                        else:
+                            if subkey not in self.result[key]: self.result[key][subkey] = dict()
+                            for gain in source_file[source_key2].keys():
+                                source_key3 = source_key2 + "/" + gain
+                                self.result[key][subkey][gain] = source_file[source_key3][()]
+        finally:
+            source_file.close()
+
     def write_data(self):
         if self.result is None:
             print("No results to write")
@@ -332,53 +272,19 @@ class ParallelProcess():
                         if type(self.result[key][subkey]) != dict:
                             path = "/{}/{}".format(key, subkey)
                             data = self.result[key][subkey]
-                            save_file.create_dataset(path,
-                                                     data=data)
+                            save_file.create_dataset(path, data=data)
                         else:
                             for gain in ["high", "medium", "low"]:
                                 path = "/{}/{}/{}".format(key, subkey, gain)
                                 data = self.result[key][subkey][gain]
-                                save_file.create_dataset(path,
-                                                         data=data)
+                                save_file.create_dataset(path, data=data)
 
             save_file.flush()
             print("took time: {}".format(time.time() - t))
+        except Exception as e:
+            print("Failed writing results {}".format(e))
         finally:
             save_file.close()
 
-if __name__ == "__main__":
-
-    base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
-
-    asic = 10
-    module = "M303"
-    temperature = "temperature_m15C"
-    current = "itestc20"
-    safety_factor = 1000
-
-    input_fname = os.path.join(base_dir,
-                               module,
-                               temperature,
-                               "drscs",
-                               current,
-                               "gather",
-                               "{}_drscs_{}_asic{}.h5"
-                               .format(module, current, str(asic).zfill(2)))
-    output_fname = os.path.join(base_dir,
-                                module,
-                                temperature,
-                                "drscs",
-                                current,
-                                "process",
-                                "{}_drscs_{}_asic{}_processed.h5"
-                                .format(module, current, str(asic).zfill(2)))
-
-    pixel_v_list = np.arange(64)
-    pixel_u_list = np.arange(64)
-    mem_cell_list = np.arange(352)
-
-    n_processes = 10
-
-    proc = ParallelProcess(asic, input_fname, pixel_v_list, pixel_u_list,
-                           mem_cell_list, n_processes, safety_factor,
-                           output_fname)
+    def get_data(self):
+        return self.result

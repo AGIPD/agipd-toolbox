@@ -1,22 +1,23 @@
-from __future__ import print_function
-
-import h5py
-import time
-import sys
-import numpy as np
 import glob
 import os
-from string import Template
+from textwrap import dedent
+import time
+
+import h5py
+import numpy as np
 
 
-class GatherData():
-    def __init__(self, asic, input_file, output_file_name, meas_type, max_part,
-                 col_spec=[0]):
-        print("Using python version {}".format(sys.version_info))
-        print("Using numpy version {}".format(np.__version__))
-        print("Using h5py version {}".format(h5py.__version__))
+class AgipdDynamicRangeGatherSingleAsic():
 
-        filename_template = Template("${prefix}_col${column}")
+    def __init__(self, asic, input_file, output_file_name,
+                 max_part=False, col_spec=[0], backing_store=True):
+        """ Initializes an AgipdDynamicRangeSingleAsic object.
+
+        See the base class :class:`MapCalculator` for the available arguments
+
+        """
+
+        filename_template = "{prefix}_col{column}"
         self.data_path = "/entry/instrument/detector/data"
         self.digital_data_path = "/entry/instrument/detector/data_digital"
         self.collection_path = "/entry/instrument/detector/collection"
@@ -26,11 +27,11 @@ class GatherData():
         self.error_code_path = "{}/error_code".format(self.collection_path)
         self.frame_number_path = ("{}/frame_numbers"
                                   .format(self.collection_path))
+        self.backing_store = backing_store
 
         self.save_file = output_file_name
-        self.check_output_file_exist()
-
-        self.measurement_type = meas_type
+        if self.save_file is not None:
+            self.check_output_file_exist()
 
         # [[<column>, <file index>],...]
         self.column_specs = col_spec
@@ -51,9 +52,7 @@ class GatherData():
                                self.asics_per_module[1])
 
         self.asic = asic
-        print("asic={}".format(self.asic))
         self.mapped_asic = self.calculate_mapped_asic()
-        print("mapped_asic={}".format(self.mapped_asic))
 
         self.a_row_start = None
         self.a_row_stop = None
@@ -64,8 +63,8 @@ class GatherData():
         self.file_name_prefix = []
         if type(self.column_specs[0]) == list:
             for c, i in self.column_specs:
-                file_prefix = filename_template.substitute(prefix=input_file,
-                                                           column=c)
+                file_prefix = filename_template.format(prefix=input_file,
+                                                       column=c)
 
                 # The method zfill() pads string on the left with zeros to
                 # fill width.
@@ -74,12 +73,10 @@ class GatherData():
         else:
             for c in self.column_specs:
                 self.file_name_prefix.append(
-                    filename_template.substitute(prefix=input_file, column=c))
+                    filename_template.format(prefix=input_file, column=c))
 
-        print("\nUsed prefixes")
         self.files = []
         self.get_files()
-        self.check_for_single_index()
 
         if max_part:
             for i in range(len(self.files)):
@@ -116,7 +113,6 @@ class GatherData():
         # reshaped data is split into analog and digital data + transposed
         self.target_shape = (self.asic_size, self.asic_size,
                              self.mem_cells, self.charges)
-
         # determine chunksize
         total_data_size = np.prod(self.target_shape)
         chunk_size_limit = np.prod(64 * 64 * 352 * 1300)  # ~4GB
@@ -142,13 +138,17 @@ class GatherData():
 
         self.analog = None
         self.digital = None
+        self.self = self
 
         print("\nStart gathering")
         print("save_file = {}\n".format(self.save_file))
         t = time.time()
         self.get_data()
-        self.write_data()
         print("Total run time: {}".format(time.time() - t))
+
+    def write_to_file(self):
+        if self.save_file is not None:
+            return self.write_data()
 
     def calculate_mapped_asic(self):
         for row_i in np.arange(len(self.asic_mapping)):
@@ -159,12 +159,9 @@ class GatherData():
                 pass
 
     def check_output_file_exist(self):
-        print("save_file = {}".format(self.save_file))
         if os.path.exists(self.save_file):
-            print("Output file already exists")
-            sys.exit(1)
-        else:
-            print("Output file: ok")
+            msg = "Output at {} exists! Terminating!".format(self.save_file)
+            raise RuntimeError(msg)
 
     def get_files(self):
         self.files = []
@@ -190,34 +187,31 @@ class GatherData():
 
         for i, index_list in enumerate(indices):
             if len(index_list) < 1:
-                print("Too few indeces found for col{}\n"
-                      .format(self.column_specs[i]))
-                sys.exit(1)
+                msg = ("Too few indeces found for col{}\n"
+                        .format(self.column_specs[i]))
+                raise RuntimeError(msg)
             elif len(index_list) > 1:
-                print("More than one index found: {}\n".format(index_list))
-                sys.exit(1)
-
-        print(indices)
+                msg = "More than one index found: {}\n".format(index_list)
+                raise RuntimeError(msg)
 
     def check_file_number(self):
 
         if any(len(file_list) != len(self.files[0])
                for file_list in self.files):
             print("Number of files does not match")
+            msg = ""
             for i in len(self.files):
-                print("file[{}]: {}".format(i, len(self.files[0])))
-            sys.exit(1)
+                msg += "File[{}]: {}\n".format(i, len(self.files[0]))
+            raise RuntimeError(msg)
         else:
             self.number_of_files = len(self.files[0])
             print("{} file parts found".format(self.number_of_files))
 
     def get_charges(self):
-
         source_file = None
         try:
             fname = self.files[0][0]
-            source_file = h5py.File(self.files[0][0], "r",
-                                    libver="latest",
+            source_file = h5py.File(fname, "r", libver="latest",
                                     drivers="core")
 
             # TODO: verify that the shape is always right and not dependant on
@@ -253,24 +247,23 @@ class GatherData():
 
         if (source_shape[1] != self.module_h and
                 source_shape[2] != self.module_l):
-            print("Shape of file {} does not match requirements".format(fname))
-            print("source_shape = {}".format(source_shape))
-            sys.exit(1)
+            msg = "Shape of file {} does not match requirements\n".format(fname)
+            msg += "source_shape = {}".format(source_shape)
+            raise RuntimeError(msg)
 
         # due to a "bug" in Tango the total_lost_frames can only be found in
         # the next file
         # TODO once Tango has fixed this, adjust it here as well
         source_file = None
         try:
-            source_file = h5py.File(self.files[0][1], "r",
-                                    libver="latest",
+            fname = self.files[0][1]
+            source_file = h5py.File(fname, "r", libver="latest",
                                     driver="core")
             # total_lost_frames are totally missing frames as well as
             # frames where only a package was lost
             total_lost_frames = source_file[self.total_lost_frames_path][0]
-        except:
-            print("Error when getting shape")
-            raise
+        except Exception as e:
+            raise RuntimeError("Error when getting shape: {}".format(e))
         finally:
             if source_file is not None:
                 source_file.close()
@@ -316,23 +309,22 @@ class GatherData():
 
     def init_metadata(self):
         try:
-            source_file = h5py.File(self.files[0][0], "r",
-                                    libver="latest",
-                                    driver="core")
+            fname = self.files[0][0]
+            source_file = h5py.File(fname, "r", libver="latest", driver="core")
 
             # normal metadata
 
             # metadata which is not handled individually is gathered
             # in a matrix of the shape
             # (<number of patterns>, <number of file parts>,
-            #  <original metadata shape>)
+            #                        <original metadata shape>)
             for k in source_file[self.collection_path].keys():
                 dset_path = "{}/{}".format(self.collection_path, k)
 
                 if k not in self.special_keys:
                     dset = source_file[dset_path]
-                    shape = (len(self.files),
-                             self.number_of_files) + dset.shape
+                    shape = (len(self.files), self.number_of_files)
+                    shape += dset.shape
 
                     self.metadata[k] = {
                         "path": dset_path,
@@ -403,8 +395,7 @@ class GatherData():
             print("setting frame_loss_details to shape: {}".format(shape))
             # initiate with -1
             self.metadata_tmp["frame_loss_details"] = -1 * np.ones(shape,
-                                                                   "int32")
-
+                                                                   np.int32)
             self.metadata_tmp["source_seq_number"] = [0]
 
         except:
@@ -451,7 +442,7 @@ class GatherData():
         # Creating the array with np.zero is faster than copying the array
         # from analog
         self.tmp_data_real_position = np.zeros(self.raw_data_shape,
-                                               dtype="int16")
+                                               dtype=np.int16)
         print("took time: {}".format(time.time() - t))
 
         self.init_metadata()
@@ -467,7 +458,7 @@ class GatherData():
                 t = time.time()
                 # Creating the array with np.zero is faster than copying the
                 # array from analog
-                self.tmp_data = np.zeros(self.raw_data_shape, dtype="int16")
+                self.tmp_data = np.zeros(self.raw_data_shape, dtype=np.int16)
                 print("took time: {}".format(time.time() - t))
 
                 # TODO: find a generic solution for this
@@ -479,14 +470,12 @@ class GatherData():
                     start = (n_cols - 1) - i
                     stop = self.asic_size
                     col_index_asic = np.arange(start, stop, n_cols)
-                    # index_upper_row = np.arange(3 - i, 512, 4)
                 else:
                     # the asics of the lower rows are upside down
                     start = self.a_col_start + i
                     stop = self.a_col_stop
                     col_index_module = np.arange(start, stop, n_cols)
                     col_index_asic = np.arange(i, self.asic_size, n_cols)
-                    # index_lower_row = np.arange(i, 512, 4)
 
                 print("col_index_module {}".format(col_index_module))
                 print("col_index_asic {}".format(col_index_asic))
@@ -497,8 +486,8 @@ class GatherData():
 
                     print("\nStarting file {}".format(self.files[i][j]))
                     t = time.time()
-                    source_file = h5py.File(self.files[i][j], "r",
-                                            libver="latest",
+                    fname = self.files[i][j]
+                    source_file = h5py.File(fname, "r", libver="latest",
                                             driver="core")
                     print("Opening file took {}".format(time.time() - t))
 
@@ -508,9 +497,8 @@ class GatherData():
                     print("took time: {}".format(time.time() - t))
 
                     # if there is frame loss this is recognizable by a missing
-                    # entry in seq_number
-                    # seq_number should be loaded before duing operations on
-                    # it due to performance benefits
+                    # entry in seq_number. seq_number should be loaded before
+                    # doing operations on it due to performance benefits
                     seq_number_last_entry_previous_file = (
                         self.source_seq_number[-1])
 
@@ -611,8 +599,8 @@ class GatherData():
                 self.target_index_full_size[-1][1] = stop_full_size
                 # the next block starts now
                 # original sequence number started with 1
-                start = self.source_seq_number[i] - 1
-                self.target_index_full_size.append([start, 0])
+                seqlst = [self.source_seq_number[i] - 1, 0]
+                self.target_index_full_size.append(seqlst)
 
                 self.source_index[-1][1] = stop_source
                 # the end of the block in the source
@@ -628,15 +616,14 @@ class GatherData():
         self.target_index_full_size[-1][1] = self.source_seq_number[-1] - 1
         self.source_index[-1][1] = len(self.seq_number) - 1
         print("target_index {}".format(self.target_index))
-        print("target_index_full_size {}"
-              .format(self.target_index_full_size))
+        print("target_index_full_size {}".format(self.target_index_full_size))
         print("source_index {}".format(self.source_index))
 
         if len(self.target_index_full_size) > 1:
             start = self.target_index[0][1] - 1
             stop = self.target_index[1][0] + 1
-            print("sequence_number: {}"
-                  .format(self.source_seq_number[start:stop]))
+            seq_num = self.source_seq_number[start:stop]
+            print("sequence_number: {}".format(seq_num))
 
     def fillup_frame_loss(self, raw_data, loaded_raw_data, target_index):
         # getting the blocks from source to target
@@ -697,6 +684,11 @@ class GatherData():
                                dset,
                                self.target_index_full_size)
 
+    def return_data(self):
+        analog_transposed = self.analog.transpose(self.transpose_order)
+        digital_transposed = self.digital.transpose(self.transpose_order)
+        return analog_transposed, digital_transposed
+
     def write_data(self):
         """
         transposes the data dimensions for optimal analysis access
@@ -704,20 +696,26 @@ class GatherData():
                                                    mem_cells, charges
         and writes it into a file
         """
+        save_file = None
 
-        save_file = h5py.File(self.save_file, "w", libver="latest")
+        if self.backing_store:
+            save_file = h5py.File(self.save_file, "w", libver="latest")
+        else:
+            save_file = h5py.File(self.save_file, "w", libver="latest",
+                                  driver='core', backing_store=False)
+
         print("Create analog data set")
         dset_analog = save_file.create_dataset(self.data_path,
                                                shape=self.target_shape,
                                                chunks=self.chunksize,
                                                compression=None,
-                                               dtype='int16')
+                                               dtype=np.int16)
         print("Create digital data set")
         dset_digital = save_file.create_dataset(self.digital_data_path,
                                                 shape=self.target_shape,
                                                 chunks=self.chunksize,
                                                 compression=None,
-                                                dtype='int16')
+                                                dtype=np.int16)
 
         try:
             print("\nStart saving metadata")
@@ -738,7 +736,10 @@ class GatherData():
             save_file.flush()
             print("took time: {}".format(time.time() - t))
         finally:
-            save_file.close()
+            if self.backing_store:
+                save_file.close()
+            else:
+                return save_file
 
     def extend_metadata(self):
 
@@ -746,20 +747,16 @@ class GatherData():
             dset = self.metadata_tmp["frame_loss_details"][i]
             print("{}: lost frames: {}".format(i, np.where(dset == -1)))
 
-            dset_analog = dset[::2]
-            dset_analog.shape = self.raw_frame_loss_shape
-            dset_analog = dset_analog.transpose(
-                self.frame_loss_transpose_order)
+            dset_a = dset[::2]
+            dset_a.shape = self.raw_frame_loss_shape
+            dset_a = dset_a.transpose(self.frame_loss_transpose_order)
 
-            dset_digital = dset[1::2]
-            dset_digital.shape = self.raw_frame_loss_shape
-            dset_digital = dset_digital.transpose(
-                self.frame_loss_transpose_order)
+            dset_d = dset[1::2]
+            dset_d.shape = self.raw_frame_loss_shape
+            dset_d = dset_d.transpose(self.frame_loss_transpose_order)
 
-            self.metadata_derived["frame_loss_analog"]["value"][i] = (
-                dset_analog)
-            self.metadata_derived["frame_loss_digital"]["value"][i] = (
-                dset_digital)
+            self.metadata_derived["frame_loss_analog"]["value"][i] = dset_a
+            self.metadata_derived["frame_loss_digital"]["value"][i] = dset_d
 
     def write_metadata(self, target):
 
@@ -784,46 +781,3 @@ class GatherData():
                 print(self.metadata_derived[k]["path"])
                 print(self.metadata_derived[k]["value"])
                 raise
-
-if __name__ == "__main__":
-
-    base_path = "/gpfs/cfel/fsds/labs/agipd/calibration/"
-
-    module = "M312"
-    meas_run_type = "drscs"
-    meas_type = "drscs"
-    temperature = "temperature_33C"
-    input_sub_dir = "temp_dep_drscs"
-    current = "itestc20"
-    asic = 1
-
-    column_specs = [37, 48, 15, 26]
-#    column_specs = [15, 26, 37, 48]
-#    column_specs = [[15, 1], [26, 2], [37, 3], [48, 4]]
-
-    max_part = False
-
-    input_file_dir = os.path.join(base_path,
-                                  "raw",
-                                  input_sub_dir,
-                                  temperature,
-                                  meas_type,
-                                  current)
-    input_file_name = "{}*_{}_{}".format(module, meas_type, current)
-    input_file = os.path.join(input_file_dir, input_file_name)
-
-    output_file_dir = os.path.join(base_path,
-                                   "processed",
-                                   module,
-                                   temperature,
-                                   meas_run_type,
-                                   current,
-                                   "gather")
-    output_file_name = "{}_{}_{}_asic{}.h5".format(module,
-                                                   meas_run_type,
-                                                   current,
-                                                   str(asic).zfill(2))
-    output_fname = os.path.join(output_file_dir, output_file_name)
-
-    GatherData(asic, input_file, output_file_name, meas_type, max_part,
-               column_specs)
