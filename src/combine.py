@@ -9,7 +9,7 @@ from utils import check_file_exists
 
 
 class Combine():
-    def __init__(self, cs_input_template, xray_input_fname, output_fname):
+    def __init__(self, cs_input_template, xray_input_fname, output_fname, n_memcells=352):
 
         self.offset_path = "/slope/mean"
         self.slope_path = "/slope/mean"
@@ -22,7 +22,7 @@ class Combine():
         self.output_fname = output_fname
         check_file_exists(self.output_fname)
 
-        self.mem_cells = 352
+        self.n_memcells = n_memcells
         self.module_h = 128  # in pixels
         self.module_l = 512  # in pixels
         self.asic_size = 64  # in pixels
@@ -61,11 +61,11 @@ class Combine():
         self.result["gain"] = np.zeros((3,
                                         self.module_h,
                                         self.module_l,
-                                        self.mem_cells))
+                                        self.n_memcells))
         self.result["offset"] = np.zeros((2,
                                           self.module_h,
                                           self.module_l,
-                                          self.mem_cells))
+                                          self.n_memcells))
         self.result["thresholds"] = None
 
     def get_asic_borders(self):
@@ -192,7 +192,7 @@ class Combine():
                                        axis=1)
         self.result["thresholds"] = np.concatenate((thresholds_upper,
                                                    thresholds_lower),
-                                                   axis=1)
+                                                   axis=1)[..., :self.n_memcells]
 
     def load_xray_data(self):
         source_file = h5py.File(self.xray_input_fname, "r")
@@ -234,11 +234,13 @@ class Combine():
 
             # xray_gain_h = cs_gain_h * xray_gain_h175 / cs_gain_h175
             # np.newaxis is required to match shape, because we use same factor for all memcells
-            self.result["gain"][0, ...] = np.multiply(self.cs_slope[0, ...], factor[np.newaxis, :, :])
+            slope = self.cs_slope[..., :self.n_memcells]
+            f = factor[np.newaxis, :, :]
+            self.result["gain"][0, ...] = np.multiply(cs_slope[0, ...], f)
             # xray_gain_m = cs_gain_m * xray_gain_h175 / cs_gain_h175
-            self.result["gain"][1, ...] = np.multiply(self.cs_slope[1, ...], factor[np.newaxis, :, :])
+            self.result["gain"][1, ...] = np.multiply(cs_slope[1, ...], f)
             # xray_gain_l = cs_gain_l * xray_gain_h175 / cs_gain_h175
-            self.result["gain"][2, ...] = np.multiply(self.cs_slope[2, ...], factor[np.newaxis, :, :])
+            self.result["gain"][2, ...] = np.multiply(cs_slope[2, ...], f)
 
         else:
             # xray gain info for all memory cells
@@ -259,10 +261,11 @@ class Combine():
     def calc_offset_diffs(self):
 
         offset = self.result["offset"]
+        cs_offset = self.cs_offset[..., :self.n_memcells]
         # offset_medium - offset_high
-        offset[0, ...] = self.cs_offset[1, ...] - self.cs_offset[0, ...]
+        offset[0, ...] = cs_offset[1, ...] - cs_offset[0, ...]
         # offset_low - offset_high
-        offset[1, ...] = self.cs_offset[2, ...] - self.cs_offset[0, ...]
+        offset[1, ...] = cs_offset[2, ...] - cs_offset[0, ...]
 
 
     def write_data(self):
@@ -302,6 +305,8 @@ if __name__ == "__main__":
     temperature = "temperature_m15C"
     probe_type = "Mo"
     #single_cell = True
+    n_memcells = 30
+    #n_memcells = 352
 
     cs_input_path = os.path.join(base_path,
                                  module,
@@ -328,5 +333,5 @@ if __name__ == "__main__":
                                 ("{}_{}_combined_calibration_constants.h5"
                                  .format(module, temperature)))
 
-    obj = Combine(cs_input_template, xray_input_fname, output_fname)
+    obj = Combine(cs_input_template, xray_input_fname, output_fname, n_memcells)
     obj.run()
