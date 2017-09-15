@@ -59,7 +59,10 @@ class Gather():
 
             f.close()
 
-            self.raw_shape = (self.n_memcells, 2, 2, 128, 512)
+            self.n_rows = 512
+            self.n_cols = 128
+
+            self.raw_shape = (self.n_memcells, 2, 2, self.n_rows, self.n_cols)
 
         else:
             self.data_path = '/entry/instrument/detector/data'
@@ -69,20 +72,23 @@ class Gather():
             f.close()
 
             self.n_memcells = 1
-            self.raw_shape = (self.n_memcells, 2, 128, 512)
+            self.n_rows = 128
+            self.n_cols = 512
+
+            self.raw_shape = (self.n_memcells, 2, self.n_rows, self.n_cols)
 
         self.n_frames_per_file = int(raw_data_shape[0] / 2 / self.n_memcells)
         print("n_frames_per_file", self.n_frames_per_file)
         self.n_frames = self.n_frames_per_file * self.n_parts
         print("n_frames", self.n_frames)
 
-        self.target_shape = (self.n_frames, self.n_memcells, 128, 512)
+        self.target_shape = (self.n_frames, self.n_memcells, self.n_rows, self.n_cols)
 
 
     def load_data(self):
 
-        self.analog = np.zeros((self.n_frames, self.n_memcells, 128, 512), dtype=np.int16)
-        self.digital = np.zeros((self.n_frames, self.n_memcells, 128, 512), dtype=np.int16)
+        self.analog = np.zeros((self.n_frames, self.n_memcells, self.n_rows, self.n_cols), dtype=np.int16)
+        self.digital = np.zeros((self.n_frames, self.n_memcells, self.n_rows, self.n_cols), dtype=np.int16)
 
         for i in range(self.n_parts):
             fname = self.input_fname.format(i)
