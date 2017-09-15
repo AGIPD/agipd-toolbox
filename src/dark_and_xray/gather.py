@@ -33,6 +33,7 @@ class Gather():
         part_files = glob.glob("{}*".format(self.input_fname[:-9]))
 
         self.n_parts = len(part_files)
+        print("n_parts", self.n_parts)
         #self.n_parts = 2
 
     def intiate(self):
@@ -53,7 +54,7 @@ class Gather():
             raw_data_shape = f[self.data_path].shape
 
             self.pulse_count_path = os.path.join(self.base_path, pulse_count_postfix)
-            self.n_memcells = f[self.pulse_count_path][0]
+            self.n_memcells = f[self.pulse_count_path][0].astype(int)//2
             print("Number of memoy cells found", self.n_memcells)
 
             f.close()
@@ -73,6 +74,7 @@ class Gather():
         self.n_frames_per_file = int(raw_data_shape[0] / 2 / self.n_memcells)
         print("n_frames_per_file", self.n_frames_per_file)
         self.n_frames = self.n_frames_per_file * self.n_parts
+        print("n_frames", self.n_frames)
 
         self.target_shape = (self.n_frames, self.n_memcells, 128, 512)
 
@@ -138,13 +140,40 @@ class Gather():
         print('gatherXRayTubeData took time:  ', time.time() - totalTime, '\n\n')
 
 if __name__ == "__main__":
+
+    module_mapping = {
+        "M305": "00",
+        }
+
+    #temperature = "temperature_m15C"
+    #module = "M305"
+    #source_base_path = "/gpfs/exfel/exp/SPB/201730/p900009/raw/"
+    #target_base_path = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
+    #run_type = "xray"
+    #run_number = "r0377"
+
+    temperature = "temperature_m15C"
+    module = "M305"
+    source_base_path = "/gpfs/exfel/exp/SPB/201701/p002012/raw/"
+    target_base_path = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
+    run_type = "dark"
+    run_number = "r0008"
+
     #input_fname = "/gpfs/cfel/fsds/labs/agipd/calibration/raw/302-303-314-305/temperature_m15C/xray/M302_m3_xray_Cu_mc112_00000.nxs"
     #output_fname = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/M302/temperature_m15C/xray/test.h5"
     #use_xfel_format = False
 
     #{}/RAW-{}-AGIPD{:02d}-S{:05d}.h5"
-    input_fname = "/gpfs/exfel/exp/SPB/201730/p900009/raw/r0377/RAW-R0377-AGIPD00-S{:05d}.h5"
-    output_fname = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/M302/temperature_m15C/xray/test_AGIPD00_s00000.h5"
+    input_fname = os.path.join(source_base_path,
+                               run_number,
+                               "RAW-{}-AGIPD{}-".format(run_number.upper(),
+                                                        module_mapping[module]) + "S{:05d}.h5")
+    output_fname = os.path.join(target_base_path,
+                                module,
+                                temperature,
+                                run_type,
+                                "gather",
+                                "{}_{}_AGIPD{}.h5".format(module, run_type, module_mapping[module]))
     use_xfel_format = True
 
     obj = Gather(input_fname, output_fname, use_xfel_format)
