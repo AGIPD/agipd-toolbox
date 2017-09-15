@@ -13,6 +13,9 @@ class Gather():
 
         self.use_xfel_format = use_xfel_format
 
+        self.n_rows = 128
+        self.n_cols = 512
+
         self.analog = None
         self.digital = None
 
@@ -59,7 +62,18 @@ class Gather():
 
             f.close()
 
-            self.raw_shape = (self.n_memcells, 2, 2, 128, 512)
+            # xfel format has swapped rows and cols
+            self.raw_shape = (self.n_memcells, 2, 2, self.n_cols, self.n_rows)
+
+            module = int(k.split("CH")[0])
+            module_order = [[12, 13, 14, 15, 8, 9, 10, 11],
+                            [0, 1, 2, 3, 4, 5, 6, 7]]
+
+            if module in module_order[1]:
+                print("in wing2 (module {})".format(module))
+                self.in_wing2 = True
+            else:
+                self.in_wing2 = False
 
         else:
             self.data_path = '/entry/instrument/detector/data'
@@ -69,36 +83,39 @@ class Gather():
             f.close()
 
             self.n_memcells = 1
-            self.raw_shape = (self.n_memcells, 2, 128, 512)
+
+            self.raw_shape = (self.n_memcells, 2, self.n_rows, self.n_cols)
+
+            self.module_order = None
 
         self.n_frames_per_file = int(raw_data_shape[0] / 2 / self.n_memcells)
         print("n_frames_per_file", self.n_frames_per_file)
         self.n_frames = self.n_frames_per_file * self.n_parts
         print("n_frames", self.n_frames)
 
-        self.target_shape = (self.n_frames, self.n_memcells, 128, 512)
+        self.target_shape = (self.n_frames, self.n_memcells, self.n_rows, self.n_cols)
+        print("target shape:", self.target_shape)
 
 
     def load_data(self):
 
-        self.analog = np.zeros((self.n_frames, self.n_memcells, 128, 512), dtype=np.int16)
-        self.digital = np.zeros((self.n_frames, self.n_memcells, 128, 512), dtype=np.int16)
+        self.analog = np.zeros((self.n_frames, self.n_memcells, self.n_rows, self.n_cols), dtype=np.int16)
+        self.digital = np.zeros((self.n_frames, self.n_memcells, self.n_rows, self.n_cols), dtype=np.int16)
 
         for i in range(self.n_parts):
             fname = self.input_fname.format(i)
 
             f = h5py.File(fname, 'r')
-            print('start loading')
+            #print('start loading')
             raw_data_shape = f[self.data_path].shape
             raw_data = np.array(f[self.data_path])
-            print('loading done')
+            #print('loading done')
             f.close()
 
             self.n_frames_per_file = int(raw_data_shape[0] / 2 / self.n_memcells)
 
             print("raw_data.shape", raw_data.shape)
             print("self.n_frames_per_file", self.n_frames_per_file)
-            print("res", self.n_frames_per_file * self.raw_shape[0] * 2)
             print("self.raw_shape", self.raw_shape)
             raw_data.shape = (self.n_frames_per_file,) + self.raw_shape
 
@@ -111,9 +128,17 @@ class Gather():
                                (i + 1) * self.n_frames_per_file),
                           Ellipsis)
 
+            # fix geometry
+            if self.use_xfel_format:
+                if self.in_wing2:
+                    raw_data = raw_data[..., ::-1, :]
+                else:
+                    raw_data = raw_data[..., :, ::-1]
+
+                raw_data = np.rollaxis(raw_data, 4, 3)
+
             self.analog[target_idx] = raw_data[:, :, 0, ...]
             self.digital[target_idx] = raw_data[:, :, 1, ...]
-
 
     def run(self):
 
@@ -140,6 +165,7 @@ class Gather():
         print('gatherXRayTubeData took time:  ', time.time() - totalTime, '\n\n')
 
 if __name__ == "__main__":
+    import multiprocessing
 
     module_mapping = {
         "M305": "00",
@@ -151,6 +177,13 @@ if __name__ == "__main__":
     #target_base_path = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
     #run_type = "xray"
     #run_number = "r0377"
+
+    temperature = "temperature_m15C"
+    module = "M305"
+    source_base_path = "/gpfs/exfel/exp/SPB/201701/p002012/raw/"
+    target_base_path = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
+    run_type = "dark"
+    run_number = "r0008"
 
     temperature = "temperature_m15C"
     module = "M305"
@@ -174,6 +207,20 @@ if __name__ == "__main__":
                                 run_type,
                                 "gather",
                                 "{}_{}_AGIPD{}.h5".format(module, run_type, module_mapping[module]))
+
     use_xfel_format = True
 
-    obj = Gather(input_fname, output_fname, use_xfel_format)
+#    obj = Gather(input_fname, output_fname, use_xfel_format)
+
+    process_list = []
+    for i in range(16):
+        module = str(i).zfill(2)
+        input_fname = "/gpfs/exfel/exp/SPB/201730/p900009/raw/r0391/RAW-R0391-AGIPD{}-".format(module) + "S{:05d}.h5"
+        output_fname = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/kuhnm/R0391-AGIPD{}-gathered.h5".format(module)
+
+        p = multiprocessing.Process(target=Gather, args=(input_fname, output_fname, use_xfel_format))
+        p.start()
+        process_list.append(p)
+
+    for p in process_list:
+        p.join()
