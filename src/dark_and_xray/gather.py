@@ -23,7 +23,7 @@ class Gather():
 
         self.intiate()
 
-        print('\n\n\nstart gatherXRayTubeData')
+        print('\n\n\nstart gather')
         print('input_fname = ', self.input_fname)
         print('output_fname = ', self.output_fname)
         print('data_path = ', self.data_path)
@@ -148,7 +148,7 @@ class Gather():
                 else:
                     raw_data = raw_data[..., :, ::-1]
 
-                raw_data = np.rollaxis(raw_data, 4, 3)
+                raw_data = np.swapaxes(raw_data, 4, 3)
 
             self.analog[target_idx] = raw_data[:, :, 0, ...]
             self.digital[target_idx] = raw_data[:, :, 1, ...]

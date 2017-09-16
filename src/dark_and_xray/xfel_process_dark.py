@@ -17,15 +17,15 @@ class ProcessDark():
         self.n_cols = 512
 
         self.n_memcells = None
-        self.target_shape_offsets = None
-        self.target_shape_thresholds = None
+        self.offsets_shape = None
+        self.thresholds_shape = None
 
         self.module_order = [[12, 13, 14, 15, 8, 9, 10, 11],
                              [0, 1, 2, 3, 4, 5, 6, 7]]
 
-        moduel = input_fname_list[0].rsplit("/", 1)[1].split("AGIPD")[1][:2]
-        if module in self.module_order[1]:
-            print("in wing2 (module {})".format(module))
+        self.module = int(input_fname_list[0].rsplit("/", 1)[1].split("AGIPD")[1][:2])
+        if self.module in self.module_order[1]:
+            print("in wing2 (module {})".format(self.module))
             self.in_wing2 = True
         else:
             self.in_wing2 = False
@@ -38,7 +38,7 @@ class ProcessDark():
 
     def run(self):
 
-        totalTime = time.time()
+        total_time = time.time()
 
         f = h5py.File(self.input_fnames[0], "r")
         self.n_memcells = f["analog"].shape[1]
@@ -74,8 +74,6 @@ class ProcessDark():
         md = means_digital
         self.thresholds[0, ...] = np.mean([md[0, ...], md[1, ...]])
         self.thresholds[1, ...] = np.mean([md[1, ...], md[2, ...]])
-        #print(means_digital[0, 1, 10, 10], means_digital[1, 1, 10, 10], "->", self.thresholds[0, 1, 10, 10])
-        #print(means_digital[1, 1, 10, 10], means_digital[2, 1, 10, 10], "->", self.thresholds[1, 1, 10, 10])
 
         if self.use_xfel_format:
             self.convert_to_xfel_format()
@@ -100,9 +98,19 @@ class ProcessDark():
 
         saveFile.close()
 
-        print('batchProcessDarkData took time:  ', time.time() - totalTime, '\n\n')
+        print('ProcessDark took time:  ', time.time() - total_time, '\n\n')
 
     def convert_to_xfel_format(self):
+        self.means = np.swapaxes(self.means, 2, 3)
+        self.thresholds = np.swapaxes(self.thresholds, 2, 3)
+        self.stddevs = np.swapaxes(self.stddevs, 2, 3)
+
+        s = self.thresholds_shape
+        self.thresholds_shape = s[:-2] + (s[-1], s[-2])
+
+        s = self.offsets_shape
+        self.offsets_shape = s[:-2] + (s[-1], s[-2])
+
         if self.in_wing2:
             self.means = self.means[..., ::-1, :]
             self.thresholds = self.thresholds[..., ::-1, :]
@@ -112,15 +120,6 @@ class ProcessDark():
             self.thresholds = self.thresholds[..., :, ::-1]
             self.stddevs = self.stddevs[..., :, ::-1]
 
-        self.means = np.swapaxes(self.means, 3, 2)
-        self.thresholds = np.swapaxes(self.thresholds, 3, 2)
-        self.stddevs = np.swapaxes(self.stddevs, 3, 2)
-
-        s = self.thresholds_shape
-        self.thresholds_shape = s[:-2] + (s[-1], s[-2])
-
-        s = self.offsets_shape
-        self.offsets_shape = s[:-2] + (s[-1], s[-2])
 
 
 if __name__ == "__main__":
@@ -136,11 +135,11 @@ if __name__ == "__main__":
 
     from utils import  create_dir
 
-    module = "12"
     base_path = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/kuhnm"
-    #run_list = ["r0391"]
     run_list = ["r0428", "r0429", "r0430"]
+    #use_xfel_format = False
     use_xfel_format = True
+
     today = str(date.today())
 
     #number_of_runs = 1
