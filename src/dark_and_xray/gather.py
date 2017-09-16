@@ -90,18 +90,30 @@ class Gather():
 
         self.n_frames_per_file = int(raw_data_shape[0] / 2 / self.n_memcells)
         print("n_frames_per_file", self.n_frames_per_file)
-        self.n_frames = self.n_frames_per_file * self.n_parts
+        self.get_number_of_frames()
         print("n_frames", self.n_frames)
 
         self.target_shape = (self.n_frames, self.n_memcells, self.n_rows, self.n_cols)
         print("target shape:", self.target_shape)
 
+    def get_number_of_frames(self):
+        self.n_frames = 0
+        for i in range(self.n_parts):
+            fname = self.input_fname.format(i)
+
+            f = h5py.File(fname, "r")
+            raw_data_shape = f[self.data_path].shape
+            f.close()
+
+            n_frames_per_file = int(raw_data_shape[0] / 2 / self.n_memcells)
+            self.n_frames = self.n_frames + n_frames_per_file
 
     def load_data(self):
 
-        self.analog = np.zeros((self.n_frames, self.n_memcells, self.n_rows, self.n_cols), dtype=np.int16)
-        self.digital = np.zeros((self.n_frames, self.n_memcells, self.n_rows, self.n_cols), dtype=np.int16)
+        self.analog = np.zeros(self.target_shape, dtype=np.int16)
+        self.digital = np.zeros(self.target_shape, dtype=np.int16)
 
+        idx_offset = 0
         for i in range(self.n_parts):
             fname = self.input_fname.format(i)
 
@@ -124,9 +136,10 @@ class Gather():
             if self.use_xfel_format:
                 raw_data = raw_data[:, :, :, 0, ...]
 
-            target_idx = (slice(i * self.n_frames_per_file,
-                               (i + 1) * self.n_frames_per_file),
+            target_idx = (slice(idx_offset,
+                                idx_offset + self.n_frames_per_file),
                           Ellipsis)
+            idx_offset += self.n_frames_per_file
 
             # fix geometry
             if self.use_xfel_format:
@@ -162,7 +175,7 @@ class Gather():
         saveFile.flush()
         saveFile.close()
 
-        print('gatherXRayTubeData took time:  ', time.time() - totalTime, '\n\n')
+        print('gather took time:  ', time.time() - totalTime, '\n\n')
 
 if __name__ == "__main__":
     import multiprocessing
@@ -179,71 +192,43 @@ if __name__ == "__main__":
         "M305": "00",
         }
 
-    #temperature = "temperature_m15C"
-    #module = "M305"
-    #source_base_path = "/gpfs/exfel/exp/SPB/201730/p900009/raw/"
-    #target_base_path = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
-    #run_type = "xray"
-    #run_number = "r0377"
-
-    temperature = "temperature_m15C"
-    module = "M305"
-    source_base_path = "/gpfs/exfel/exp/SPB/201701/p002012/raw/"
-    target_base_path = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
-    run_type = "dark"
-    run_number = "r0008"
-
-    temperature = "temperature_m15C"
-    module = "M305"
-    source_base_path = "/gpfs/exfel/exp/SPB/201701/p002012/raw/"
-    target_base_path = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
-    run_type = "dark"
-    run_number = "r0008"
-
-    #input_fname = "/gpfs/cfel/fsds/labs/agipd/calibration/raw/302-303-314-305/temperature_m15C/xray/M302_m3_xray_Cu_mc112_00000.nxs"
-    #output_fname = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/M302/temperature_m15C/xray/test.h5"
-    #use_xfel_format = False
-
-    #{}/RAW-{}-AGIPD{:02d}-S{:05d}.h5"
-    input_fname = os.path.join(source_base_path,
-                               run_number,
-                               "RAW-{}-AGIPD{}-".format(run_number.upper(),
-                                                        module_mapping[module]) + "S{:05d}.h5")
-    output_fname = os.path.join(target_base_path,
-                                module,
-                                temperature,
-                                run_type,
-                                "gather",
-                                "{}_{}_AGIPD{}.h5".format(module, run_type, module_mapping[module]))
-
     use_xfel_format = True
 
 #    obj = Gather(input_fname, output_fname, use_xfel_format)
 
-    base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
-    #run_number = "r0428"
-    #run_number = "r0429"
-    run_number = "r0430"
+    base_path = "/gpfs/exfel/exp/SPB/201701/p002012"
+    run_list = ["r0007"]
+    subdir = "scratch/user/kuhnm"
 
     #base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
-    #run_number = "r0391"
+    #run_list = ["r0428", "r0429", "r0430"]
 
-    process_list = []
-    for i in range(16):
-        module = str(i).zfill(2)
-        input_fname = os.path.join(base_path,
-                                   "raw",
-                                   run_number,
-                                   "RAW-{}-AGIPD{}-".format(run_number.upper(), module) + "S{:05d}.h5")
+    #base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
+    #run_list = ["r0391"]
+    #subdir = "scratch/kuhnm"
 
-        output_dir = os.path.join(base_path, "scratch/kuhnm", run_number)
-        create_dir(output_dir)
-        output_fname = os.path.join(output_dir,
-                                    "{}-AGIPD{}-gathered.h5".format(run_number.upper(), module))
+    #number_of_runs = 1
+    #modules_per_run = 1
+    number_of_runs = 2
+    modules_per_run = 16//number_of_runs
+    for run_number in run_list:
+        process_list = []
+        for j in range(number_of_runs):
+            for i in range(modules_per_run):
+                module = str(j*modules_per_run+i).zfill(2)
+                input_fname = os.path.join(base_path,
+                                           "raw",
+                                           run_number,
+                                           "RAW-{}-AGIPD{}-".format(run_number.upper(), module) + "S{:05d}.h5")
 
-        p = multiprocessing.Process(target=Gather, args=(input_fname, output_fname, use_xfel_format))
-        p.start()
-        process_list.append(p)
+                output_dir = os.path.join(base_path, subdir, run_number, "gather")
+                create_dir(output_dir)
+                output_fname = os.path.join(output_dir,
+                                            "{}-AGIPD{}-gathered.h5".format(run_number.upper(), module))
 
-    for p in process_list:
-        p.join()
+                p = multiprocessing.Process(target=Gather, args=(input_fname, output_fname, use_xfel_format))
+                p.start()
+                process_list.append(p)
+
+            for p in process_list:
+                p.join()
