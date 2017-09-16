@@ -72,8 +72,12 @@ class ProcessDark():
             print("Done computing means and standard deviations")
 
         md = means_digital
-        self.thresholds[0, ...] = np.mean([md[0, ...], md[1, ...]])
-        self.thresholds[1, ...] = np.mean([md[1, ...], md[2, ...]])
+        self.thresholds[0, ...] = (md[0, ...] + md[1, ...]) // 2
+        self.thresholds[1, ...] = (md[1, ...] + md[2, ...]) // 2
+        #self.thresholds[0, ...] = np.mean([md[0, ...], md[1, ...]])
+        #self.thresholds[1, ...] = np.mean([md[1, ...], md[2, ...]])
+        #print("means_digital", means_digital[0, :3, :3, :3],  means_digital[1, :3, :3, :3])
+        #print("threshold", self.thresholds[0, :3, :3, :3])
 
         if self.use_xfel_format:
             self.convert_to_xfel_format()
