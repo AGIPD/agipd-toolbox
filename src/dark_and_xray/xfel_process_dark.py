@@ -23,7 +23,7 @@ class ProcessDark():
         self.module_order = [[12, 13, 14, 15, 8, 9, 10, 11],
                              [0, 1, 2, 3, 4, 5, 6, 7]]
 
-        self.module = int(input_fname_list[0].rsplit("/", 1)[1].split("AGIPD")[1][:2])
+        self.module = int(self.input_fnames[0].rsplit("/", 1)[1].split("AGIPD")[1][:2])
         if self.module in self.module_order[1]:
             print("in wing2 (module {})".format(self.module))
             self.in_wing2 = True

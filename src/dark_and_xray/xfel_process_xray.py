@@ -26,12 +26,12 @@ def computePhotonSpacingOnePixel(analog, linearIndex, perMillInterval, memcell):
     return (photonSpacing, quality, peakStdDevs, peakErrors, spacingError)
 
 
-class BatchProcessXRayTubeData():
+class ProcessXray():
     def __init__(self, input_fname, output_fname):
 
         self.input_fname = input_fname
         self.output_fname = output_fname
-        print('\n\n\nstart batchProcessXRayTubeData')
+        print('\n\n\nstart ProcessXray')
         print('input_fname = ', self.input_fname)
         print('output_fname = ', self.output_fname)
 
@@ -146,7 +146,7 @@ class BatchProcessXRayTubeData():
         saveFile.flush()
         saveFile.close()
 
-        print('batchProcessXRayTubeData took time:  ', time.time() - totalTime, '\n\n')
+        print('ProcessXray took time:  ', time.time() - totalTime, '\n\n')
 
 if __name__ == "__main__":
     import os
@@ -159,4 +159,4 @@ if __name__ == "__main__":
     input_fname = os.path.join(base_dir, "test_AGIPD00_s00000.h5")
     output_fname = os.path.join(base_dir, "test_AGIPD00_s00000_processed.h5")
 
-    obj = BatchProcessXRayTubeData(input_fname, output_fname)
+    obj = ProcessXray(input_fname, output_fname)
