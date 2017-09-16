@@ -167,6 +167,14 @@ class Gather():
 if __name__ == "__main__":
     import multiprocessing
 
+    SRC_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    print("SRC_PATH", SRC_PATH)
+
+    if SRC_PATH not in sys.path:
+        sys.path.insert(0, SRC_PATH)
+
+    from utils import  create_dir
+
     module_mapping = {
         "M305": "00",
         }
@@ -212,11 +220,26 @@ if __name__ == "__main__":
 
 #    obj = Gather(input_fname, output_fname, use_xfel_format)
 
+    base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
+    #run_number = "r0428"
+    #run_number = "r0429"
+    run_number = "r0430"
+
+    #base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
+    #run_number = "r0391"
+
     process_list = []
     for i in range(16):
         module = str(i).zfill(2)
-        input_fname = "/gpfs/exfel/exp/SPB/201730/p900009/raw/r0391/RAW-R0391-AGIPD{}-".format(module) + "S{:05d}.h5"
-        output_fname = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/kuhnm/R0391-AGIPD{}-gathered.h5".format(module)
+        input_fname = os.path.join(base_path,
+                                   "raw",
+                                   run_number,
+                                   "RAW-{}-AGIPD{}-".format(run_number.upper(), module) + "S{:05d}.h5")
+
+        output_dir = os.path.join(base_path, "scratch/kuhnm", run_number)
+        create_dir(output_dir)
+        output_fname = os.path.join(output_dir,
+                                    "{}-AGIPD{}-gathered.h5".format(run_number.upper(), module))
 
         p = multiprocessing.Process(target=Gather, args=(input_fname, output_fname, use_xfel_format))
         p.start()
