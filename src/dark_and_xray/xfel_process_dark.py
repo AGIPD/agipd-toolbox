@@ -2,6 +2,7 @@ import h5py
 import sys
 import numpy as np
 import time
+import os
 
 
 class ProcessDark():
@@ -12,6 +13,9 @@ class ProcessDark():
             self.input_fnames = [input_fname]
         self.output_fname = output_fname
         self.use_xfel_format = use_xfel_format
+
+        self.run_list = [os.path.split(fname)[1].split("-AGIPD", 1)[0].lower()
+                         for fname in self.input_fnames]
 
         self.n_rows = 128
         self.n_cols = 512
@@ -49,7 +53,7 @@ class ProcessDark():
 
         self.means = np.empty(self.offsets_shape)
         self.stddevs = np.empty(self.offsets_shape)
-        means_digital = np.empty(self.offsets_shape)
+        self.means_digital = np.empty(self.offsets_shape)
 
         self.thresholds = np.empty(self.thresholds_shape)
 
@@ -64,63 +68,75 @@ class ProcessDark():
 
             print("Start computing means and standard deviations")
             self.means[i, ...] = np.mean(analog, axis=0)
-            means_digital[i, ...] = np.mean(digital, axis=0)
+            self.means_digital[i, ...] = np.mean(digital, axis=0)
 
             s = self.stddevs[i, ...]
             for cell in np.arange(self.n_memcells):
                 s[cell, ...] = np.std(analog[:, cell, :, :].astype("float"), axis=0)
             print("Done computing means and standard deviations")
 
-        md = means_digital
+        md = self.means_digital
         self.thresholds[0, ...] = (md[0, ...] + md[1, ...]) // 2
         self.thresholds[1, ...] = (md[1, ...] + md[2, ...]) // 2
         #self.thresholds[0, ...] = np.mean([md[0, ...], md[1, ...]])
         #self.thresholds[1, ...] = np.mean([md[1, ...], md[2, ...]])
-        #print("means_digital", means_digital[0, :3, :3, :3],  means_digital[1, :3, :3, :3])
+        #print("means_digital", self.means_digital[0, :3, :3, :3],  self.means_digital[1, :3, :3, :3])
         #print("threshold", self.thresholds[0, :3, :3, :3])
 
         if self.use_xfel_format:
             self.convert_to_xfel_format()
 
-        saveFile = h5py.File(self.output_fname, "w", libver="latest")
-        dset_offset = saveFile.create_dataset("offset",
-                                              shape=self.offsets_shape,
-                                              dtype=np.int16)
-        dset_thresholds = saveFile.create_dataset("threshold",
-                                              shape=self.thresholds_shape,
-                                              dtype=np.int16)
-        dset_stddevs = saveFile.create_dataset("stddev",
+        save_file = h5py.File(self.output_fname, "w", libver="latest")
+        dset_offset = save_file.create_dataset("offset",
                                                shape=self.offsets_shape,
-                                               dtype="float")
+                                               dtype=np.int16)
+        dset_gainlevel_mean = save_file.create_dataset("gainlevel_mean",
+                                                       shape=self.offsets_shape,
+                                                       dtype=np.int16)
+        dset_thresholds = save_file.create_dataset("threshold",
+                                                   shape=self.thresholds_shape,
+                                                   dtype=np.int16)
+        dset_stddevs = save_file.create_dataset("stddev",
+                                                shape=self.offsets_shape,
+                                                dtype="float")
+
+        # convert into unicode
+        self.run_list = [run.encode('utf8') for run in self.run_list]
+        dset_run_number = save_file.create_dataset("run_number",
+                                                   data=self.run_list)
 
         print("Start saving results at", self.output_fname)
         dset_offset[...] = self.means
+        dset_gainlevel_mean[...] = self.means_digital
         dset_thresholds[...] = self.thresholds
         dset_stddevs[...] = self.stddevs
-        saveFile.flush()
+        save_file.flush()
         print("Saving done")
 
-        saveFile.close()
+        save_file.close()
 
         print('ProcessDark took time:  ', time.time() - total_time, '\n\n')
 
     def convert_to_xfel_format(self):
-        self.means = np.swapaxes(self.means, 2, 3)
-        self.thresholds = np.swapaxes(self.thresholds, 2, 3)
-        self.stddevs = np.swapaxes(self.stddevs, 2, 3)
-
         s = self.thresholds_shape
         self.thresholds_shape = s[:-2] + (s[-1], s[-2])
 
         s = self.offsets_shape
         self.offsets_shape = s[:-2] + (s[-1], s[-2])
 
+        self.means = np.swapaxes(self.means, 2, 3)
+        self.means_digital = np.swapaxes(self.means_digital, 2, 3)
+        self.thresholds = np.swapaxes(self.thresholds, 2, 3)
+        self.stddevs = np.swapaxes(self.stddevs, 2, 3)
+
         if self.in_wing2:
             self.means = self.means[..., ::-1, :]
+            self.means_digital = self.means_digital[..., ::-1, :]
             self.thresholds = self.thresholds[..., ::-1, :]
             self.stddevs = self.stddevs[..., ::-1, :]
         else:
             self.means = self.means[..., :, ::-1]
+            self.means_digital = self.means_digital[..., :, ::-1]
             self.thresholds = self.thresholds[..., :, ::-1]
             self.stddevs = self.stddevs[..., :, ::-1]
 
