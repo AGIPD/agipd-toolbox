@@ -54,8 +54,7 @@ class StartAnalyse():
         self.modules_per_run = 16//self.number_of_runs
         self.today = str(date.today())
 
-        self.input_dir = os.path.join(self.input_base_dir,
-                                      "raw")
+        self.input_dir = os.path.join(self.input_base_dir)
         self.output_dir_gather = os.path.join(self.output_base_dir,
                                               "gather")
         self.output_dir_process = self.output_base_dir
@@ -146,6 +145,6 @@ if __name__ == "__main__":
 
     ana = StartAnalyse(run_list, input_base_dir, output_base_dir, use_xfel_format)
 
-#    ana.run_gather()
+    ana.run_gather()
     ana.run_process(use_xfel_format=True)
     ana.run_process(use_xfel_format=False)

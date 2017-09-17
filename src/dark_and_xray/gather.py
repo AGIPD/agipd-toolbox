@@ -120,7 +120,7 @@ class Gather():
             f = h5py.File(fname, 'r')
             #print('start loading')
             raw_data_shape = f[self.data_path].shape
-            raw_data = np.array(f[self.data_path])
+            raw_data = f[self.data_path][()]
             #print('loading done')
             f.close()
 
