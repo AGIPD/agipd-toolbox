@@ -1,5 +1,6 @@
 import h5py
 import sys
+import os
 import numpy as np
 import time
 
@@ -71,3 +72,14 @@ class GatherDarkData():
 
         print('gatherDarkData took time:  ', time.time() - totalTime, '\n\n')
 
+
+if __name__ == "__main__":
+    
+    nParts = 5
+    base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration"
+    fileName = os.path.join(base_dir, "raw/317-308-215-318-313/temperature_m15C/dark/M302_m3_dark_tint150ns_00001_part000")
+    saveFileName = os.path.join(base_dir, "processed/M308/temperature_m15C/dark/darkData_M308_m3_tint150ns.h5")
+
+    obj = GatherDarkData(nParts, fileName, saveFileName)
+
+    obj.run()

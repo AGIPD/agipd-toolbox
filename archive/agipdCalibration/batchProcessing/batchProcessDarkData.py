@@ -1,5 +1,6 @@
 import h5py
 import sys
+import os
 import numpy as np
 import time
 
@@ -50,3 +51,14 @@ class BatchProcessDarkData():
         saveFile.close()
 
         print('batchProcessDarkData took time:  ', time.time() - totalTime, '\n\n')
+
+
+if __name__ == "__main__":
+
+    base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/M308/temperature_m15C/dark/"
+    fileName = os.path.join(base_dir, "darkData_M308_m3_tint150ns.h5")
+    saveFileName = os.path.join(base_dir, "darkOffset_M308_m3_tint150ns.h5")
+
+    obj = BatchProcessDarkData(fileName, saveFileName)
+
+    #obj.run()
