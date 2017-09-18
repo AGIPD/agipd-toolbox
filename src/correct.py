@@ -2,6 +2,7 @@ import h5py
 import sys
 import numpy as np
 import time
+import os
 tmp_raw_data = {}
 
 def get_file_content(name, obj):
@@ -10,9 +11,9 @@ def get_file_content(name, obj):
     if isinstance(obj, h5py.Dataset):
         tmp_raw_data[name] = obj[()]
 
-class Correction():
+class Correct():
     def __init__(self, data_fname, dark_fname, gain_fname, output_fname,
-                 use_xfel_format=False):
+                  photon_energy, use_xfel_format=False):
         self.data_fname = data_fname
         self.dark_fname = dark_fname
         self.gain_fname = gain_fname
@@ -41,7 +42,7 @@ class Correction():
         else:
             self.in_wing2 = False
 
-        print("\n\n\nStart process_dark")
+        print("\n\n\nStart correcting")
         print("data_fname = ", self.data_fname)
         print("dark_fname = ", self.dark_fname)
         print("gain_fname = ", self.gain_fname)
@@ -86,7 +87,7 @@ class Correction():
 
         total_time = time.time()
 
-        print("Start loading dark from", self.data_fname)
+        print("Start loading dark from", self.dark_fname)
         f = h5py.File(self.dark_fname, "r")
         self.offset = f["/offset"][()]
         self.threshold = f["/threshold"][()]
@@ -136,7 +137,7 @@ class Correction():
         self.gain_stage[self.digital[i] > self.threshold[1, ...]] = 2
 
     def correct_data(self):
-        self.analog_corrected = np.empty(self.analog.shape, self.analog.dtype)
+        self.analog_corrected = np.empty(self.analog.shape, np.float)
 
         for i in range(self.n_frames):
             self.compute_gain_stage(i)
@@ -144,7 +145,7 @@ class Correction():
             offset = np.choose(self.gain_stage, (self.offset[0, ...],
                                                  self.offset[1, ...],
                                                  self.offset[2, ...]))
-            self.analog_corrected[i] = self.analog[i] - offset
+            self.analog_corrected[i] = self.analog[i].astype(np.int32) - offset
 
         print("Verification:")
         #print(self.analog.shape)
@@ -190,7 +191,6 @@ class Correction():
                                  data=self.analog_corrected)
         save_file.create_dataset(self.gain_path,
                                  data=self.digital)
-                                 #dtype=self.analog.dtype)
 
         if self.dark_fname is None:
             self.dark_fname = "None"
@@ -207,7 +207,6 @@ class Correction():
         print("Saving done")
 
 if __name__ == "__main__":
-    import os
     import multiprocessing
     from datetime import date
     import glob
@@ -228,6 +227,7 @@ if __name__ == "__main__":
     run_number = "r0068"
     use_xfel_format = True
     #use_xfel_format = False
+    photon_energy = 1
 
     number_of_runs = 1
     modules_per_run = 1
@@ -278,12 +278,13 @@ if __name__ == "__main__":
             fname = "corrected_AGIPD{}-S{:05d}.h5".format(module, part)
             output_fname = os.path.join(output_dir, fname)
 
-            p = multiprocessing.Process(target=Correction, args=(data_fname,
-                                                                 dark_fname,
-                                                                 None,
-                                                                 #gain_fname,
-                                                                 output_fname,
-                                                                 use_xfel_format))
+            p = multiprocessing.Process(target=Correct, args=(data_fname,
+                                                              dark_fname,
+                                                              None,
+                                                              #gain_fname,
+                                                              output_fname,
+                                                              photon_energy,
+                                                              use_xfel_format))
             p.start()
             process_list.append(p)
 
