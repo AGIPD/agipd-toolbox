@@ -147,7 +147,7 @@ class Correct():
                                                  self.offset[2, ...]))
             self.analog_corrected[i] = self.analog[i].astype(np.int32) - offset
 
-        print("Verification:")
+        #print("Verification:")
         #print(self.analog.shape)
         #print(offset.shape)
         #print(self.analog_corrected.shape)
