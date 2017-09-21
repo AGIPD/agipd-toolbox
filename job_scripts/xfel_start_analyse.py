@@ -275,13 +275,14 @@ if __name__ == "__main__":
     #gain_dir = args.gain_dir
     gain_dir = ""
     run_list = args.run_list
+    base_cal_fname = None
     if ana_type == "dark":
         output_dir = os.path.join(args.output_dir,
                                   '-'.join(run_list))
     else:
         output_dir = os.path.join(args.output_dir)
-    print(args.base_cal_dir)
-    base_cal_fname = os.path.join(args.base_cal_dir,"agipd_base_cal.h5")
+    if ana_type == "ff-correct":
+        base_cal_fname = os.path.join(args.base_cal_dir,"agipd_base_cal.h5")
 
     energy = args.energy
     use_xfel_format = True
@@ -291,6 +292,8 @@ if __name__ == "__main__":
     if ana_type == "correct":
         print("dark_dir", dark_dir)
         print("gain_dir", gain_dir)
+    if ana_type == "ff-correct":
+        print("base_cal_fname", base_cal_fname)
     print("output_dir", output_dir)
     print("run_list", run_list)
     print("type", ana_type)

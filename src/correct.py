@@ -105,10 +105,14 @@ class Correct():
             f = h5py.File(self.base_cal_fname, "r")
             qm = "Q{}M{}".format(self.channel // 4 + 1, self.channel % 4 + 1)
             self.rel_gain = f["{}/RelativeGain/0/data".format(qm)][()]
+            self.offset_ci = f["{}/BaseOffset/0/data".format(qm)][()]
             f.close()
             self.rel_gain = np.rollaxis(self.rel_gain,3,0)
             self.rel_gain = np.rollaxis(self.rel_gain, 3, 1)
             self.rel_gain = np.rollaxis(self.rel_gain, 3, 2)
+            self.offset_ci = np.rollaxis(self.offset_ci, 3)
+            self.offset_ci = np.rollaxis(self.offset_ci, 3, 1)
+            self.offset_ci = np.rollaxis(self.offset_ci, 3, 2)
             #print("Relative gain shape: ", self.rel_gain.shape)
             print("Loading agipd_base_cal done")
         print("Start loading data from", self.data_fname)
@@ -155,19 +159,40 @@ class Correct():
 
     def correct_data(self):
         self.analog_corrected = np.empty(self.analog.shape, np.float)
+        if self.ctype == "ff":
+            #Steffen's offset
+#            print("1: ", self.offset_ci.shape)
+
+#            print("2: ", self.offset_ci.shape)
+            offset_median = np.median(self.offset_ci - self.offset, axis=(-1, -2))
+            #print("1: ", offset_median.shape)
+            self.offset = np.swapaxes(self.offset, 1, -1)
+            self.offset = np.swapaxes(self.offset, 0, -2)
+            #print("1: ", offset_median.shape)
+            moffset = self.offset - offset_median
+            moffset = np.swapaxes(moffset, 1, -1)
+            moffset = np.swapaxes(moffset, 0, -2)
+            self.offset = np.swapaxes(self.offset, 1, -1)
+            self.offset = np.swapaxes(self.offset, 0, -2)
+
+
+
 
         for i in range(self.n_frames):
             self.compute_gain_stage(i)
-
-            offset = np.choose(self.gain_stage, (self.offset[0, ...],
-                                                 self.offset[1, ...],
-                                                 self.offset[2, ...]))
             if self.ctype == "agipd":
+                offset = np.choose(self.gain_stage, (self.offset[0, ...],
+                                                     self.offset[1, ...],
+                                                     self.ooffset[2, ...]))
                 self.analog_corrected[i] = self.analog[i].astype(np.int32) - offset
             elif self.ctype =="ff":
+                offset = np.choose(self.gain_stage, (moffset[0, ...],
+                                                     moffset[1, ...],
+                                                     moffset[2, ...]))
                 rel_gain = np.choose(self.gain_stage,(self.rel_gain[0, ...],
                                                       self.rel_gain[1, ...],
                                                       self.rel_gain[2, ...]))
+
                 self.analog_corrected[i] = (self.analog[i].astype(np.int32) - offset) / rel_gain
 
 
