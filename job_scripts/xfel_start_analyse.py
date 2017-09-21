@@ -2,7 +2,6 @@
 
 # this script starts mutiple processes in the background on one node
 
-
 import os
 import sys
 import argparse
@@ -50,13 +49,18 @@ def get_arguments():
     parser.add_argument("--type",
                         type=str,
                         required=True,
-                        choices=["dark", "correct"],
+                        choices=["dark", "correct", "ff-correct"],
                         help="Which type to run: \n"
                              "dark: generating the dark constants\n"
-                             "correct: apply constants on experiment data")
+                             "correct: apply constants on experiment data\n`"
+                             "ff-correct: apply flat field correction on experiment data")
     parser.add_argument("--energy",
                         type=int,
                         help="Information on photon energy")
+
+    parser.add_argument("--base_cal_dir",
+                        type = str,
+                        help = "Dir where flatfield calibration constants (agipd_base_cal.h5) can be found")
 
     args = parser.parse_args()
 
@@ -69,16 +73,24 @@ def get_arguments():
         print("Missing dark_dir. Quitting.")
         sys.exit(1)
 
+    if args.type == "ff-correct":
+        if args.dark_dir is None:
+            print("Missing dark_dir. Quitting.")
+            sys.exit(1)
+        elif args.base_cal_dir is None:
+            print("Missing base_cal_dir. Quitting.")
+            sys.exit()
     return args
 
 
 class StartAnalyse():
-    def __init__(self, ana_type, run_list, input_dir, dark_dir, gain_dir, output_dir, energy, use_xfel_format):
+    def __init__(self, ana_type, run_list, input_dir, dark_dir, gain_dir, base_cal_fname, output_dir, energy, use_xfel_format):
         self.ana_type = ana_type
         self.run_list = run_list
         self.input_dir = input_dir
         self.dark_dir = dark_dir
         self.gain_dir = gain_dir
+        self.base_cal_fname = base_cal_fname
         self.output_dir = output_dir
         self.energy = energy
 
@@ -101,6 +113,10 @@ class StartAnalyse():
         elif self.ana_type == "correct":
             for run_number in self.run_list:
                 self.correct(run_number)
+        elif self.ana_type == "ff-correct":
+            for run_number in self.run_list:
+                self.correct(run_number, ctype = "ff")
+        
 
     def run_gather(self):
         for run_number in self.run_list:
@@ -158,7 +174,12 @@ class StartAnalyse():
             for p in process_list:
                 p.join()
 
-    def correct(self, run_number):
+#ctypes (correction types):
+#agipd: pedestal correction from darks + absolute gain correciton from xray fitting current source dynamic range scan (drscs)
+#ff: pedestal correction from darks & current source drs + relative gain correction from flatfield analysis and csdrs
+
+    def correct(self, run_number, ctype = "agipd"):
+        print("Correction type: {}".format(ctype))
         for j in range(self.number_of_runs):
             for i in range(self.modules_per_run):
                 module = str(j*self.modules_per_run + i).zfill(2)
@@ -197,12 +218,19 @@ class StartAnalyse():
 
                     gain_fname_prefix = os.path.join(self.gain_dir, fname_prefix)
                     gain_fname = glob.glob("{}*".format(gain_fname_prefix))
-                    if gain_fname:
-                        gain_fname = gain_fname[0]
-                    else:
-                        print("No gain constants found.")
-                        #print("No gain constants found. Quitting.")
-                        #sys.exit(1)
+                    if ctype == "agipd":
+                        if gain_fname:
+                            gain_fname = gain_fname[0]
+                        else:
+                            print("No gain constants found.")
+                            #print("No gain constants found. Quitting.")
+                            #sys.exit(1)
+
+                    if ctype == "ff":
+                        if not glob.glob(self.base_cal_fname):
+                            print("No agipd_base_cal.h5 found. Quitting.")
+                            sys.exit(1)
+
 
                     output_dir = os.path.join(self.output_dir, run_number)
                     create_dir(output_dir)
@@ -210,10 +238,13 @@ class StartAnalyse():
                     fname = "corrected_AGIPD{}-S{:05d}.h5".format(module, part)
                     output_fname = os.path.join(output_dir, fname)
 
-                    p = multiprocessing.Process(target=Correct, args=(data_fname,
+                    p = multiprocessing.Process(target=Correct, args=(ctype,
+                                                                      int(module),
+                                                                      data_fname,
                                                                       dark_fname,
                                                                       None,
                                                                       #gain_fname,
+                                                                      base_cal_fname,
                                                                       output_fname,
                                                                       self.energy,
                                                                       use_xfel_format))
@@ -249,6 +280,8 @@ if __name__ == "__main__":
                                   '-'.join(run_list))
     else:
         output_dir = os.path.join(args.output_dir)
+    print(args.base_cal_dir)
+    base_cal_fname = os.path.join(args.base_cal_dir,"agipd_base_cal.h5")
 
     energy = args.energy
     use_xfel_format = True
@@ -268,6 +301,7 @@ if __name__ == "__main__":
                        input_dir,
                        dark_dir,
                        gain_dir,
+                       base_cal_fname,
                        output_dir,
                        energy,
                        use_xfel_format)

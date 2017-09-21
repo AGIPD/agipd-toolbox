@@ -12,11 +12,15 @@ def get_file_content(name, obj):
         tmp_raw_data[name] = obj[()]
 
 class Correct():
-    def __init__(self, data_fname, dark_fname, gain_fname, output_fname,
+    def __init__(self,ctype, channel, data_fname, dark_fname, gain_fname, base_cal_fname, output_fname,
                   photon_energy, use_xfel_format=False):
+        self.ctype = ctype
+        self.channel = channel
+        print(type(channel))
         self.data_fname = data_fname
         self.dark_fname = dark_fname
         self.gain_fname = gain_fname
+        self.base_cal_fname = base_cal_fname
         self.output_fname = output_fname
         self.use_xfel_format = use_xfel_format
         self.use_xfel_input_format = True
@@ -46,6 +50,7 @@ class Correct():
         print("data_fname = ", self.data_fname)
         print("dark_fname = ", self.dark_fname)
         print("gain_fname = ", self.gain_fname)
+        print("base_cal_fname = ", self.base_cal_fname)
         print("output_fname = ", self.output_fname, "\n")
 
         self.get_dims()
@@ -91,12 +96,24 @@ class Correct():
         f = h5py.File(self.dark_fname, "r")
         self.offset = f["/offset"][()]
         self.threshold = f["/threshold"][()]
+        #print("Offset shape", self.offset.shape)
         f.close()
-        print("Loading done")
+        print("Loading darks done")
 
+        if self.ctype == "ff":
+            print("Start loading data form", self.base_cal_fname)
+            f = h5py.File(self.base_cal_fname, "r")
+            qm = "Q{}M{}".format(self.channel // 4 + 1, self.channel % 4 + 1)
+            self.rel_gain = f["{}/RelativeGain/0/data".format(qm)][()]
+            f.close()
+            self.rel_gain = np.rollaxis(self.rel_gain,3,0)
+            self.rel_gain = np.rollaxis(self.rel_gain, 3, 1)
+            self.rel_gain = np.rollaxis(self.rel_gain, 3, 2)
+            #print("Relative gain shape: ", self.rel_gain.shape)
+            print("Loading agipd_base_cal done")
         print("Start loading data from", self.data_fname)
         self.load_data()
-        print("Loading done")
+        print("Loading data done")
 
         print("Start correcting")
         self.correct_data()
@@ -145,7 +162,14 @@ class Correct():
             offset = np.choose(self.gain_stage, (self.offset[0, ...],
                                                  self.offset[1, ...],
                                                  self.offset[2, ...]))
-            self.analog_corrected[i] = self.analog[i].astype(np.int32) - offset
+            if self.ctype == "agipd":
+                self.analog_corrected[i] = self.analog[i].astype(np.int32) - offset
+            elif self.ctype =="ff":
+                rel_gain = np.choose(self.gain_stage,(self.rel_gain[0, ...],
+                                                      self.rel_gain[1, ...],
+                                                      self.rel_gain[2, ...]))
+                self.analog_corrected[i] = (self.analog[i].astype(np.int32) - offset) / rel_gain
+
 
         #print("Verification:")
         #print(self.analog.shape)
