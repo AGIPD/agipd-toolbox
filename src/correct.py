@@ -183,7 +183,7 @@ class Correct():
             if self.ctype == "agipd":
                 offset = np.choose(self.gain_stage, (self.offset[0, ...],
                                                      self.offset[1, ...],
-                                                     self.ooffset[2, ...]))
+                                                     self.offset[2, ...]))
                 self.analog_corrected[i] = self.analog[i].astype(np.int32) - offset
             elif self.ctype =="ff":
                 offset = np.choose(self.gain_stage, (moffset[0, ...],
