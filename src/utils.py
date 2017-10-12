@@ -3,6 +3,7 @@ from __future__ import print_function
 import os
 import sys
 import numpy as np
+import h5py
 
 import logging
 from logging.config import dictConfig
@@ -28,9 +29,15 @@ def check_file_exists(file_name):
         print("Output file: ok")
 
 
-def located_in_wing2(module):
+def get_module_order():
     module_order = [[12, 13, 14, 15, 8, 9, 10, 11],
                     [0, 1, 2, 3, 4, 5, 6, 7]]
+
+    return module_order
+
+
+def located_in_wing2(module):
+    module_order = get_module_order()
 
     if int(module) in module_order[1]:
         return True
@@ -38,7 +45,7 @@ def located_in_wing2(module):
         return False
 
 
-def convert_to_agipd_format(module, data_to_convert, shapes_to_convert):
+def convert_to_agipd_format(module, data_to_convert, shapes_to_convert=[]):
     in_wing2 = located_in_wing2(module)
 
     converted_data = []
@@ -105,6 +112,19 @@ def convert_to_xfel_format(module, data_to_convert, shapes_to_convert):
 
     return converted_data, converted_shapes
 
+def load_file_content(fname, excluded=[]):
+
+    file_content = {}
+
+    def get_file_content(name, obj):
+        if isinstance(obj, h5py.Dataset) and name not in excluded:
+            file_content[name] = obj[()]
+
+    f = h5py.File(fname, "r")
+    f.visititems(get_file_content)
+    f.close()
+
+    return file_content
 
 def setup_logging(name, level):
 
