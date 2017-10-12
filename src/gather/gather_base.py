@@ -5,6 +5,19 @@ import sys
 import time
 import glob
 
+try:
+    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
+except:
+    CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
+
+print("CURRENT_DIR", CURRENT_DIR)
+BASE_PATH = os.path.dirname(os.path.dirname(CURRENT_DIR))
+print("BASE_PATH", BASE_PATH)
+SRC_PATH = "/home/kuhnm/calibration/src/"
+
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
+
 import utils
 
 
@@ -37,6 +50,7 @@ class AgipdGatherBase():
         self.digital = None
 
         self.raw_shape = None
+        self.tmp_shape = None
         self.n_frames_per_file = None
         self.n_frames = None
         self.target_shape = None
@@ -104,6 +118,8 @@ class AgipdGatherBase():
 
             # xfel format has swapped rows and cols
             self.raw_shape = (self.n_memcells, 2, 2, self.n_cols, self.n_rows)
+            # tmp data is already converted into agipd format
+            self.tmp_shape = (self.n_memcells, 2, self.n_rows, self.n_cols)
 
             module = int(k.split("CH")[0])
             self.in_wing2 = utils.located_in_wing2(module)
@@ -134,6 +150,7 @@ class AgipdGatherBase():
             #self.n_memcells = 1
 
             self.raw_shape = (self.n_memcells, 2, self.n_rows, self.n_cols)
+            self.tmp_shape = self.raw_shape
 
         self.n_frames_per_file = int(raw_data_shape[0] // 2 // self.n_memcells)
         print("n_frames_per_file", self.n_frames_per_file)
@@ -299,12 +316,12 @@ class AgipdGatherBase():
         save_file.flush()
         save_file.close()
 
-        print('gather took time:  ', time.time() - totalTime, '\n\n')
+        print("gather took time:", time.time() - totalTime, "\n\n")
 
     def load_data(self):
 
-        self.analog = np.zeros(self.target_shape, dtype=np.int16)
-        self.digital = np.zeros(self.target_shape, dtype=np.int16)
+        tmp_data = np.zeros((self.n_frames,) + self.tmp_shape,
+                            dtype=np.int16)
 
         self.metadata = {}
 
@@ -340,11 +357,16 @@ class AgipdGatherBase():
                 [raw_data], _ = utils.convert_to_agipd_format(module,
                                                               [raw_data])
 
-            self.analog[target_idx] = raw_data[:, :, 0, ...]
-            self.digital[target_idx] = raw_data[:, :, 1, ...]
+            print("tmp_data", tmp_data.shape)
+            print("raw_data", raw_data.shape)
+
+            tmp_data[target_idx] = raw_data[...]
 
             del file_content[self.data_path]
             self.metadata[fname] = file_content
+
+        self.analog = tmp_data[:, :, 0, ...]
+        self.digital = tmp_data[:, :, 1, ...]
 
 if __name__ == "__main__":
     import multiprocessing
