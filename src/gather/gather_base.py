@@ -10,10 +10,8 @@ try:
 except:
     CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
 
-print("CURRENT_DIR", CURRENT_DIR)
 BASE_PATH = os.path.dirname(os.path.dirname(CURRENT_DIR))
-print("BASE_PATH", BASE_PATH)
-SRC_PATH = "/home/kuhnm/calibration/src/"
+SRC_PATH = os.path.join(BASE_PATH, "src")
 
 if SRC_PATH not in sys.path:
     sys.path.insert(0, SRC_PATH)
@@ -86,7 +84,7 @@ class AgipdGatherBase():
         prefix = self.input_fname.rsplit(".", 1)[0]
         part_files = glob.glob("{}*".format(prefix[:-6]))
 
-        self.n_parts = len(part_files)
+        self.n_parts = self.max_part or len(part_files)
         print("n_parts {}".format(self.n_parts))
         #self.n_parts = 2
 
@@ -119,6 +117,8 @@ class AgipdGatherBase():
             # xfel format has swapped rows and cols
             self.raw_shape = (self.n_memcells, 2, 2, self.n_cols, self.n_rows)
             # tmp data is already converted into agipd format
+            # n_frames has to filled in once it is known
+            self.raw_tmp_shape = (1, self.n_memcells, 2, self.n_cols, self.n_rows)
             self.tmp_shape = (self.n_memcells, 2, self.n_rows, self.n_cols)
 
             module = int(k.split("CH")[0])
@@ -150,12 +150,16 @@ class AgipdGatherBase():
             #self.n_memcells = 1
 
             self.raw_shape = (self.n_memcells, 2, self.n_rows, self.n_cols)
+            # n_frames has to filled in once it is known
+            self.raw_tmp_shape = (1 * self.n_memcells * 2, self.n_rows, self.n_cols)
             self.tmp_shape = self.raw_shape
 
         self.n_frames_per_file = int(raw_data_shape[0] // 2 // self.n_memcells)
         print("n_frames_per_file", self.n_frames_per_file)
         self.get_number_of_frames()
         print("n_frames", self.n_frames)
+
+        self.raw_tmp_shape = (self.raw_tmp_shape[0] * self.n_frames,) + self.raw_tmp_shape[1:]
 
         self.target_shape = (self.n_frames, self.n_memcells, self.n_rows, self.n_cols)
         print("target shape:", self.target_shape)
@@ -320,13 +324,15 @@ class AgipdGatherBase():
 
     def load_data(self):
 
-        tmp_data = np.zeros((self.n_frames,) + self.tmp_shape,
-                            dtype=np.int16)
+        print("raw_tmp_shape", self.raw_tmp_shape)
+        tmp_data = np.zeros(self.raw_tmp_shape, dtype=np.int16)
 
         self.metadata = {}
+        self.source_seq_number = [0]
+        self.seq_number = None
 
         idx_offset = 0
-        print(self.n_parts)
+
         for i in range(self.n_parts):
             fname = self.input_fname.format(i)
 
@@ -340,51 +346,146 @@ class AgipdGatherBase():
             print("raw_data.shape", raw_data.shape)
             print("self.n_frames_per_file", self.n_frames_per_file)
             print("self.raw_shape", self.raw_shape)
-            raw_data.shape = (self.n_frames_per_file,) + self.raw_shape
 
             # currently the splitting in digital and analog does not work for XFEL
             # -> all data is in the first entry of the analog/digital dimension
             if self.use_xfel_format:
+                raw_data.shape = (self.n_frames_per_file,) + self.raw_shape
+
                 raw_data = raw_data[:, :, :, 0, ...]
 
-            target_idx = (slice(idx_offset,
-                                idx_offset + self.n_frames_per_file),
-                          Ellipsis)
-            idx_offset += self.n_frames_per_file
+                target_idx = (slice(idx_offset,
+                                    idx_offset + self.n_frames_per_file),
+                              Ellipsis)
+                idx_offset += self.n_frames_per_file
 
-            # fix geometry
-            if self.use_xfel_format:
-                [raw_data], _ = utils.convert_to_agipd_format(module,
-                                                              [raw_data])
+                tmp_data[target_idx] = raw_data[...]
 
-            print("tmp_data", tmp_data.shape)
-            print("raw_data", raw_data.shape)
-
-            tmp_data[target_idx] = raw_data[...]
+            else:
+                self.get_seq_number(file_content[self.seq_number_path])
+                self.get_frame_loss_indices()
+                self.fillup_frame_loss(tmp_data,
+                                       raw_data,
+                                       self.target_index_full_size)
 
             del file_content[self.data_path]
             self.metadata[fname] = file_content
 
+        if self.use_xfel_format:
+            [tmp_data], _ = utils.convert_to_agipd_format(module,
+                                                          [tmp_data])
+        else:
+            tmp_data.shape = (self.n_frames,) + self.tmp_shape
+
+
         self.analog = tmp_data[:, :, 0, ...]
         self.digital = tmp_data[:, :, 1, ...]
 
+    def get_seq_number(self, source_seq_number):
+        # if there is frame loss this is recognizable by a missing
+        # entry in seq_number. seq_number should be loaded before
+        # doing operations on it due to performance benefits
+        seq_number_last_entry_previous_file = self.source_seq_number[-1]
+        self.source_seq_number = source_seq_number
+
+        print("seq_number_last_entry_previous_file={}"
+              .format(seq_number_last_entry_previous_file))
+        print("seq_number before modifying: {}"
+              .format(self.source_seq_number))
+        self.seq_number = (self.source_seq_number
+                           # seq_number starts counting with 1
+                           - 1
+                           # the seq_number refers to the whole run
+                           # not one file
+                           - seq_number_last_entry_previous_file)
+        print("seq_number: {}".format(self.seq_number))
+
+    def get_frame_loss_indices(self):
+        # The borders (regarding the expected shape) of
+        # continuous blocks of data written into the target
+        # (in between these blocks there will be zeros)
+        self.target_index = [[0, 0]]
+        # original sequence number starts with 1
+        self.target_index_full_size = [[self.source_seq_number[0] - 1, 0]]
+        # The borders (regarding the source_shape) of
+        # continuous blocks of data read from the source
+        # (no elements in between these blocks)
+        self.source_index = [[0, 0]]
+        stop = 0
+        stop_full_size = 0
+        stop_source = 0
+        for i in np.arange(len(self.seq_number)):
+
+            # a gap in the numbering occured
+            if stop - self.seq_number[i] < -1:
+
+                # the number before the gab gives the end of
+                # the continuous block of data
+                self.target_index[-1][1] = stop
+                # the next block starts now
+                self.target_index.append([self.seq_number[i], 0])
+
+                # the number before the gab gives the end of
+                # the continuous block of data in the fully sized array
+                self.target_index_full_size[-1][1] = stop_full_size
+                # the next block starts now
+                # original sequence number started with 1
+                seqlst = [self.source_seq_number[i] - 1, 0]
+                self.target_index_full_size.append(seqlst)
+
+                self.source_index[-1][1] = stop_source
+                # the end of the block in the source
+                self.source_index.append([i, 0])
+
+            stop_source = i
+            stop = self.seq_number[i]
+            # original sequence number started with 1
+            stop_full_size = self.source_seq_number[i] - 1
+
+        # the last block ends with the end of the data
+        self.target_index[-1][1] = self.seq_number[-1]
+        self.target_index_full_size[-1][1] = self.source_seq_number[-1] - 1
+        self.source_index[-1][1] = len(self.seq_number) - 1
+        print("target_index {}".format(self.target_index))
+        print("target_index_full_size {}".format(self.target_index_full_size))
+        print("source_index {}".format(self.source_index))
+
+        # check to see the values of the sequence number in the first frame loss gap
+        if len(self.target_index_full_size) > 1:
+            start = self.source_index[0][1] - 1
+            stop = self.source_index[1][0] + 2
+            seq_num = self.source_seq_number[start:stop]
+            print("seq number in first frame loss region: {}"
+                  .format(seq_num))
+
+    def fillup_frame_loss(self, raw_data, loaded_raw_data, target_index):
+        # getting the blocks from source to target
+        s_start = 0
+        for i in range(len(target_index)):
+
+            # start and stop of the block in the target
+            # [t_start, t_stop)
+            t_start = target_index[i][0]
+            t_stop = target_index[i][1] + 1
+
+            # start and stop of the block in the source
+            # s_start was set in the previous loop iteration
+            # (or for i=0 is set to 0)
+            s_start = self.source_index[i][0]
+            s_stop = self.source_index[i][1] + 1
+
+            raw_data[t_start:t_stop, ...] = (
+                loaded_raw_data[s_start:s_stop, ...])
+
 if __name__ == "__main__":
     import multiprocessing
-
-    SRC_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-    print("SRC_PATH", SRC_PATH)
-
-    if SRC_PATH not in sys.path:
-        sys.path.insert(0, SRC_PATH)
-
-    from utils import  create_dir
 
     module_mapping = {
         "M305": "00",
         }
 
-    use_xfel_format = True
-    #use_xfel_format = False
+    #use_xfel_format = True
+    use_xfel_format = False
 
     if use_xfel_format:
         base_path = "/gpfs/exfel/exp/SPB/201701/p002012"
@@ -411,7 +512,7 @@ if __name__ == "__main__":
                                               subdir,
                                               run_number,
                                               "gather")
-                    create_dir(output_dir)
+                    utils.create_dir(output_dir)
                     output_fname = os.path.join(
                         output_dir,
                         "{}-AGIPD{}-gathered.h5".format(run_number.upper(),
@@ -432,14 +533,16 @@ if __name__ == "__main__":
 
         in_base_path = "/gpfs/cfel/fsds/labs/agipd/calibration"
         # with frame loss
-#        in_subdir = "raw/317-308-215-318-313/temperature_m15C/dark"
-#        module = "M317_m2"
-#        run_number = "00001"
+        in_subdir = "raw/317-308-215-318-313/temperature_m15C/dark"
+        module = "M317_m2"
+        run_number = "00001"
+        max_part = False
 
          # no frame loss
-        in_subdir = "raw/315-304-309-314-316-306-307/temperature_m25C/dark"
-        module = "M304_m2"
-        run_number = "00012"
+#        in_subdir = "raw/315-304-309-314-316-306-307/temperature_m25C/dark"
+#        module = "M304_m2"
+#        run_number = "00012"
+#        max_part = False
 
         out_base_path = "/gpfs/exfel/exp/SPB/201701/p002012/scratch/user/kuhnm"
         out_subdir = "tmp"
@@ -459,7 +562,7 @@ if __name__ == "__main__":
         output_dir = os.path.join(out_base_path,
                                   out_subdir,
                                   "gather")
-        create_dir(output_dir)
+        utils.create_dir(output_dir)
         output_file_name = ("{}_{}_{}.h5"
                             .format(module.split("_")[0],
                                     meas_type,
@@ -468,6 +571,6 @@ if __name__ == "__main__":
 
         obj = AgipdGatherBase(input_fname,
                               output_fname,
-                              False,  # max_part
+                              max_part,
                               True,  # split_asics
                               use_xfel_format)
