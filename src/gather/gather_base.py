@@ -118,7 +118,7 @@ class AgipdGatherBase():
             self.raw_shape = (self.n_memcells, 2, 2, self.n_cols, self.n_rows)
             # tmp data is already converted into agipd format
             # n_frames has to filled in once it is known
-            self.raw_tmp_shape = (1, self.n_memcells, 2, self.n_cols, self.n_rows)
+            self.raw_tmp_shape = (1, self.n_memcells, 2, self.n_rows, self.n_cols)
             self.tmp_shape = (self.n_memcells, 2, self.n_rows, self.n_cols)
 
             module = int(k.split("CH")[0])
@@ -154,6 +154,8 @@ class AgipdGatherBase():
             self.raw_tmp_shape = (1 * self.n_memcells * 2, self.n_rows, self.n_cols)
             self.tmp_shape = self.raw_shape
 
+        self.define_needed_data_paths()
+
         self.n_frames_per_file = int(raw_data_shape[0] // 2 // self.n_memcells)
         print("n_frames_per_file", self.n_frames_per_file)
         self.get_number_of_frames()
@@ -163,6 +165,11 @@ class AgipdGatherBase():
 
         self.target_shape = (self.n_frames, self.n_memcells, self.n_rows, self.n_cols)
         print("target shape:", self.target_shape)
+
+    # to give classes which inherite from this class the possibility to define
+    # file internal paths they need
+    def define_needed_data_paths(self):
+        pass
 
     def get_number_of_frames(self):
         f = None
@@ -300,6 +307,7 @@ class AgipdGatherBase():
         dset_analog[...] = self.analog
         dset_digital[...] = self.digital
 
+        # save metadata from original files
         idx = 0
         for set_name, set_value in iter(self.metadata.items()):
                 gname = "metadata_{}".format(idx)
@@ -351,12 +359,20 @@ class AgipdGatherBase():
             # -> all data is in the first entry of the analog/digital dimension
             if self.use_xfel_format:
                 raw_data.shape = (self.n_frames_per_file,) + self.raw_shape
-
                 raw_data = raw_data[:, :, :, 0, ...]
+
+                [raw_data], _ = utils.convert_to_agipd_format(module,
+                                                              [raw_data])
+
+                pos_idx_rows, pos_idx_cols = self.set_pos_indices()
 
                 target_idx = (slice(idx_offset,
                                     idx_offset + self.n_frames_per_file),
-                              Ellipsis)
+                              slice(None),
+                              slice(None),
+                              pos_idx_rows,
+                              pos_idx_cols)
+
                 idx_offset += self.n_frames_per_file
 
                 tmp_data[target_idx] = raw_data[...]
@@ -371,15 +387,17 @@ class AgipdGatherBase():
             del file_content[self.data_path]
             self.metadata[fname] = file_content
 
-        if self.use_xfel_format:
-            [tmp_data], _ = utils.convert_to_agipd_format(module,
-                                                          [tmp_data])
-        else:
+        if not self.use_xfel_format:
             tmp_data.shape = (self.n_frames,) + self.tmp_shape
-
 
         self.analog = tmp_data[:, :, 0, ...]
         self.digital = tmp_data[:, :, 1, ...]
+
+    def set_pos_indices(self):
+        pos_idx_rows = slice(None)
+        pos_idx_cols = slice(None)
+
+        return pos_idx_rows, pos_idx_cols
 
     def get_seq_number(self, source_seq_number):
         # if there is frame loss this is recognizable by a missing
@@ -484,8 +502,8 @@ if __name__ == "__main__":
         "M305": "00",
         }
 
-    #use_xfel_format = True
-    use_xfel_format = False
+    use_xfel_format = True
+    #use_xfel_format = False
 
     if use_xfel_format:
         base_path = "/gpfs/exfel/exp/SPB/201701/p002012"
