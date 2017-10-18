@@ -439,8 +439,7 @@ class AgipdDynamicRangeGatherSingleAsic():
 
         print("Initiate tmp data")
         t = time.time()
-        # Creating the array with np.zero is faster than copying the array
-        # from analog
+        # array for to insert all columns data into
         self.tmp_data_real_position = np.zeros(self.raw_data_shape,
                                                dtype=np.int16)
         print("took time: {}".format(time.time() - t))
@@ -456,8 +455,7 @@ class AgipdDynamicRangeGatherSingleAsic():
 
                 print("Initiate tmp data")
                 t = time.time()
-                # Creating the array with np.zero is faster than copying the
-                # array from analog
+                # array to insert this columns data into
                 self.tmp_data = np.zeros(self.raw_data_shape, dtype=np.int16)
                 print("took time: {}".format(time.time() - t))
 

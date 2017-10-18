@@ -15,9 +15,13 @@ class Gather():
 
         self.n_rows = 128
         self.n_cols = 512
+        self.n_memcells = None
 
         self.analog = None
         self.digital = None
+
+        self.raw_shape = None
+        self.in_wing2 = None
 
         self.get_parts()
 

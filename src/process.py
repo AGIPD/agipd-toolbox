@@ -398,10 +398,6 @@ class ProcessDrscs():
                             if error_code[self.current_idx] <= 0:
                                 error_code[self.current_idx] = 1
 
-        #if self.output_fname is not None:
-        #    print("writing data")
-        #    self.write_data()
-
     def check_lists_continous(self):
 
         v_list = np.arange(self.pixel_v_list[0], self.pixel_v_list[-1] + 1)
