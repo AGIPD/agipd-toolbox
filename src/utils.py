@@ -45,11 +45,11 @@ def located_in_wing2(module):
         return False
 
 
-def convert_to_agipd_format(module, data_to_convert, shapes_to_convert=[]):
+def convert_to_agipd_format(module, data):
+
     in_wing2 = located_in_wing2(module)
 
-    converted_data = []
-    for data in data_to_convert:
+    if isinstance(data, np.ndarray):
         data_dim = len(data.shape)
         if data_dim == 2:
             if in_wing2:
@@ -66,29 +66,25 @@ def convert_to_agipd_format(module, data_to_convert, shapes_to_convert=[]):
 
         # converts (..., 128, 512) to (..., 512, 128)
         last = len(data.shape) - 1
-        beforelast = last - 1
-        data = np.swapaxes(data, last, beforelast)
+        data = np.swapaxes(data, last, last - 1)
 
-        converted_data.append(data)
+    elif isinstance(data, tuple):
+        data = (data[:-2] + (data[-1], data[-2]))
 
-    converted_shapes = []
-    for s in shapes_to_convert:
-        converted_shapes.append(s[:-2] + (s[-1], s[-2]))
+    else:
+        raise Exception("Convertion failed: type {} not supported".format(type(data)))
 
-    return converted_data, converted_shapes
+    return data
 
 
-def convert_to_xfel_format(module, data_to_convert, shapes_to_convert):
+def convert_to_xfel_format(channel, data):
 
-    in_wing2 = located_in_wing2(module)
+    in_wing2 = located_in_wing2(channel)
 
-    converted_data = []
-    for data in data_to_convert:
-
+    if isinstance(data, np.ndarray):
         # converts (..., 128, 512) to (..., 512, 128)
         last = len(data.shape) - 1
-        beforelast = last - 1
-        data = np.swapaxes(data, last, beforelast)
+        data = np.swapaxes(data, last, last - 1)
 
         data_dim = len(data.shape)
         if data_dim == 2:
@@ -104,13 +100,14 @@ def convert_to_xfel_format(module, data_to_convert, shapes_to_convert):
         else:
             print("data to convert is of the wrong dimension")
 
-        converted_data.append(data)
+    elif isinstance(data, tuple):
+        data = (data[:-2] + (data[-1], data[-2]))
 
-    converted_shapes = []
-    for s in shapes_to_convert:
-        converted_shapes.append(s[:-2] + (s[-1], s[-2]))
+    else:
+        raise Exception("Convertion failed: type {} not supported".format(type(data)))
 
-    return converted_data, converted_shapes
+    return data
+
 
 def load_file_content(fname, excluded=[]):
 

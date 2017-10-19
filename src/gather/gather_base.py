@@ -255,78 +255,6 @@ class AgipdGatherBase():
             self.n_frames_total = int(exp_total_frames)
             self.n_frames = int(exp_total_frames // 2 // self.n_memcells)
 
-#    def get_charges(self):
-#        source_file = None
-#        try:
-#            fname = self.files[0][0]
-#            source_file = h5py.File(fname, "r", libver="latest",
-#                                    drivers="core")
-#
-#            # TODO: verify that the shape is always right and not dependant on
-#            #       frame loss
-#            source_shape = source_file[self.data_path].shape
-#
-#            self.exp_total_frames = source_file[self.frame_number_path][0]
-#
-#            # if there is frame loss this is recognizable by a missing entry
-#            # in seq_number
-#            self.seq_number = source_file[self.seq_number_path][()]
-#            print("len seq_number: {}".format(len(self.seq_number)))
-#
-#            # total_lost_frames are totally missing frames as well as
-#            # frames where only a package was lost
-#            total_lost_frames = source_file[self.total_lost_frames_path][0]
-#
-#            # frames where a package is lost occure in error_code with
-#            # an nonzero entry whereas complety lost frames do not have
-#            # an entry in error code at all
-#            error_code = source_file[self.error_code_path][()]
-#            frames_with_pkg_loss = error_code.nonzero()
-#            n_frames_with_pkg_loss = len(np.hstack(frames_with_pkg_loss))
-#            print("Frames with packet loss: {}".format(n_frames_with_pkg_loss))
-#        except:
-#            print("Error when getting shape")
-#            raise
-#        finally:
-#            if source_file is not None:
-#                source_file.close()
-#
-#        if (source_shape[1] != self.n_rows and
-#                source_shape[2] != self.n_cols):
-#            msg = "Shape of file {} does not match requirements\n".format(fname)
-#            msg += "source_shape = {}".format(source_shape)
-#            raise RuntimeError(msg)
-#
-#        # due to a "bug" in Tango the total_lost_frames can only be found in
-#        # the next file
-#        # TODO once Tango has fixed this, adjust it here as well
-#        source_file = None
-#        try:
-#            fname = self.files[0][1]
-#            source_file = h5py.File(fname, "r", libver="latest",
-#                                    driver="core")
-#            # total_lost_frames are totally missing frames as well as
-#            # frames where only a package was lost
-#            total_lost_frames = source_file[self.total_lost_frames_path][0]
-#        except Exception as e:
-#            raise RuntimeError("Error when getting shape: {}".format(e))
-#        finally:
-#            if source_file is not None:
-#                source_file.close()
-#
-#        self.exp_n_frames_per_file = (len(self.seq_number)
-#                                          # for the very first file
-#                                          # total_lost_frames was not yet
-#                                          # aggregated
-#                                          + total_lost_frames
-#                                          - n_frames_with_pkg_loss)
-#
-#        self.n_frames = int(self.exp_total_frames / 2 / self.n_memcells)
-#
-#        print("exp_total_frames={}".format(self.exp_total_frames))
-#        print("exp_n_frames_per_file={}".format(self.exp_n_frames_per_file))
-#        print("frames={}".format(self.n_frames))
-
     def run(self):
 
         totalTime = time.time()
@@ -335,12 +263,8 @@ class AgipdGatherBase():
 
         print("Start saving")
         save_file = h5py.File(self.output_fname, "w", libver='latest')
-        dset_analog = save_file.create_dataset("analog",
-                                               data=self.analog,
-                                               dtype=np.int16)
-        dset_digital = save_file.create_dataset("digital",
-                                                data=self.digital,
-                                                dtype=np.int16)
+        save_file.create_dataset("analog", data=self.analog, dtype=np.int16)
+        save_file.create_dataset("digital", data=self.digital, dtype=np.int16)
 
         # save metadata from original files
         idx = 0
@@ -406,8 +330,8 @@ class AgipdGatherBase():
 
                     raw_data = raw_data[:, 0, ...]
 
-                    [raw_data], _ = utils.convert_to_agipd_format(self.channel,
-                                                                  [raw_data])
+                    raw_data = utils.convert_to_agipd_format(self.channel,
+                                                            raw_data)
 
                     source_offset = 0
                     old_target_offset = target_offset
@@ -560,22 +484,25 @@ if __name__ == "__main__":
         "M305": "00",
         }
 
-    #use_xfel_format = True
-    use_xfel_format = False
+    use_xfel_format = True
+    #use_xfel_format = False
 
     if use_xfel_format:
         base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
-        run_list = [["0488"]]
+        run_list = [["0428"], ["0429"], ["0430"]]
+
+        #base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
+        #run_list = [["0488"]]
 
         #base_path = "/gpfs/exfel/exp/SPB/201701/p002012"
         #run_list = [["0007"]]
 
         subdir = "scratch/user/kuhnm"
 
-        number_of_runs = 1
-        modules_per_run = 1
-        #number_of_runs = 2
-        #modules_per_run = 16//number_of_runs
+        #number_of_runs = 1
+        #modules_per_run = 1
+        number_of_runs = 2
+        modules_per_run = 16//number_of_runs
         for runs in run_list:
             process_list = []
             for j in range(number_of_runs):
