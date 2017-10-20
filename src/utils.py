@@ -30,16 +30,16 @@ def check_file_exists(file_name):
 
 
 def get_module_order():
-    module_order = [[12, 13, 14, 15, 8, 9, 10, 11],
+    channel_order = [[12, 13, 14, 15, 8, 9, 10, 11],
                     [0, 1, 2, 3, 4, 5, 6, 7]]
 
-    return module_order
+    return channel_order
 
 
-def located_in_wing2(module):
-    module_order = get_module_order()
+def located_in_wing2(channel):
+    channel_order = get_module_order()
 
-    if int(module) in module_order[1]:
+    if int(channel) in channel_order[1]:
         return True
     else:
         return False

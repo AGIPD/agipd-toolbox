@@ -31,18 +31,20 @@ class AgipdProcessBase():
         self.n_rows = 128
         self.n_cols = 512
 
+        #n_xpixs = 128
+        #n_ypixs = 512
+
         f = None
         try:
             input_fname = self.input_fname.format(run_number=self.runs[0])
             f = h5py.File(input_fname, "r")
             self.n_memcells = f["analog"].shape[1]
-        except:
+        finally:
             if f is not None:
                 f.close()
 
         self.shapes = {}
         self.result = {}
-
 
         input_fname = self.input_fname.format(run_number=self.runs[0])
         self.channel = int(input_fname.rsplit("/", 1)[1].split("AGIPD")[1][:2])
@@ -83,7 +85,30 @@ class AgipdProcessBase():
     def calculate(self):
         pass
 
+    def fit_linear(self, x, y):
+        # find out if the col was effected by frame loss
+        lost_frames = np.where(y == 0)
+        y[lost_frames] = np.NAN
+
+        # remove the ones with frameloss
+        missing = np.isnan(y)
+        y = y[~missing]
+        x = x[~missing]
+
+        number_of_points = len(x)
+        A = np.vstack([x, np.ones(number_of_points)]).T
+
+        # lstsq returns: Least-squares solution (i.e. slope and offset),
+        #                residuals,
+        #                rank,
+        #                singular values
+        res = np.linalg.lstsq(A, y)
+
+        return res
+
     def convert_to_xfel_format(self):
+        print("Convert to XFEL format")
+
         for key in self.result:
             self.result[key]["data"] = (
                 utils.convert_to_xfel_format(self.channel,

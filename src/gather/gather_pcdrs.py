@@ -90,7 +90,7 @@ if __name__ == "__main__":
                         "r{run_number:04d}",
                         "RAW-R{run_number:04d}-" + "AGIPD{}".format(module) + "-S{part:05d}.h5")
 
-                    run_subdir = "r" + "-r".join(str(r) for r in runs)
+                    run_subdir = "r" + "-r".join(str(r).zfill(2) for r in runs)
                     output_dir = os.path.join(base_path,
                                               subdir,
                                               run_subdir,
