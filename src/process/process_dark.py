@@ -25,19 +25,23 @@ class AgipdProcessDark(AgipdProcessBase):
         self.result = {
             "offset": {
                 "data": np.empty(self.shapes["offset"]),
+                "path": "offset",
                 "type": np.int16
             },
             "gainlevel_mean": {
                 "data": np.empty(self.shapes["offset"]),
+                "path": "gainlevel_mean",
                 "type": np.int16
             },
             "stddev": {
                 "data": np.empty(self.shapes["offset"]),
+                "path": "stddev",
                 "type": np.int16
             },
             "threshold": {
                 "data": np.empty(self.shapes["threshold"]),
-                "type": "float"
+                "path": "threshold",
+                "type": np.float
             }
         }
 

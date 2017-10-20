@@ -97,18 +97,17 @@ class AgipdProcessBase():
     def write_data(self):
         print("Start saving results at", self.output_fname)
 
-        save_file = h5py.File(self.output_fname, "w", libver="latest")
+        f = h5py.File(self.output_fname, "w", libver="latest")
 
         for key in self.result:
-            save_file.create_dataset(key,
-                                     data=self.result[key]["data"],
-                                     dtype=self.result[key]["type"])
+            f.create_dataset(self.result[key]["path"],
+                             data=self.result[key]["data"],
+                             dtype=self.result[key]["type"])
 
         # convert into unicode
         self.runs = [run.encode('utf8') for run in self.runs]
-        save_file.create_dataset("run_number", data=self.runs)
+        f.create_dataset("run_number", data=self.runs)
 
-        save_file.flush()
+        f.flush()
+        f.close()
         print("Saving done")
-
-        save_file.close()
