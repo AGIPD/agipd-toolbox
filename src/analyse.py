@@ -1,20 +1,3 @@
-"""
-Attempt at making drscs.py more generic
-
-Called from job_scripts/analyse.sh
-   - there all the input arguments are defined
-
-For gather:
-- calls GatherData from gather.py
-
-TODO: adjust processing to be generic
-For processing:
-- calls ParallelProcess from parallel_process.py
-
-"""
-
-from __future__ import print_function
-
 import os
 import sys
 import argparse
@@ -33,123 +16,11 @@ from dark_and_xray.batchProcessXRayTubeData import BatchProcessXRayTubeData
 from dark_and_xray.gatherXRayTubeData import GatherXRayTubeData
 
 
-def get_arguments():
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("--input_dir",
-                        type=str,
-                        required=True,
-                        help="Directory to get data from")
-    parser.add_argument("--output_dir",
-                        type=str,
-                        required=True,
-                        help="Base directory to write results to")
-    parser.add_argument("--n_processes",
-                        type=int,
-                        help="The number of processes for the pool")
-    parser.add_argument("--module",
-                        type=str,
-                        required=True,
-                        help="Module to gather, e.g M310")
-    parser.add_argument("--temperature",
-                        type=str,
-                        required=True,
-                        help="temperature to gather, e.g. temperature_30C")
-    parser.add_argument("--current",
-                        type=str,
-                        help="Current to use, e.g. itestc20")
-    parser.add_argument("--tint",
-                        type=str,
-                        help="Integration time, e.g. tint150ns")
-    parser.add_argument("--element",
-                        type=str,
-                        help="Element used for fluorescence, e.g. Cu")
-    parser.add_argument("--asic",
-                        type=int,
-                        choices=range(1, 17),
-                        help="Asic number")
-    parser.add_argument("--asic_list",
-                        type=int,
-                        nargs="+",
-                        help="List of asics")
-    parser.add_argument("--run_type",
-                        type=str,
-                        required=True,
-                        choices=["gather", "process", "merge"],
-                        help="What type of run should be started")
-    parser.add_argument("--measurement",
-                        type=str,
-                        required=True,
-                        choices=["dark", "xray", "clamped_gain", "drscs",
-                                 "drscs_dark"],
-                        help="Which measurement to analyse: dark, xray, "
-                             "clamped_gain, drscs, drscs_dark")
-    parser.add_argument("--column_spec",
-                        type=int,
-                        nargs='+',
-                        default=False,
-                        help="Which index files to use for which column, "
-                             "e.g. 9, 10, 11, 12")
-    parser.add_argument("--max_part",
-                        type=int,
-                        default=False,
-                        help="Maximum number of parts to be combined")
-    parser.add_argument("--reduced_columns",
-                        type=int,
-                        nargs='+',
-                        default=False,
-                        help="If only a subset of the columns should be "
-                             "gathered")
-    parser.add_argument("--current_list",
-                        type=str,
-                        nargs='+',
-                        help="Lists of currents to analyse")
-
-    args = parser.parse_args()
-
-    if args.run_type == "gather":
-        if args.column_spec and len(args.column_spec) != 4:
-            print("There have to be 4 columns defined")
-            sys.exit(1)
-
-        if not args.asic:
-            print("Asic has to be set for run_type {}".format(args.run_type))
-            sys.exit(1)
-    elif args.run_type == "process":
-        if not args.asic:
-            print("Asic has to be set for run_type {}".format(args.run_type))
-            sys.exit(1)
-    elif args.run_type == "process":
-        if not args.asic_list:
-            print("Asic list has to be set for run_type {}"
-                  .format(args.run_type))
-            sys.exit(1)
-
-    if args.run_type == "merge" and args.measurement != "drscs":
-        print("Merge is only supported for drscs")
-        sys.exit(1)
-
-    if args.measurement == "dark" and not args.tint:
-        print("The tint must be defined for dark!")
-        sys.exit(1)
-
-    if args.measurement == "xray" and not args.element:
-        print("The element must be defined for xray!")
-        sys.exit(1)
-
-    if args.measurement == "drscs" and not args.current \
-            and args.run_type != "merge":
-        print("The current must be defined for drscs!")
-        sys.exit(1)
-
-    return args
-
-
 class Analyse():
     def __init__(self, run_type, meas_type, input_base_dir, output_base_dir,
-                 n_processes, module, temperature, current, tint, element,
-                 asic, asic_list, safety_factor, column_spec, reduced_columns,
-                 max_part, current_list=None):
+                 n_processes, module, temperature, meas_spec, asic, asic_list,
+                 safety_factor, column_spec, reduced_columns, max_part,
+                 current_list=None):
         print("started Analyse")
 
         self.run_type = run_type
@@ -159,9 +30,7 @@ class Analyse():
         self.n_processes = n_processes
         self.module = module
         self.temperature = temperature
-        self.current = current
-        self.tint = tint
-        self.element = element
+        self.meas_spec = meas_spec
         self.asic = asic
         self.asic_list = asic_list
         self.safety_factor = safety_factor
@@ -198,10 +67,8 @@ class Analyse():
         print("Configured parameter for type {}: ".format(self.run_type))
         print("module: ", self.module)
         print("temperature: ", self.temperature)
-        print("measurement: ", self.meas_type)
-        print("current (drscs): ", self.current)
-        print("tint (dark): ", self.tint)
-        print("element (xray): ", self.element)
+        print("type: ", self.meas_type)
+        print("meas_spec: ", self.meas_spec)
         print("asic: ", self.asic)
         print("asic_list: ", self.asic_list)
         print("input_dir: ", self.input_base_dir)
@@ -212,17 +79,12 @@ class Analyse():
 
         # Usually the input directory and file names correspond to the
         # meas_type
-        self.meas_input = {}
-        self.meas_input[meas_type] = meas_type
+        self.meas_input = {meas_type:  meas_type}
         # but there are exceptions
         self.meas_input["drscs_dark"] = "drscs"
 
-        self.meas_spec = {
-            "dark": self.tint,
-            "xray": self.element,
-            "drscs": self.current,
-            "drscs_dark": self.current,
-        }
+        self.use_xfel_input_format = False
+        self.use_xfel_output_format = False
 
         self.run()
 
@@ -242,166 +104,180 @@ class Analyse():
         print("\nFinished at", str(datetime.datetime.now()))
         print("took time: ", time.time() - t)
 
-    def run_gather(self):
-        module_split = self.module.split("_")
+    def generate_raw_path(self, base_path):
+        if self.use_xfel_input_format:
+            # define input files
+            fdir = os.path.join(base_dir,
+                                "raw",
+                                "r{run_number}")
 
-        # TODO: make this work for clamped gain! (in directory: clamped_gain,
-        #                                         in filename: cg)
-        input_file_name = ("{}*_{}_{}"
-                           .format(module_split[0],
-                                   self.meas_input[self.meas_type],
-                                   self.meas_spec[self.meas_type]))
-        input_file_name_old = ("{}_{}_{}"
-                               .format(module_split[0],
-                                       self.meas_input[self.meas_type],
-                                       self.meas_spec[self.meas_type]))
-        input_file_dir = os.path.join(self.input_base_dir,
-                                      self.temperature,
-                                      self.meas_input[self.meas_type],
-                                      self.meas_spec[self.meas_type])
-        # TODO: Manu and Jenny have to discuss the dir structure
-        # (i.e. if xray and dark should have subdir as in dict)
-        # drscs is additionally separated into current directories
-#       if self.meas_type == "drscs":
-#            input_file_dir = os.path.join(input_file_dir, self.current)
+            fname = ("RAW-R{run_number}-"
+                     "AGIPD{:02d}".format(self.channel)
+                     "-S{part:05d}.h5")
 
-        input_fname = os.path.join(input_file_dir, input_file_name)
-
-        output_file_name = ("{}_{}_{}_asic{}.h5"
-                            .format(module_split[0],
-                                    self.meas_type,
-                                    self.meas_spec[self.meas_type],
-                                    str(self.asic).zfill(2)))
-        output_file_dir = os.path.join(self.output_base_dir,
-                                       module_split[0],
-                                       self.temperature,
-                                       self.meas_type,
-                                       self.meas_spec[self.meas_type],
-                                       self.run_type)
-        # TODO: see input_file_dir
-#        if meas_type == "drscs":  # same as above
-#            output_file_dir = os.path.join(output_file_dir, self.current)
-
-        output_fname = os.path.join(output_file_dir, output_file_name)
-
-        create_dir(output_file_dir)
-
-        # Dark gathering was not yet integrated into the new
-        # gather/process structure
-        if self.meas_type == "dark":
-            input_fname = os.path.join(input_file_dir, input_file_name_old)
-            # dark and xray do not have supdirs
-            input_file_dir = os.path.dirname(input_file_dir)
-
-            fileName = os.path.join(input_file_dir, input_fname)
-            saveFileName = os.path.join(output_file_name, output_file_name)
-            nParts = 10
-
-            GatherDarkData(nParts, fileName, saveFileName)
-        # Xray gathering was not yet integrated into the new
-        # gather/process structure
-        elif self.meas_type == "xray":
-            input_fname = os.path.join(input_file_dir, input_file_name_old)
-            # dark and xray do not have supdirs
-            input_file_dir = os.path.dirname(input_file_dir)
-
-            fileName = os.path.join(input_file_dir, input_fname)
-            saveFileName = os.path.join(output_file_name, output_file_name)
-
-            GatherXRayTubeData(fileName, saveFileName)
         else:
-            # is this necessary? or is there a better way to do this?
-            if self.meas_type.startswith("drscs"):
-                GatherData(self.asic,
-                           input_fname,
-                           output_fname,
-                           self.meas_type,
-                           self.max_part,
-                           self.column_specs)
-            else:
-                GatherData(self.asic,
-                           input_fname,
-                           output_fname,
-                           self.meas_type,
-                           self.max_part)
+            # define input files
+            fdir = os.path.join(base_dir,
+                                self.temperature,
+                                self.meas_input[self.meas_type])
 
-    def run_process(self):
-        # the input files for processing are the output ones from gather
-        input_file_name = ("{}_{}_{}_asic{}.h5"
-                           .format(self.module,
-                                   self.meas_type,
-                                   self.meas_spec[self.meas_type],
-                                   str(self.asic).zfill(2)))
-        input_file_dir = os.path.join(self.input_base_dir,
-                                      self.module,
-                                      self.temperature,
-                                      self.meas_type,
-                                      self.meas_spec[self.meas_type],
-                                      "gather")
-        # TODO see gather input_file_dir
-#        if meas_type == "drscs":
-#            input_file_dir = os.path.join(input_file_dir, self.current)
+            if self.meas_type not in ["dark", "xray"]:
+                fdir = os.path.join(base_dir,
+                                    self.meas_spec)
 
-        input_fname = os.path.join(input_file_dir, input_file_name)
+            #fname = ("{}*_{}_{}_" # only module without location, e.g. M304
+            fname = ("{}_{}_{}_"
+                     .format(self.module,
+                             self.meas_type,
+                             self.meas_spec)
+                     + "{run_number}_part{part:05d}.nxs")
 
-        output_file_name = ("{}_{}_{}_asic{}_processed.h5"
-                            .format(self.module,
-                                    self.meas_type,
-                                    self.meas_spec[self.meas_type],
-                                    str(self.asic).zfill(2)))
-        print("output_file_name", output_file_name)
+        return fdir, fname
 
-        output_file_dir = os.path.join(self.output_base_dir,
-                                       self.module,
-                                       self.temperature,
-                                       self.meas_type,
-                                       self.meas_spec[self.meas_type],
-                                       self.run_type)
-        # TODO see gather input_file_dir
-#        if meas_type == "drscs":
-#            output_file_dir = os.path.join(output_file_dir, self.current)
-        output_fname = os.path.join(output_file_dir, output_file_name)
+    def generate_gather_path(self, base_dir):
+        if self.use_xfel_input_format:
+            run_subdir = "r" + "-r".join(self.runs)
 
-        create_dir(output_file_dir)
+            fdir = os.path.join(base_dir,
+                                run_subdir,
+                                "gather")
 
-        plot_dir = os.path.join(self.output_base_dir,
+            utils.create_dir(output_dir)
+
+            fname = ("{}-AGIPD{}-gathered.h5"
+                     .format(run_subdir.upper(), self.channel))
+
+        else:
+            # define output files
+            fdir = os.path.join(base_dir,
                                 self.module,
                                 self.temperature,
                                 self.meas_type,
-                                "plots",
-                                self.meas_spec[self.meas_type])
-        # TODO see gather input_file_dir
-#        if meas_type == "drscs":
-#            plot_dir = os.path.join(plot_dir, self.current)
-        create_dir(plot_dir)
+                                self.meas_spec,
+                                self.run_type)
+                                #"gather")
+            #for testing
+            #output_base_dir = "/gpfs/exfel/exp/SPB/201701/p002012/scratch/user/kuhnm"
+            #output_subdir = "tmp"
+            #output_dir = os.path.join(output_base_dir,
+            #                          output_subdir,
+            #                          "gather")
+            if self.asic is None:
+                fname = ("{}_{}_{}.h5"
+                         .format(self.module,
+                                 self.meas_type,
+                                 self.meas_spec))
+            else:
+                fname = ("{}_{}_{}_asic{:02d}.h5"
+                         .format(self.module,
+                                 self.meas_type,
+                                 self.meas_spec,
+                                 self.asic))
 
-        pixel_v_list = np.arange(64)
-        pixel_u_list = np.arange(64)
-        mem_cell_list = np.arange(352)
+        return fdir, fname
 
-        # Dark processing was not yet integrated into the new
-        # gather/process structure
-        if self.meas_type == "dark":
-            fileName = os.path.join(input_file_name, input_file_name)
-            safeFileName = os.path.join(output_file_name, output_file_name)
+    def generate_process_path(self, base_dir):
+        today = str(date.today())
 
-            BatchProcessDarkData(fileName, safeFileName)
-        # Xray processing was not yet integrated into the new
-        # gather/process structure
-        elif self.meas_type == "xray":
-            fileName = input_fname
-            safeFileName = output_fname
+        fdir = os.path.join(base_dir,
+                            self.meas_type)
 
-            BatchProcessXRayTubeData(fileName, safeFileName)
+        if self.use_xfel_output_format:
+            fname = "dark_AGIPD{}_xfel_{}.h5".format(self.channel, today)
         else:
-            ParallelProcess(self.asic,
-                            input_fname,
-                            pixel_v_list,
-                            pixel_u_list,
-                            mem_cell_list,
-                            self.n_processes,
-                            self.safety_factor,
-                            output_fname)
+            fname = "dark_AGIPD{}_agipd_{}.h5".format(self.channel, today)
+
+        self.use_cfel_gpfs = False
+        if self.use_cfel_gpfs:
+            fname = ("{}_{}_{}_asic{}_processed.h5"
+                     .format(self.module,
+                             self.meas_type,
+                             self.meas_spec,
+                             str(self.asic).zfill(2)))
+
+            print("process fname", fname)
+
+            fdir = os.path.join(self.output_base_dir,
+                                self.module,
+                                self.temperature,
+                                self.meas_type,
+                                self.meas_spec,
+                                self.run_type)
+
+        return fdir, fname
+
+
+    def run_gather(self):
+        # TODO: concider addition this into output_base_dir (joined) and create subdirs for gathered files
+        self.runs = ["0428", "0429", "0430"]
+        self.runs = ["00012"]
+
+        if self.meas_type == "pcdrs":
+            from gather_base import AgipdGatherPcdrs as Gather
+        else:
+            from gather_base import AgipdGatherBase as Gather
+
+        if self.use_xfel_input_format:
+            self.input_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009"
+            self.output_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm"
+
+            self.channel = 0
+
+        # define input files
+        input_dir, input_file_name = self.generate_raw_path(self.input_base_dir)
+        input_fname = os.path.join(input_dir, input_file_name)
+
+        # define output files
+        output_dir, output_file_name = self.generate_gather_path(self.output_base_dir)
+        utils.create_dir(output_dir)
+        output_fname = os.path.join(output_dir, output_file_name)
+
+        obj = Gather(input_fname,
+                     output_fname,
+                     self.runs,
+                     self.max_part,
+                     True,  # split_asics
+                     self.use_xfel_format)
+
+    def run_process(self):
+
+        if self.meas_type == "dark":
+            from process_dark import AgipdProcessDark as Process
+        elif self.meas_type == "pcdrs":
+            from gather_pcdrs import AgipdProcessPcdrs as Process
+        else:
+            raise Exception("Process is not supported for type {}".format(self.meas_type))
+
+        self.input_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm"
+        self.output_base_dir = input_base_dir
+
+        run_list = ["0428", "0429", "0430"]
+        self.channel = 0
+        print("channel", self.channel)
+
+        # define output files
+        # the input files for processing are the output ones from gather
+        input_dir, input_file_name = self.generate_gather_path(self.input_base_dir)
+        input_fname = os.path.join(input_dir, input_file_name)
+
+        # define output files
+        output_dir, output_file_name = self.generate_process_path(self.output_base_dir)
+        utils.create_dir(output_dir)
+        output_fname = os.path.join(output_dir, output_file_name)
+
+        obj = Process(input_fname,
+                      output_fname,
+                      run_list,
+                      use_xfel_format)
+
+#            ParallelProcess(self.asic,
+#                            input_fname,
+#                            np.arange(64),
+#                            np.arange(64),
+#                            np.arange(352),
+#                            self.n_processes,
+#                            self.safety_factor,
+#                            output_fname)
 
     def run_merge_drscs(self):
 
@@ -441,27 +317,62 @@ class Analyse():
                       self.n_processes,
                       self.current_list)
 
-if __name__ == "__main__":
+    def run_correct(self, run_number):
+        data_fname_prefix = "RAW-{}-AGIPD{}*".format(run_number.upper(), module)
+        data_fname = os.path.join(self.input_dir,
+                                  run_number,
+                                  data_fname_prefix)
 
-    args = get_arguments()
+        data_parts = glob.glob(data_fname)
+        print("data_parts", data_parts)
 
-    run_type = args.run_type
-    meas_type = args.measurement
-    input_base_dir = args.input_dir
-    output_base_dir = args.output_dir
-    n_processes = args.n_processes
-    module = args.module
-    temperature = args.temperature
-    current = args.current
-    tint = args.tint
-    element = args.element
-    asic = args.asic
-    asic_list = args.asic_list
-    column_spec = args.column_spec
-    reduced_columns = args.reduced_columns
-    max_part = args.max_part
-    safety_factor = 1000
+        for data_fname in data_parts:
+            part = int(data_fname[-8:-3])
+            print("part", part)
 
-    Analyse(run_type, meas_type, input_base_dir, output_base_dir, n_processes,
-            module, temperature, current, tint, element, asic, asic_list,
-            safety_factor, column_spec, reduced_columns, max_part)
+            if use_xfel_format:
+                fname_prefix = "dark_AGIPD{}_xfel".format(module)
+            else:
+                fname_prefix = "dark_AGIPD{}_agipd_".format(module)
+            dark_fname_prefix = os.path.join(self.dark_dir, fname_prefix)
+            dark_fname = glob.glob("{}*".format(dark_fname_prefix))
+            if dark_fname:
+                dark_fname = dark_fname[0]
+            else:
+                print("No dark constants found. Quitting.")
+                sys.exit(1)
+            print(dark_fname)
+
+            if use_xfel_format:
+                fname_prefix = "gain_AGIPD{}_xfel".format(module)
+            else:
+                fname_prefix = "gain_AGIPD{}_agipd_".format(module)
+
+            gain_fname_prefix = os.path.join(self.gain_dir, fname_prefix)
+            gain_fname = glob.glob("{}*".format(gain_fname_prefix))
+            if gain_fname:
+                gain_fname = gain_fname[0]
+            else:
+                print("No gain constants found.")
+                #print("No gain constants found. Quitting.")
+                #sys.exit(1)
+
+            output_dir = os.path.join(self.output_dir, run_number)
+            create_dir(output_dir)
+
+            fname = "corrected_AGIPD{}-S{:05d}.h5".format(module, part)
+            output_fname = os.path.join(output_dir, fname)
+
+            obj = Correct(data_fname,
+                          dark_fname,
+                          None,
+                          #gain_fname,
+                          output_fname,
+                          self.energy,
+                          use_xfel_format))
+
+    def cleanup(self):
+        # remove gather dir
+        #self.output_dir_gather
+        pass
+

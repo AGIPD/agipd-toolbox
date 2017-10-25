@@ -32,10 +32,10 @@ def get_arguments():
                         help="Input dir to read the results from")
     parser.add_argument("--dark_dir",
                         type=str,
-                        help="Dir where the dark constants can be found")
+                        help="Dir where the dark constants can be found (for correction)")
     parser.add_argument("--gain_dir",
                         type=str,
-                        help="Dir where the gain constants can be found")
+                        help="Dir where the gain constants can be found (for correction)")
     parser.add_argument("--output_dir",
                         type=str,
                         required=True,
@@ -72,7 +72,8 @@ def get_arguments():
 
 
 class StartAnalyse():
-    def __init__(self, ana_type, run_list, input_dir, dark_dir, gain_dir, output_dir, energy, use_xfel_format):
+    def __init__(self, ana_type, run_list, input_dir, dark_dir, gain_dir,
+                 output_dir, energy, use_xfel_format):
         self.ana_type = ana_type
         self.run_list = run_list
         self.input_dir = input_dir

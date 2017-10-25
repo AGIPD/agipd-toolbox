@@ -123,6 +123,16 @@ def load_file_content(fname, excluded=[]):
 
     return file_content
 
+
+def write_content(file_content, fname, prefix=""):
+    f = h5py.File(fname, "w")
+
+    for key in file_content:
+        f.create_dataset(prefix + "/"+ key, data=file_content[key])
+
+    f.close()
+
+
 def setup_logging(name, level):
 
     if level.lower() == "critical":
