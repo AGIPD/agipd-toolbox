@@ -15,7 +15,7 @@ SRC_PATH = os.path.join(BASE_PATH, "src")
 if SRC_PATH not in sys.path:
     sys.path.insert(0, SRC_PATH)
 
-import utils
+import utils  # noqa E402
 
 
 class AgipdProcessBase():
@@ -27,12 +27,12 @@ class AgipdProcessBase():
 
         self.runs = runs
 
-        #TODO extract n_cols and n_rows from raw_shape
+        # TODO extract n_cols and n_rows from raw_shape
         self.n_rows = 128
         self.n_cols = 512
 
-        #n_xpixs = 128
-        #n_ypixs = 512
+#        n_xpixs = 128
+#        n_ypixs = 512
 
         f = None
         try:

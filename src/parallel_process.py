@@ -1,5 +1,4 @@
 import builtins
-import copy
 from multiprocessing import Pool
 import os
 import time
@@ -8,26 +7,30 @@ import h5py
 import numpy as np
 
 from .util import check_file_exists
+import process
 
 debug_mode = False
+
+
 def print(*args):
     if debug_mode:
         builtins.print(args)
 
+
 def exec_process(asic, input_fname, pixel_v_list, pixel_u_list,
                  mem_cell_list, safety_factor, input_file_handle):
 
-    cal = ProcessDrscs(asic,
-                       input_fname=input_fname,
-                       safety_factor=safety_factor,
-                       input_handle=input_file_handle)
+    cal = process.ProcessDrscs(asic,
+                               input_fname=input_fname,
+                               safety_factor=safety_factor,
+                               input_handle=input_file_handle)
 
     cal.run(pixel_v_list, pixel_u_list, mem_cell_list)
 
     return cal.result, pixel_v_list, pixel_u_list, mem_cell_list
 
 
-class ParallelProcess()i:
+class ParallelProcess():
     def __init__(self, asic, input_fname, pixel_v_list, pixel_u_list,
                  mem_cell_list, n_processes, safety_factor, output_fname,
                  gather_file_handle, reuse_results):
@@ -72,15 +75,15 @@ class ParallelProcess()i:
             rest = len(self.pixel_v_list) % self.n_processes
 
             # distribute the workload
-            stop = len(self.pixel_v_list) - size*(rest+1)
+            stop = len(self.pixel_v_list) - size * (rest + 1)
             self.process_lists = [self.pixel_v_list[i:i + size]
                                   for i in range(0, stop, size)]
 
             # if list to split is not a multiple of size, the rest is equaly
             # distributed over the remaining processes
-            start = len(self.process_lists)*size
+            start = len(self.process_lists) * size
             stop = len(self.pixel_v_list)
-            self.process_lists += [self.pixel_v_list[i:i+size+1]
+            self.process_lists += [self.pixel_v_list[i:i + size + 1]
                                    for i in range(start, stop, size + 1)]
 
         print("process_lists")
@@ -101,9 +104,12 @@ class ParallelProcess()i:
         self.dim_u = self.pixel_u_list.max() + 1
         self.dim_mem_cell = self.mem_cell_list.max() + 1
 
-        self.result = initiate_result(self.dim_v, self.dim_u,
-                                      self.dim_mem_cell, n_gain_stages,
-                                      n_intervals, n_diff_changes_stored)
+        self.result = process.initiate_result(self.dim_v,
+                                              self.dim_u,
+                                              self.dim_mem_cell,
+                                              n_gain_stages,
+                                              n_intervals,
+                                              n_diff_changes_stored)
 
     def run(self):
         if self.do_process:
@@ -125,12 +131,16 @@ class ParallelProcess()i:
                                           self.input_handle)))
 
                 for process_result in result_list:
-                    p_result, v_list, u_list, mem_cell_list = process_result.get()
+                    p_result, v_list, u_list, mem_cell_list = (
+                        process_result.get())
 
                     if self.result is None:
                         self.initiate_result(p_result)
 
-                    self.integrate_result(p_result, v_list, u_list, mem_cell_list)
+                    self.integrate_result(p_result,
+                                          v_list,
+                                          u_list,
+                                          mem_cell_list)
 
             finally:
                 pool.terminate()
@@ -230,26 +240,29 @@ class ParallelProcess()i:
 
     def read_data(self):
         self.result = {}
-        source_file = h5py.File(self.output_fname, "r")
+        src_file = h5py.File(self.output_fname, "r")
 
         try:
-            for key in source_file["/"].keys():
+            for key in src_file["/"].keys():
                 source_key = "/" + key
-                if isinstance(source_file[source_key], h5py.Dataset):
-                    self.result[key] = source_file[source_key][()]
+                if isinstance(src_file[source_key], h5py.Dataset):
+                    self.result[key] = src_file[source_key][()]
                 else:
-                    if key not in self.result: self.result[key] = dict()
-                    for subkey in source_file[source_key].keys():
-                        source_key2 = source_key + "/" + subkey
-                        if isinstance(source_file[source_key2], h5py.Dataset):
-                            self.result[key][subkey] = source_file[source_key2][()]
+                    if key not in self.result:
+                        self.result[key] = dict()
+                    for subkey in src_file[source_key].keys():
+                        src_key2 = source_key + "/" + subkey
+                        if isinstance(src_file[src_key2], h5py.Dataset):
+                            self.result[key][subkey] = src_file[src_key2][()]
                         else:
-                            if subkey not in self.result[key]: self.result[key][subkey] = dict()
-                            for gain in source_file[source_key2].keys():
-                                source_key3 = source_key2 + "/" + gain
-                                self.result[key][subkey][gain] = source_file[source_key3][()]
+                            if subkey not in self.result[key]:
+                                self.result[key][subkey] = dict()
+                            for gain in src_file[src_key2].keys():
+                                src_key3 = src_key2 + "/" + gain
+                                self.result[key][subkey][gain] = (
+                                    src_file[src_key3][()])
         finally:
-            source_file.close()
+            src_file.close()
 
     def write_data(self):
         if self.result is None:

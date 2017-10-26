@@ -31,7 +31,7 @@ def check_file_exists(file_name):
 
 def get_module_order():
     channel_order = [[12, 13, 14, 15, 8, 9, 10, 11],
-                    [0, 1, 2, 3, 4, 5, 6, 7]]
+                     [0, 1, 2, 3, 4, 5, 6, 7]]
 
     return channel_order
 
@@ -72,7 +72,8 @@ def convert_to_agipd_format(module, data):
         data = (data[:-2] + (data[-1], data[-2]))
 
     else:
-        raise Exception("Convertion failed: type {} not supported".format(type(data)))
+        raise Exception("Convertion failed: type {} not supported"
+                        .format(type(data)))
 
     return data
 
@@ -104,7 +105,8 @@ def convert_to_xfel_format(channel, data):
         data = (data[:-2] + (data[-1], data[-2]))
 
     else:
-        raise Exception("Convertion failed: type {} not supported".format(type(data)))
+        raise Exception("Convertion failed: type {} not supported"
+                        .format(type(data)))
 
     return data
 
@@ -128,7 +130,7 @@ def write_content(file_content, fname, prefix=""):
     f = h5py.File(fname, "w")
 
     for key in file_content:
-        f.create_dataset(prefix + "/"+ key, data=file_content[key])
+        f.create_dataset(prefix + "/" + key, data=file_content[key])
 
     f.close()
 
@@ -155,16 +157,16 @@ def setup_logging(name, level):
                   '[%(asctime)s] > %(name)-12s %(levelname)-8s %(message)s',
                   'datefmt': '%Y-%m-%d %H:%M:%S'}
 
-            },
+        },
         handlers={
             'h': {'class': 'logging.StreamHandler',
                   'formatter': 'f',
                   'level': log_level}
-            },
+        },
         root={
             'handlers': ['h'],
             'level': log_level,
-            },
+        },
     )
 
     dictConfig(logging_config)

@@ -1,7 +1,5 @@
-import h5py
 import sys
 import numpy as np
-import time
 import os
 
 from process_base import AgipdProcessBase
@@ -10,14 +8,12 @@ from process_base import AgipdProcessBase
 class AgipdProcessPcdrs(AgipdProcessBase):
     def __init__(self, input_fname, output_fname, runs, use_xfel_format=False):
 
-        #self.fit_interval = [[40,120], [400,550]]
-        self.fit_interval = [[42,122], [402,552]]
+        self.fit_interval = [[42, 122], [402, 552]]
         self.n_offsets = 2
 
         super().__init__(input_fname, output_fname, runs, use_xfel_format)
 
     def calculate_(self):
-        #print("Start loading data from", self.input_fname)
         analog, digital = self.load_data(self.input_fname)
         mc = 0
         ypix = 0
@@ -26,7 +22,8 @@ class AgipdProcessPcdrs(AgipdProcessBase):
         print()
         try:
             x = np.arange(*self.fit_interval[0])
-            y = analog[slice(*self.fit_interval[0]), mc, ypix, xpix].astype(np.float)
+            y = analog[slice(*self.fit_interval[0]),
+                       mc, ypix, xpix].astype(np.float)
             res = self.fit_linear(x, y)
 
             print("slope", res[0][0])
@@ -41,13 +38,21 @@ class AgipdProcessPcdrs(AgipdProcessBase):
     def initiate(self):
         self.n_ypixs = self.n_rows
         self.n_xpixs = self.n_cols
-        # n_memcells is set in init of base class thus has to be overwritten here
+        # n_memcells is set in init of base class thus has to be overwritten
+        # here
         self.n_memcells = 32
-        print("n_memcell, n_ypixs, n_xpixs", self.n_memcells, self.n_xpixs, self.n_ypixs)
+        print("n_memcell={}, n_ypixs={}, n_xpixs={}"
+              .format(self.n_memcells, self.n_xpixs, self.n_ypixs))
 
         self.shapes = {
-            "offset": (self.n_offsets, self.n_memcells, self.n_rows, self.n_cols),
-            "threshold": (self.n_offsets - 1, self.n_memcells, self.n_rows, self.n_cols)
+            "offset": (self.n_offsets,
+                       self.n_memcells,
+                       self.n_rows,
+                       self.n_cols),
+            "threshold": (self.n_offsets - 1,
+                          self.n_memcells,
+                          self.n_rows,
+                          self.n_cols)
         }
 
         self.result = {
@@ -74,7 +79,6 @@ class AgipdProcessPcdrs(AgipdProcessBase):
         }
 
     def calculate(self):
-        #print("Start loading data from", self.input_fname)
         analog, digital = self.load_data(self.input_fname)
 
         print("Start fitting")
@@ -85,15 +89,19 @@ class AgipdProcessPcdrs(AgipdProcessBase):
                     for xpix in range(self.n_xpixs):
                         try:
                             x = np.arange(*self.fit_interval[i])
-                            y = analog[slice(*self.fit_interval[i]), mc, ypix, xpix].astype(np.float)
+                            y = analog[slice(*self.fit_interval[i]),
+                                       mc, ypix, xpix].astype(np.float)
                             res = self.fit_linear(x, y)
 
-                            gain_mean = np.mean(digital[slice(*self.fit_interval[i]),
-                                                        mc, ypix, xpix])
+                            gain_mean = np.mean(
+                                digital[slice(*self.fit_interval[i]),
+                                        mc, ypix, xpix])
 
-                            self.result["slope"]["data"][i, mc, ypix, xpix] = res[0][0]
-                            self.result["offset"]["data"][i, mc, ypix, xpix] = res[0][1]
-                            self.result["gainlevel_mean"]["data"][i, mc, ypix, xpix] = gain_mean
+                            res = self.result
+                            idx = (i, mc, ypix, xpix)
+                            res["slope"]["data"][idx] = res[0][0]
+                            res["offset"]["data"][idx] = res[0][1]
+                            res["gainlevel_mean"]["data"][idx] = gain_mean
                         except:
                             print("memcell, xpix, ypix", mc, ypix, xpix)
                             print("analog.shape", analog.shape)
@@ -107,7 +115,6 @@ class AgipdProcessPcdrs(AgipdProcessBase):
 
 
 if __name__ == "__main__":
-    import os
     import multiprocessing
     from datetime import date
 
@@ -129,33 +136,38 @@ if __name__ == "__main__":
     output_base_dir = input_base_dir
     run_list = ["r0488-r0489-r0490-r0491-r0492-r0493-r0494-r0495"]
     run_type = "pcdrs"
+
     use_xfel_format = False
-    #use_xfel_format = True
+#    use_xfel_format = True
 
     today = str(date.today())
 
     number_of_runs = 1
     modules_per_run = 1
-    #number_of_runs = 2
-    #modules_per_run = 16//number_of_runs
+#    number_of_runs = 2
+#    modules_per_run = 16//number_of_runs
     process_list = []
     for j in range(number_of_runs):
         for i in range(modules_per_run):
-            channel = str(j*modules_per_run+i).zfill(2)
+            channel = str(j * modules_per_run + i).zfill(2)
             print("channel", channel)
 
+            input_file_name = (run_list[0].upper() +
+                               "-AGIPD{}-gathered.h5".format(channel))
             input_fname = os.path.join(input_base_dir,
                                        run_list[0],
                                        "gather",
-                                       run_list[0].upper() + "-AGIPD{}-gathered.h5".format(channel))
+                                       input_file_name)
 
             output_dir = os.path.join(output_base_dir, run_type)
             utils.create_dir(output_dir)
 
             if use_xfel_format:
-                fname = "{}_AGIPD{}_xfel_{}.h5".format(run_type, channel, today)
+                fname = ("{}_AGIPD{}_xfel_{}.h5"
+                         .format(run_type, channel, today))
             else:
-                fname = "{}_AGIPD{}_agipd_{}.h5".format(run_type, channel, today)
+                fname = ("{}_AGIPD{}_agipd_{}.h5"
+                         .format(run_type, channel, today))
 
             output_fname = os.path.join(output_dir, fname)
 

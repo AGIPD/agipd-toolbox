@@ -1,14 +1,16 @@
 import builtins
-import copy
 import os
 import time
 
 import h5py
 import numpy as np
+import traceback
 
 from .util import check_file_exists
 
 debug_mode = False
+
+
 def print(*args):
     if debug_mode:
         builtins.print(args)
@@ -243,7 +245,6 @@ class ProcessDrscs():
         # 1    Failed to calculate residual
         ###
 
-
         if plot_prefix:
             print("plot_prefix {}".format(plot_prefix))
             self.plot_file_prefix = "{}_asic{}".format(plot_prefix,
@@ -297,9 +298,8 @@ class ProcessDrscs():
         # +1 because counting starts with zero
         self.dim_v = self.pixel_v_list.max() - self.pixel_v_list[0] + 1
         self.dim_u = self.pixel_u_list.max() - self.pixel_u_list[0] + 1
-        self.dim_mem_cell = (self.mem_cell_list.max()
-                             - self.mem_cell_list[0]
-                             + 1)
+        self.dim_mem_cell = (self.mem_cell_list.max() -
+                             self.mem_cell_list[0] + 1)
 
         # initiate
         self.result = initiate_result(self.dim_v,
@@ -515,7 +515,7 @@ class ProcessDrscs():
         if self.use_debug:
             print("diff_changes_idx")
             for i in self.diff_changes_idx:
-                print("{} : {}".format(i, data_a[i:i+2]))
+                print("{} : {}".format(i, data_a[i:i + 2]))
 
         gain_intervals = [[0, 0]]
 
@@ -536,7 +536,8 @@ class ProcessDrscs():
             pot_start = self.diff_changes_idx[i] + 1
 
             l = prev_stop - gain_intervals[-1][0]
-            range_len_tmp = int(np.ceil(l*self.region_range_in_percent / 100))
+            range_len_tmp = int(np.ceil(l * self.region_range_in_percent /
+                                        100))
             if range_len_tmp != 0:
                 region_range_before = range_len_tmp
             # the region before would be empty
@@ -612,7 +613,7 @@ class ProcessDrscs():
 
                 # if the slope is too high the mean is falsified by this
                 condition = (np.max(roi_before) - np.min(roi_before) >
-                             self.safety_factor*2)
+                             self.safety_factor * 2)
                 if (roi_before.size != 0 and condition):
                     # cut the region of interest into half
                     new_region = roi_before[roi_before.size // 2:]
@@ -670,8 +671,8 @@ class ProcessDrscs():
                             if last_iteration_borders == intv:
                                 if iteration_check >= 10:
                                     error_code[self.current_idx] = 4
-                                    raise InfiniteLoopNumberError(
-                                            "Breaking infinite loop")
+                                    msg = "Breaking infinite loop"
+                                    raise InfiniteLoopNumberError(msg)
                                 iteration_check += 1
                             else:
                                 last_iteration_borders = intv
@@ -709,8 +710,8 @@ class ProcessDrscs():
                                 if last_iteration_borders == intv:
                                     if iteration_check >= 10:
                                         error_code[self.current_idx] = 4
-                                        raise InfiniteLoopNumberError(
-                                                "Breaking infinite loop")
+                                        msg = "Breaking infinite loop"
+                                        raise InfiniteLoopNumberError(msg)
                                     iteration_check += 1
                                 else:
                                     last_iteration_borders = intv
@@ -740,8 +741,8 @@ class ProcessDrscs():
                             if last_iteration_borders == intv:
                                 if iteration_check >= 10:
                                     error_code[self.current_idx] = 4
-                                    raise InfiniteLoopNumberError(
-                                            "Breaking infinite loop")
+                                    msg = "Breaking infinite loop"
+                                    raise InfiniteLoopNumberError(msg)
                                 iteration_check += 1
                             else:
                                 last_iteration_borders = intv
@@ -923,8 +924,8 @@ class ProcessDrscs():
         if cut_off_ends:
             tmp = np.arange(interval[0], interval[1])
             # 100.0 is needed because else it casts it as ints, i.e. 10/100=>0
-            lower_border = int(tmp[0] + len(tmp) * self.percent/100.0)
-            upper_border = int(tmp[0] + len(tmp) * (1 - self.percent/100.0))
+            lower_border = int(tmp[0] + len(tmp) * self.percent / 100.0)
+            upper_border = int(tmp[0] + len(tmp) * (1 - self.percent / 100.0))
         else:
             lower_border = interval[0]
             upper_border = interval[1]
@@ -1075,7 +1076,6 @@ class ProcessDrscs():
         x = self.x_values[gain][interval_idx][indices_to_scale]
         # shift x value to root, scale, shift back
         # e.g. x_new = (x_old - 200) * 10 + 200
-        scaled = ((x - self.scaling_point)
-                  * self.scaling_factor
-                  + self.scaling_point)
+        scaled = ((x - self.scaling_point) * self.scaling_factor +
+                  self.scaling_point)
         self.x_values[gain][interval_idx][indices_to_scale] = scaled

@@ -16,7 +16,7 @@ SRC_PATH = os.path.join(BASE_PATH, "src")
 if SRC_PATH not in sys.path:
     sys.path.insert(0, SRC_PATH)
 
-import utils
+import utils  # noqa E402
 
 
 class AgipdGatherBase():
@@ -35,7 +35,7 @@ class AgipdGatherBase():
 
         self.use_xfel_format = use_xfel_format
 
-        #TODO extract n_cols and n_rows from raw_shape
+        # TODO extract n_cols and n_rows from raw_shape
         self.n_rows = 128
         self.n_cols = 512
         self.n_memcells = None
@@ -43,7 +43,7 @@ class AgipdGatherBase():
 
         # how the asics are located on the module
         self.asic_mapping = [[16, 15, 14, 13, 12, 11, 10, 9],
-                             [1,   2,  3,  4,  5,  6,  7, 8]]
+                             [1, 2, 3, 4, 5, 6, 7, 8]]
 
         self.analog = None
         self.digital = None
@@ -87,7 +87,7 @@ class AgipdGatherBase():
         # removet the part section
         prefix = prefix[:-10]
         # use the first run number to determine number of parts
-        run_number=self.runs[0]
+        run_number = self.runs[0]
         prefix = prefix.format(run_number=run_number)
         print("prefix={}".format(prefix))
 
@@ -95,7 +95,6 @@ class AgipdGatherBase():
 
         self.n_parts = self.max_part or len(part_files)
         print("n_parts {}".format(self.n_parts))
-        #self.n_parts = 2
 
     def intiate(self):
         if self.use_xfel_format:
@@ -136,14 +135,11 @@ class AgipdGatherBase():
 
             # xfel format has swapped rows and cols
             self.raw_shape = (self.n_memcells, 2, 2, self.n_cols, self.n_rows)
-            #self.raw_tmp_shape = (1, self.n_memcells, 2, self.n_rows, self.n_cols)
 
             self.channel = int(k.split("CH")[0])
             self.in_wing2 = utils.located_in_wing2(self.channel)
 
         else:
-            filename_template = "{prefix}_col{column}"
-
             self.data_path = "entry/instrument/detector/data"
             self.digital_data_path = "entry/instrument/detector/data_digital"
 
@@ -166,16 +162,14 @@ class AgipdGatherBase():
             self.max_pulses = 704
             self.n_memcells = 352
             # xray
-            #self.max_pulses = 2
-            #self.n_memcells = 1
+#            self.max_pulses = 2
+#            self.n_memcells = 1
 
             self.get_number_of_frames()
             print("n_frames {}".format(self.n_frames))
             print("n_frames_total {}".format(self.n_frames_total))
 
-
             self.raw_shape = (self.n_memcells, 2, self.n_rows, self.n_cols)
-            #self.raw_tmp_shape = (1 * self.n_memcells * 2, self.n_rows, self.n_cols)
 
         self.define_needed_data_paths()
 
@@ -184,7 +178,6 @@ class AgipdGatherBase():
 
         # tmp data is already converted into agipd format
         self.raw_tmp_shape = (self.n_frames_total, self.n_rows, self.n_cols)
-        #self.raw_tmp_shape = (int(self.raw_tmp_shape[0] * self.n_frames_total),) + self.raw_tmp_shape[1:]
 
         self.tmp_shape = (-1, self.n_memcells, 2, self.n_rows, self.n_cols)
 
@@ -216,7 +209,8 @@ class AgipdGatherBase():
                     if f is not None:
                         f.close()
 
-                self.max_pulses = int(np.max((np.max(pulse_count), self.max_pulses)))
+                self.max_pulses = int(np.max((np.max(pulse_count),
+                                              self.max_pulses)))
 
                 # max_pulses has to be an odd number because every memory cell
                 # need analog and digital data
@@ -233,8 +227,8 @@ class AgipdGatherBase():
                 fname = self.input_fname.format(run_number=run_number, part=0)
                 f = h5py.File(fname, "r", libver="latest", drivers="core")
 
-                # TODO: verify that the shape is always right and not dependant on
-                #       frame loss
+                # TODO: verify that the shape is always right and not
+                #       dependant on frame loss
                 source_shape = f[self.data_path].shape
                 exp_total_frames = f[self.frame_number_path][0]
 
@@ -262,9 +256,9 @@ class AgipdGatherBase():
         self.load_data()
 
         print("Start saving")
-        save_file = h5py.File(self.output_fname, "w", libver='latest')
-        save_file.create_dataset("analog", data=self.analog, dtype=np.int16)
-        save_file.create_dataset("digital", data=self.digital, dtype=np.int16)
+        f = h5py.File(self.output_fname, "w", libver='latest')
+        f.create_dataset("analog", data=self.analog, dtype=np.int16)
+        f.create_dataset("digital", data=self.digital, dtype=np.int16)
 
         # save metadata from original files
         idx = 0
@@ -272,20 +266,20 @@ class AgipdGatherBase():
                 gname = "metadata_{}".format(idx)
 
                 name = "{}/source".format(gname)
-                dset_metadata = save_file.create_dataset(name, data=set_name)
+                f.create_dataset(name, data=set_name)
 
                 for key, value in iter(set_value.items()):
                     try:
                         name = "{}/{}".format(gname, key)
-                        dset_metadata = save_file.create_dataset(name, data=value)
+                        f.create_dataset(name, data=value)
                     except:
                         print("Error in", name, value.dtype)
                         raise
                 idx += 1
         print("Saving done")
 
-        save_file.flush()
-        save_file.close()
+        f.flush()
+        f.close()
 
         print("gather took time:", time.time() - totalTime, "\n\n")
 
@@ -314,27 +308,32 @@ class AgipdGatherBase():
                 raw_data_shape = file_content[self.data_path].shape
                 raw_data = file_content[self.data_path]
 
-                self.n_frames_per_file = int(raw_data_shape[0] // 2 // self.n_memcells)
+                self.n_frames_per_file = int(
+                    raw_data_shape[0] // 2 // self.n_memcells)
 
                 print("raw_data.shape", raw_data.shape)
                 print("self.n_frames_per_file", self.n_frames_per_file)
                 print("self.raw_shape", self.raw_shape)
 
-                # currently the splitting in digital and analog does not work for XFEL
-                # -> all data is in the first entry of the analog/digital dimension
+                # currently the splitting in digital and analog does not work
+                # for XFEL
+                # -> all data is in the first entry of the analog/digital
+                #    dimension
                 if self.use_xfel_format:
 
-                    n_pulses = file_content[self.pulse_count_path].astype(np.int16)
+                    n_pulses = (file_content[self.pulse_count_path]
+                                .astype(np.int16))
                     print("First 10 burst lengths: {} (min={}, max={})"
-                          .format(n_pulses[:10], np.min(n_pulses), np.max(n_pulses)))
+                          .format(n_pulses[:10],
+                                  np.min(n_pulses),
+                                  np.max(n_pulses)))
 
                     raw_data = raw_data[:, 0, ...]
 
                     raw_data = utils.convert_to_agipd_format(self.channel,
-                                                            raw_data)
+                                                             raw_data)
 
                     source_offset = 0
-                    old_target_offset = target_offset
                     print("n_bursts", n_pulses.size)
                     for burst in n_pulses:
                         source_idx = (slice(source_offset,
@@ -366,10 +365,6 @@ class AgipdGatherBase():
         print("tmp_data.shape", tmp_data.shape)
 
         tmp_data.shape = self.tmp_shape
-        #if self.use_xfel_format:
-        #    tmp_data.shape = self.tmp_shape
-        #if not self.use_xfel_format:
-        #    tmp_data.shape = (self.n_frames,) + self.tmp_shape
         print("tmp_data.shape", tmp_data.shape)
 
         self.analog = tmp_data[:, :, 0, ...]
@@ -450,7 +445,8 @@ class AgipdGatherBase():
         print("target_index_full_size {}".format(self.target_index_full_size))
         print("source_index {}".format(self.source_index))
 
-        # check to see the values of the sequence number in the first frame loss gap
+        # check to see the values of the sequence number in the first frame
+        # loss gap
         if len(self.target_index_full_size) > 1:
             start = self.source_index[0][1] - 1
             stop = self.source_index[1][0] + 2
@@ -482,37 +478,39 @@ if __name__ == "__main__":
 
     module_mapping = {
         "M305": "00",
-        }
+    }
 
     use_xfel_format = True
-    #use_xfel_format = False
+#    use_xfel_format = False
 
     if use_xfel_format:
         base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
         run_list = [["0428"], ["0429"], ["0430"]]
 
-        #base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
-        #run_list = [["0488"]]
+#        base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
+#        run_list = [["0488"]]
 
-        #base_path = "/gpfs/exfel/exp/SPB/201701/p002012"
-        #run_list = [["0007"]]
+#        base_path = "/gpfs/exfel/exp/SPB/201701/p002012"
+#        run_list = [["0007"]]
 
         subdir = "scratch/user/kuhnm"
 
-        #number_of_runs = 1
-        #modules_per_run = 1
+#        number_of_runs = 1
+#        modules_per_run = 1
         number_of_runs = 2
-        modules_per_run = 16//number_of_runs
+        modules_per_run = 16 // number_of_runs
         for runs in run_list:
             process_list = []
             for j in range(number_of_runs):
                 for i in range(modules_per_run):
-                    channel = str(j*modules_per_run+i).zfill(2)
-                    input_fname = os.path.join(
-                        base_path,
-                        "raw",
-                        "r{run_number}",
-                        "RAW-R{run_number}-" + "AGIPD{}".format(channel) + "-S{part:05d}.h5")
+                    channel = str(j * modules_per_run + i).zfill(2)
+                    input_file_name = ("RAW-R{run_number}-" +
+                                       "AGIPD{}".format(channel) +
+                                       "-S{part:05d}.h5")
+                    input_fname = os.path.join(base_path,
+                                               "raw",
+                                               "r{run_number}",
+                                               input_file_name)
 
                     run_subdir = "r" + "-r".join(runs)
                     output_dir = os.path.join(base_path,
@@ -520,9 +518,11 @@ if __name__ == "__main__":
                                               run_subdir,
                                               "gather")
                     utils.create_dir(output_dir)
-                    output_fname = os.path.join(
-                        output_dir,
-                        "{}-AGIPD{}-gathered.h5".format(run_subdir.upper(), channel))
+
+                    output_file_name = ("{}-AGIPD{}-gathered.h5"
+                                        .format(run_subdir.upper(), channel))
+                    output_fname = os.path.join(output_dir,
+                                                output_file_name)
 
                     p = multiprocessing.Process(target=AgipdGatherBase,
                                                 args=(input_fname,
@@ -544,7 +544,7 @@ if __name__ == "__main__":
 #        module = "M317_m2"
 #        runs = ["00001"]
 
-         # no frame loss
+        # no frame loss
         in_subdir = "raw/315-304-309-314-316-306-307/temperature_m25C/dark"
         module = "M304_m2"
         runs = ["00012"]
@@ -558,8 +558,8 @@ if __name__ == "__main__":
         input_file_name = ("{}_{}_{}_"
                            .format(module,
                                    meas_type,
-                                   meas_spec[meas_type])
-                           + "{run_number}_part{part:05d}.nxs")
+                                   meas_spec[meas_type]) +
+                           "{run_number}_part{part:05d}.nxs")
         input_fname = os.path.join(in_base_path,
                                    in_subdir,
                                    input_file_name)

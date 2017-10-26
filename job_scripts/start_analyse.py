@@ -1,9 +1,16 @@
 import os
 import sys
 import argparse
-import datetime
-import time
-import numpy as np
+import multiprocessing
+from analuse import Analyse
+
+BASE_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+print("BASE_PATH", BASE_PATH)
+SRC_PATH = os.path.join(BASE_PATH, "src")
+
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
+
 
 def get_arguments():
     parser = argparse.ArgumentParser()
@@ -41,7 +48,8 @@ def get_arguments():
                         required=True,
                         type=int,
                         help="Safty factor used in the determination of the "
-                             "gain stage changes of the analog signal (used in drscs)")
+                             "gain stage changes of the analog signal "
+                             "(used in drscs)")
     parser.add_argument("--run_type",
                         type=str,
                         required=True,
@@ -50,8 +58,8 @@ def get_arguments():
     parser.add_argument("--type",
                         type=str,
                         required=True,
-                        choices=["dark", "xray", "clamped_gain", "pcdrs", "drscs",
-                                 "drscs_dark", "correct"],
+                        choices=["dark", "xray", "clamped_gain", "pcdrs",
+                                 "drscs", "drscs_dark", "correct"],
                         help="Which type to run: \n"
                              "dark: generating the dark constants\n"
                              "xray"
@@ -116,9 +124,9 @@ def get_arguments():
         print("The meas_spec must be defined!")
         sys.exit(1)
 
-
     if args.type == "dark" and (len(args.run_list) != 3):
-        print("Runs for all 3 gain stages are required to calculate dark constants. Quitting.")
+        print("Runs for all 3 gain stages are required to calculate dark "
+              "constants. Quitting.")
         sys.exit(1)
 
     return args

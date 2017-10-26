@@ -1,6 +1,5 @@
 import glob
 import os
-from textwrap import dedent
 import time
 
 import h5py
@@ -43,7 +42,7 @@ class AgipdDynamicRangeGatherSingleAsic():
 
         # how the asics are located on the module
         self.asic_mapping = [[16, 15, 14, 13, 12, 11, 10, 9],
-                             [1,   2,  3,  4,  5,  6,  7, 8]]
+                             [1, 2, 3, 4, 5, 6, 7, 8]]
 
         #                       [rows, columns]
         self.asics_per_module = [len(self.asic_mapping),
@@ -188,7 +187,7 @@ class AgipdDynamicRangeGatherSingleAsic():
         for i, index_list in enumerate(indices):
             if len(index_list) < 1:
                 msg = ("Too few indeces found for col{}\n"
-                        .format(self.column_specs[i]))
+                       .format(self.column_specs[i]))
                 raise RuntimeError(msg)
             elif len(index_list) > 1:
                 msg = "More than one index found: {}\n".format(index_list)
@@ -247,7 +246,8 @@ class AgipdDynamicRangeGatherSingleAsic():
 
         if (source_shape[1] != self.module_h and
                 source_shape[2] != self.module_l):
-            msg = "Shape of file {} does not match requirements\n".format(fname)
+            msg = ("Shape of file {} does not match requirements\n"
+                   .format(fname))
             msg += "source_shape = {}".format(source_shape)
             raise RuntimeError(msg)
 
@@ -268,11 +268,11 @@ class AgipdDynamicRangeGatherSingleAsic():
             if source_file is not None:
                 source_file.close()
 
-        self.expected_nimages_per_file = (len(self.seq_number)
+        self.expected_nimages_per_file = (len(self.seq_number) +
                                           # for the very first file
                                           # total_lost_frames was not yet
                                           # aggregated
-                                          + total_lost_frames
+                                          + total_lost_frames -
                                           - number_of_frames_with_pkg_loss)
 
         self.charges = int(self.expected_total_images / 2 / self.mem_cells)

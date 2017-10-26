@@ -1,7 +1,5 @@
-import h5py
 import sys
 import numpy as np
-import time
 import os
 
 from process_base import AgipdProcessBase
@@ -15,11 +13,17 @@ class AgipdProcessDark(AgipdProcessBase):
         super().__init__(input_fname, output_fname, runs, use_xfel_format)
 
     def initiate(self):
-        self.n_offsets = len(runs)
+        self.n_offsets = len(self.runs)
 
         self.shapes = {
-            "offset": (self.n_offsets, self.n_memcells, self.n_rows, self.n_cols),
-            "threshold": (self.n_offsets - 1, self.n_memcells, self.n_rows, self.n_cols)
+            "offset": (self.n_offsets,
+                       self.n_memcells,
+                       self.n_rows,
+                       self.n_cols),
+            "threshold": (self.n_offsets - 1,
+                          self.n_memcells,
+                          self.n_rows,
+                          self.n_cols)
         }
 
         self.result = {
@@ -55,11 +59,13 @@ class AgipdProcessDark(AgipdProcessBase):
 
             print("Start computing means and standard deviations")
             self.result["offset"]["data"][i, ...] = np.mean(analog, axis=0)
-            self.result["gainlevel_mean"]["data"][i, ...] = np.mean(digital, axis=0)
+            self.result["gainlevel_mean"]["data"][i, ...] = np.mean(digital,
+                                                                    axis=0)
 
             s = self.result["stddev"]["data"][i, ...]
             for cell in np.arange(self.n_memcells):
-                s[cell, ...] = np.std(analog[:, cell, :, :].astype("float"), axis=0)
+                s[cell, ...] = np.std(analog[:, cell, :, :].astype("float"),
+                                      axis=0)
             print("Done computing means and standard deviations")
 
         t = self.result["threshold"]["data"]
@@ -68,7 +74,6 @@ class AgipdProcessDark(AgipdProcessBase):
             t[i, ...] = (md[i, ...] + md[i + 1, ...]) // 2
 
 if __name__ == "__main__":
-    import os
     import multiprocessing
     from datetime import date
 
@@ -89,25 +94,28 @@ if __name__ == "__main__":
     input_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm"
     output_base_dir = input_base_dir
     run_list = ["0428", "0429", "0430"]
-    #use_xfel_format = False
+
+#    use_xfel_format = False
     use_xfel_format = True
 
     today = str(date.today())
 
     number_of_runs = 1
     modules_per_run = 1
-    #number_of_runs = 2
-    #modules_per_run = 16//number_of_runs
+#    number_of_runs = 2
+#    modules_per_run = 16//number_of_runs
     process_list = []
     for j in range(number_of_runs):
         for i in range(modules_per_run):
-            channel = str(j*modules_per_run+i).zfill(2)
+            channel = str(j * modules_per_run + i).zfill(2)
             print("channel", channel)
 
+            input_file_name = ("R{run_number}-" +
+                               "AGIPD{}-gathered.h5".format(channel))
             input_fname = os.path.join(input_base_dir,
                                        "r{run_number}",
                                        "gather",
-                                       "R{run_number}-" + "AGIPD{}-gathered.h5".format(channel))
+                                       input_file_name)
 
             output_dir = os.path.join(output_base_dir, "dark")
             utils.create_dir(output_dir)

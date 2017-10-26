@@ -5,22 +5,23 @@ import time
 import os
 tmp_raw_data = {}
 
+
 def get_file_content(name, obj):
     global tmp_raw_data
 
     if isinstance(obj, h5py.Dataset):
         tmp_raw_data[name] = obj[()]
 
+
 class Correct():
     def __init__(self, data_fname, dark_fname, gain_fname, output_fname,
-                  photon_energy, use_xfel_format=False):
+                 photon_energy, use_xfel_format=False):
         self.data_fname = data_fname
         self.dark_fname = dark_fname
         self.gain_fname = gain_fname
         self.output_fname = output_fname
         self.use_xfel_format = use_xfel_format
         self.use_xfel_input_format = True
-
 
         self.data_path_prefix = "INSTRUMENT/SPB_DET_AGIPD1M-1/DET"
         self.data_path_postfix = "image/data"
@@ -52,7 +53,6 @@ class Correct():
 
         self.run()
 
-
     def get_dims(self):
         fname = self.data_fname
 
@@ -64,8 +64,9 @@ class Correct():
         self.data_path = os.path.join(self.base_path, self.data_path_postfix)
         raw_data_shape = f[self.data_path].shape
 
-        self.pulse_count_path = os.path.join(self.base_path, self.pulse_count_postfix)
-        self.n_memcells = f[self.pulse_count_path][0].astype(int)//2
+        self.pulse_count_path = os.path.join(self.base_path,
+                                             self.pulse_count_postfix)
+        self.n_memcells = f[self.pulse_count_path][0].astype(int) // 2
 
         f.close()
 
@@ -102,8 +103,8 @@ class Correct():
         self.correct_data()
         print("Done correcting")
 
-        #if self.use_xfel_format:
-        #    self.convert_to_xfel_format()
+#        if self.use_xfel_format:
+#            self.convert_to_xfel_format()
 
         self.write_data()
 
@@ -147,14 +148,14 @@ class Correct():
                                                  self.offset[2, ...]))
             self.analog_corrected[i] = self.analog[i].astype(np.int32) - offset
 
-        #print("Verification:")
-        #print(self.analog.shape)
-        #print(offset.shape)
-        #print(self.analog_corrected.shape)
-        #idx = (1, 2, 1)
-        #print("analog", self.analog[(0,) + idx])
-        #print("offest", offset[idx])
-        #print("corrected", self.analog_corrected[(0,)+ idx])
+#        print("Verification:")
+#        print(self.analog.shape)
+#        print(offset.shape)
+#        print(self.analog_corrected.shape)
+#        idx = (1, 2, 1)
+#        print("analog", self.analog[(0,) + idx])
+#        print("offest", offset[idx])
+#        print("corrected", self.analog_corrected[(0,)+ idx])
 
     def convert_to_xfel_format(self):
         if self.in_wing2:
@@ -208,7 +209,6 @@ class Correct():
 
 if __name__ == "__main__":
     import multiprocessing
-    from datetime import date
     import glob
 
     SRC_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
@@ -217,31 +217,36 @@ if __name__ == "__main__":
     if SRC_PATH not in sys.path:
         sys.path.insert(0, SRC_PATH)
 
-    from utils import  create_dir
+    from utils import create_dir
 
-    data_dir = "/gpfs/exfel/exp/SPB/201701/p002012/raw"
-    dark_dir = "/gpfs/exfel/exp/SPB/201701/p002012/scratch/user/kuhnm/dark/r0037-r0038-r0039"
-    gain_dir = "/gpfs/exfel/exp/SPB/201701/p002012/scratch/user/kuhnm/gain"
-    output_dir = "/gpfs/exfel/exp/SPB/201701/p002012/scratch/user/kuhnm"
-    #run_list = ["r0068"]
+    base_dir = "/gpfs/exfel/exp/SPB/201701/p002012/"
+    data_dir = os.path.join(base_dir, "raw")
+    dark_dir = os.path.join(base_dir,
+                            "scratch/user/kuhnm/dark/r0037-r0038-r0039")
+    gain_dir = os.path.join(base_dir, "scratch/user/kuhnm/gain")
+    output_dir = os.path.join(base_dir, "scratch/user/kuhnm")
+
+#    run_list = ["r0068"]
     run_number = "r0068"
+
     use_xfel_format = True
-    #use_xfel_format = False
+#    use_xfel_format = False
     photon_energy = 1
 
     number_of_runs = 1
     modules_per_run = 1
-    #number_of_runs = 2
-    #modules_per_run = 16//number_of_runs
+#    number_of_runs = 2
+#    modules_per_run = 16 // number_of_runs
     process_list = []
     offset = 3
     for j in range(number_of_runs):
         for i in range(modules_per_run):
-            module = str(offset + j*modules_per_run+i).zfill(2)
+            module = str(offset + j * modules_per_run + i).zfill(2)
             print("module", module)
             part = 0
 
-            fname = "RAW-{}-AGIPD{}-S{:05d}.h5".format(run_number.upper(), module, part)
+            fname = ("RAW-{}-AGIPD{}-S{:05d}.h5"
+                     .format(run_number.upper(), module, part))
             data_fname = os.path.join(data_dir,
                                       run_number,
                                       fname)
@@ -269,8 +274,8 @@ if __name__ == "__main__":
                 gain_fname = gain_fname[0]
             else:
                 print("No gain constants found.")
-                #print("No gain constants found. Quitting.")
-                #sys.exit(1)
+#                print("No gain constants found. Quitting.")
+#                sys.exit(1)
 
             output_dir = os.path.join(output_dir, run_number)
             create_dir(output_dir)
@@ -281,7 +286,7 @@ if __name__ == "__main__":
             p = multiprocessing.Process(target=Correct, args=(data_fname,
                                                               dark_fname,
                                                               None,
-                                                              #gain_fname,
+                                                              # gain_fname,
                                                               output_fname,
                                                               photon_energy,
                                                               use_xfel_format))

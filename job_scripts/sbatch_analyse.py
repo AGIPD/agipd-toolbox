@@ -161,15 +161,15 @@ class SubmitJobs():
                 self.run()
 
         elif self.measurement == "dark":
-            self.script_params = script_params + \
-                                 ["--tint", self.tint]
+            self.script_params = (script_params +
+                                  ["--tint", self.tint])
 
             print("run: ", self.tint)
             self.run()
 
         elif self.measurement == "xray":
-            self.script_params = script_params + \
-                                 ["--element", self.element]
+            self.script_params = (script_params +
+                                  ["--element", self.element])
 
             print("run: ", self.element)
             self.run()

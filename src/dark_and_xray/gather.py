@@ -5,6 +5,7 @@ import sys
 import time
 import glob
 
+
 class Gather():
     def __init__(self, input_fname, output_fname, use_xfel_format=False):
 
@@ -41,7 +42,6 @@ class Gather():
 
         self.n_parts = len(part_files)
         print("n_parts", self.n_parts)
-        #self.n_parts = 2
 
     def intiate(self):
         if self.use_xfel_format:
@@ -60,8 +60,9 @@ class Gather():
             self.data_path = os.path.join(self.base_path, data_path_postfix)
             raw_data_shape = f[self.data_path].shape
 
-            self.pulse_count_path = os.path.join(self.base_path, pulse_count_postfix)
-            self.n_memcells = f[self.pulse_count_path][0].astype(int)//2
+            self.pulse_count_path = os.path.join(self.base_path,
+                                                 pulse_count_postfix)
+            self.n_memcells = f[self.pulse_count_path][0].astype(int) // 2
             print("Number of memoy cells found", self.n_memcells)
 
             f.close()
@@ -97,7 +98,8 @@ class Gather():
         self.get_number_of_frames()
         print("n_frames", self.n_frames)
 
-        self.target_shape = (self.n_frames, self.n_memcells, self.n_rows, self.n_cols)
+        self.target_shape = (self.n_frames, self.n_memcells,
+                             self.n_rows, self.n_cols)
         print("target shape:", self.target_shape)
 
     def get_number_of_frames(self):
@@ -122,20 +124,22 @@ class Gather():
             fname = self.input_fname.format(i)
 
             f = h5py.File(fname, 'r')
-            #print('start loading')
+#            print('start loading')
             raw_data_shape = f[self.data_path].shape
             raw_data = f[self.data_path][()]
-            #print('loading done')
+#            print('loading done')
             f.close()
 
-            self.n_frames_per_file = int(raw_data_shape[0] / 2 / self.n_memcells)
+            self.n_frames_per_file = int(
+                raw_data_shape[0] // 2 // self.n_memcells)
 
             print("raw_data.shape", raw_data.shape)
             print("self.n_frames_per_file", self.n_frames_per_file)
             print("self.raw_shape", self.raw_shape)
             raw_data.shape = (self.n_frames_per_file,) + self.raw_shape
 
-            # currently the splitting in digital and analog does not work for XFEL
+            # currently the splitting in digital and analog does not work for
+            # XFEL
             # -> all data is in the first entry of the analog/digital dimension
             if self.use_xfel_format:
                 raw_data = raw_data[:, :, :, 0, ...]
@@ -190,11 +194,11 @@ if __name__ == "__main__":
     if SRC_PATH not in sys.path:
         sys.path.insert(0, SRC_PATH)
 
-    from utils import  create_dir
+    from utils import create_dir
 
     module_mapping = {
         "M305": "00",
-        }
+    }
 
     use_xfel_format = True
 
@@ -204,33 +208,46 @@ if __name__ == "__main__":
     run_list = ["r0007"]
     subdir = "scratch/user/kuhnm"
 
-    #base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
-    #run_list = ["r0428", "r0429", "r0430"]
+#    base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
+#    run_list = ["r0428", "r0429", "r0430"]
 
-    #base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
-    #run_list = ["r0391"]
-    #subdir = "scratch/kuhnm"
+#    base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
+#    run_list = ["r0391"]
+#    subdir = "scratch/kuhnm"
 
-    #number_of_runs = 1
-    #modules_per_run = 1
+#    number_of_runs = 1
+#    modules_per_run = 1
     number_of_runs = 2
-    modules_per_run = 16//number_of_runs
+    modules_per_run = 16 // number_of_runs
     for run_number in run_list:
         process_list = []
         for j in range(number_of_runs):
             for i in range(modules_per_run):
-                module = str(j*modules_per_run+i).zfill(2)
+                module = str(j * modules_per_run + i).zfill(2)
+
+                input_file_name = ("RAW-{}-AGIPD{}-".format(run_number.upper(),
+                                                            module) +
+                                   "S{:05d}.h5")
                 input_fname = os.path.join(base_path,
                                            "raw",
                                            run_number,
-                                           "RAW-{}-AGIPD{}-".format(run_number.upper(), module) + "S{:05d}.h5")
+                                           input_file_name)
 
-                output_dir = os.path.join(base_path, subdir, run_number, "gather")
+                output_dir = os.path.join(base_path,
+                                          subdir,
+                                          run_number,
+                                          "gather")
                 create_dir(output_dir)
-                output_fname = os.path.join(output_dir,
-                                            "{}-AGIPD{}-gathered.h5".format(run_number.upper(), module))
 
-                p = multiprocessing.Process(target=Gather, args=(input_fname, output_fname, use_xfel_format))
+                output_file_name = ("{}-AGIPD{}-gathered.h5"
+                                    .format(run_number.upper(), module))
+                output_fname = os.path.join(output_dir,
+                                            output_file_name)
+
+                p = multiprocessing.Process(target=Gather,
+                                            args=(input_fname,
+                                                  output_fname,
+                                                  use_xfel_format))
                 p.start()
                 process_list.append(p)
 

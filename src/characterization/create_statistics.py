@@ -100,8 +100,8 @@ class GenerateStats():
             if not self.no_plotting:
                 create_dir(plot_dir)
 
-                gather_template = self.gather_template.safe_substitute(
-                                    a=str(asic).zfill(2))
+                gather_template = (self.gather_template
+                                   .safe_substitute(a=str(asic).zfill(2)))
                 gather_template = Template(gather_template)
 
                 obj = GeneratePlots(asic,

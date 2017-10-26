@@ -1,9 +1,6 @@
-import h5py
 import numpy as np
 import os
 import sys
-import time
-import glob
 
 from gather_base import AgipdGatherBase
 
@@ -18,7 +15,7 @@ SRC_PATH = os.path.join(BASE_PATH, "src")
 if SRC_PATH not in sys.path:
     sys.path.insert(0, SRC_PATH)
 
-import utils
+import utils  # noqa E402
 
 
 class AgipdGatherPcdrs(AgipdGatherBase):
@@ -27,7 +24,6 @@ class AgipdGatherPcdrs(AgipdGatherBase):
 
         self.runs = runs
         self.n_runs = 8
-        #self.n_runs = len(self.runs)
 
         self.cellId_path = None
 
@@ -64,15 +60,15 @@ if __name__ == "__main__":
 
     module_mapping = {
         "M305": "00",
-        }
+    }
 
     use_xfel_format = True
-    #use_xfel_format = False
+#    use_xfel_format = False
 
     if use_xfel_format:
         base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
-        #run_list = [["0488"]]
-        #run_list = [[488, 489]]
+#        run_list = [["0488"]]
+#        run_list = [[488, 489]]
         run_list = [[488, 489, 490, 491, 492, 493, 494, 495]]
 
         subdir = "scratch/user/kuhnm"
@@ -83,12 +79,14 @@ if __name__ == "__main__":
             process_list = []
             for j in range(number_of_runs):
                 for i in range(modules_per_run):
-                    module = str(j*modules_per_run+i).zfill(2)
-                    input_fname = os.path.join(
-                        base_path,
-                        "raw",
-                        "r{run_number:04d}",
-                        "RAW-R{run_number:04d}-" + "AGIPD{}".format(module) + "-S{part:05d}.h5")
+                    module = str(j * modules_per_run + i).zfill(2)
+                    input_file_name = ("RAW-R{run_number:04d}-" +
+                                       "AGIPD{}".format(module) +
+                                       "-S{part:05d}.h5")
+                    input_fname = os.path.join(base_path,
+                                               "raw",
+                                               "r{run_number:04d}",
+                                               input_file_name)
 
                     run_subdir = "r" + "-r".join(str(r).zfill(2) for r in runs)
                     output_dir = os.path.join(base_path,
@@ -96,9 +94,11 @@ if __name__ == "__main__":
                                               run_subdir,
                                               "gather")
                     utils.create_dir(output_dir)
-                    output_fname = os.path.join(
-                        output_dir,
-                        "{}-AGIPD{}-gathered.h5".format(run_subdir.upper(), module))
+
+                    output_file_name = ("{}-AGIPD{}-gathered.h5"
+                                        .format(run_subdir.upper(), module))
+                    output_fname = os.path.join(output_dir,
+                                                output_file_name)
 
                     p = multiprocessing.Process(target=AgipdGatherPcdrs,
                                                 args=(input_fname,

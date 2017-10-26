@@ -1,23 +1,19 @@
 import os
 import sys
-import argparse
 import datetime
 import time
-import numpy as np
+# import numpy as np
+from datetime import date
 from string import Template
+import glob
 
-from utils import create_dir
-from gather import GatherData
-from parallel_process import ParallelProcess
+import utils
 from merge_drscs import ParallelMerge
-from dark_and_xray.gatherDarkData import GatherDarkData
-from dark_and_xray.batchProcessDarkData import BatchProcessDarkData
-from dark_and_xray.batchProcessXRayTubeData import BatchProcessXRayTubeData
-from dark_and_xray.gatherXRayTubeData import GatherXRayTubeData
+from correct import Correct
 
 
 class Analyse():
-    def __init__(self, run_type, meas_type, input_base_dir, output_base_dir,
+    def __init__(self, run_type, meas_type, in_base_dir, out_base_dir,
                  n_processes, module, temperature, meas_spec, asic, asic_list,
                  safety_factor, column_spec, reduced_columns, max_part,
                  current_list=None):
@@ -25,8 +21,8 @@ class Analyse():
 
         self.run_type = run_type
         self.meas_type = meas_type
-        self.input_base_dir = input_base_dir
-        self.output_base_dir = output_base_dir
+        self.in_base_dir = in_base_dir
+        self.out_base_dir = out_base_dir
         self.n_processes = n_processes
         self.module = module
         self.temperature = temperature
@@ -71,20 +67,20 @@ class Analyse():
         print("meas_spec: ", self.meas_spec)
         print("asic: ", self.asic)
         print("asic_list: ", self.asic_list)
-        print("input_dir: ", self.input_base_dir)
-        print("output_dir: ", self.output_base_dir)
+        print("in_dir: ", self.in_base_dir)
+        print("out_dir: ", self.out_base_dir)
         print("column_specs: ", self.column_specs)
         print("max_part: ", self.max_part)
         print("current_list: ", self.current_list)
 
-        # Usually the input directory and file names correspond to the
+        # Usually the in directory and file names correspond to the
         # meas_type
-        self.meas_input = {meas_type:  meas_type}
+        self.meas_in = {meas_type: meas_type}
         # but there are exceptions
-        self.meas_input["drscs_dark"] = "drscs"
+        self.meas_in["drscs_dark"] = "drscs"
 
-        self.use_xfel_input_format = False
-        self.use_xfel_output_format = False
+        self.use_xfel_in_format = False
+        self.use_xfel_out_format = False
 
         self.run()
 
@@ -104,28 +100,28 @@ class Analyse():
         print("\nFinished at", str(datetime.datetime.now()))
         print("took time: ", time.time() - t)
 
-    def generate_raw_path(self, base_path):
-        if self.use_xfel_input_format:
-            # define input files
+    def generate_raw_path(self, base_dir):
+        if self.use_xfel_in_format:
+            # define in files
             fdir = os.path.join(base_dir,
                                 "raw",
                                 "r{run_number}")
 
-            fname = ("RAW-R{run_number}-"
-                     "AGIPD{:02d}".format(self.channel)
+            fname = ("RAW-R{run_number}-" +
+                     "AGIPD{:02d}".format(self.channel) +
                      "-S{part:05d}.h5")
 
         else:
-            # define input files
+            # define in files
             fdir = os.path.join(base_dir,
                                 self.temperature,
-                                self.meas_input[self.meas_type])
+                                self.meas_in[self.meas_type])
 
             if self.meas_type not in ["dark", "xray"]:
                 fdir = os.path.join(base_dir,
                                     self.meas_spec)
 
-            #fname = ("{}*_{}_{}_" # only module without location, e.g. M304
+            # fname = ("{}*_{}_{}_" # only module without location, e.g. M304
             fname = ("{}_{}_{}_"
                      .format(self.module,
                              self.meas_type,
@@ -135,33 +131,34 @@ class Analyse():
         return fdir, fname
 
     def generate_gather_path(self, base_dir):
-        if self.use_xfel_input_format:
+        if self.use_xfel_in_format:
             run_subdir = "r" + "-r".join(self.runs)
 
             fdir = os.path.join(base_dir,
                                 run_subdir,
                                 "gather")
 
-            utils.create_dir(output_dir)
+            utils.create_dir(fdir)
 
             fname = ("{}-AGIPD{}-gathered.h5"
                      .format(run_subdir.upper(), self.channel))
 
         else:
-            # define output files
+            # define out files
             fdir = os.path.join(base_dir,
                                 self.module,
                                 self.temperature,
                                 self.meas_type,
                                 self.meas_spec,
+                                # "gather")
                                 self.run_type)
-                                #"gather")
-            #for testing
-            #output_base_dir = "/gpfs/exfel/exp/SPB/201701/p002012/scratch/user/kuhnm"
-            #output_subdir = "tmp"
-            #output_dir = os.path.join(output_base_dir,
-            #                          output_subdir,
-            #                          "gather")
+            # for testing
+#            out_base_dir = ("/gpfs/exfel/exp/SPB/201701/p002012/" +
+#                               "scratch/user/kuhnm")
+#            out_subdir = "tmp"
+#            out_dir = os.path.join(out_base_dir,
+#                                      out_subdir,
+#                                      "gather")
             if self.asic is None:
                 fname = ("{}_{}_{}.h5"
                          .format(self.module,
@@ -182,7 +179,7 @@ class Analyse():
         fdir = os.path.join(base_dir,
                             self.meas_type)
 
-        if self.use_xfel_output_format:
+        if self.use_xfel_out_format:
             fname = "dark_AGIPD{}_xfel_{}.h5".format(self.channel, today)
         else:
             fname = "dark_AGIPD{}_agipd_{}.h5".format(self.channel, today)
@@ -197,7 +194,7 @@ class Analyse():
 
             print("process fname", fname)
 
-            fdir = os.path.join(self.output_base_dir,
+            fdir = os.path.join(self.out_base_dir,
                                 self.module,
                                 self.temperature,
                                 self.meas_type,
@@ -206,9 +203,9 @@ class Analyse():
 
         return fdir, fname
 
-
     def run_gather(self):
-        # TODO: concider addition this into output_base_dir (joined) and create subdirs for gathered files
+        # TODO: concider addition this into out_base_dir (joined) and create
+        #       subdirs for gathered files
         self.runs = ["0428", "0429", "0430"]
         self.runs = ["00012"]
 
@@ -217,27 +214,28 @@ class Analyse():
         else:
             from gather_base import AgipdGatherBase as Gather
 
-        if self.use_xfel_input_format:
-            self.input_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009"
-            self.output_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm"
+        if self.use_xfel_in_format:
+            self.in_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009"
+            self.out_base_dir = ("/gpfs/exfel/exp/SPB/201730/p900009/" +
+                                 "scratch/user/kuhnm")
 
             self.channel = 0
 
-        # define input files
-        input_dir, input_file_name = self.generate_raw_path(self.input_base_dir)
-        input_fname = os.path.join(input_dir, input_file_name)
+        # define in files
+        in_dir, in_file_name = self.generate_raw_path(self.in_base_dir)
+        in_fname = os.path.join(in_dir, in_file_name)
 
-        # define output files
-        output_dir, output_file_name = self.generate_gather_path(self.output_base_dir)
-        utils.create_dir(output_dir)
-        output_fname = os.path.join(output_dir, output_file_name)
+        # define out files
+        out_dir, out_file_name = self.generate_gather_path(self.out_base_dir)
+        utils.create_dir(out_dir)
+        out_fname = os.path.join(out_dir, out_file_name)
 
-        obj = Gather(input_fname,
-                     output_fname,
-                     self.runs,
-                     self.max_part,
-                     True,  # split_asics
-                     self.use_xfel_format)
+        Gather(in_fname,
+               out_fname,
+               self.runs,
+               self.max_part,
+               True,  # split_asics
+               self.use_xfel_format)
 
     def run_process(self):
 
@@ -246,80 +244,83 @@ class Analyse():
         elif self.meas_type == "pcdrs":
             from gather_pcdrs import AgipdProcessPcdrs as Process
         else:
-            raise Exception("Process is not supported for type {}".format(self.meas_type))
+            msg = "Process is not supported for type {}".format(self.meas_type)
+            raise Exception(msg)
 
-        self.input_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm"
-        self.output_base_dir = input_base_dir
+        self.in_base_dir = ("/gpfs/exfel/exp/SPB/201730/p900009/" +
+                            "scratch/user/kuhnm")
+        self.out_base_dir = self.in_base_dir
 
         run_list = ["0428", "0429", "0430"]
         self.channel = 0
         print("channel", self.channel)
 
-        # define output files
-        # the input files for processing are the output ones from gather
-        input_dir, input_file_name = self.generate_gather_path(self.input_base_dir)
-        input_fname = os.path.join(input_dir, input_file_name)
+        # define out files
+        # the in files for processing are the out ones from gather
+        in_dir, in_file_name = self.generate_gather_path(self.in_base_dir)
+        in_fname = os.path.join(in_dir, in_file_name)
 
-        # define output files
-        output_dir, output_file_name = self.generate_process_path(self.output_base_dir)
-        utils.create_dir(output_dir)
-        output_fname = os.path.join(output_dir, output_file_name)
+        # define out files
+        out_dir, out_file_name = self.generate_process_path(self.out_base_dir)
+        utils.create_dir(out_dir)
+        out_fname = os.path.join(out_dir, out_file_name)
 
-        obj = Process(input_fname,
-                      output_fname,
-                      run_list,
-                      use_xfel_format)
+        Process(in_fname,
+                out_fname,
+                run_list,
+                self.use_xfel_format)
 
 #            ParallelProcess(self.asic,
-#                            input_fname,
+#                            in_fname,
 #                            np.arange(64),
 #                            np.arange(64),
 #                            np.arange(352),
 #                            self.n_processes,
 #                            self.safety_factor,
-#                            output_fname)
+#                            out_fname)
 
     def run_merge_drscs(self):
 
-        base_path = self.input_base_dir
+        base_path = self.in_base_dir
         asic_list = self.asic_list
 
-        input_path = os.path.join(base_path,
-                                  self.module,
-                                  self.temperature,
-                                  "drscs")
+        in_path = os.path.join(base_path,
+                               self.module,
+                               self.temperature,
+                               "drscs")
         # substitute all except current and asic
-        input_template = (
+        in_template = (
             Template("${p}/${c}/process/${m}_drscs_${c}_asic${a}_processed.h5")
-            .safe_substitute(p=input_path, m=self.module)
+            .safe_substitute(p=in_path, m=self.module)
         )
         # make a template out of this string to let Merge set current and asic
-        input_template = Template(input_template)
+        in_template = Template(in_template)
 
-        output_dir = os.path.join(base_path,
-                                  self.module,
-                                  self.temperature,
-                                  "drscs",
-                                  "merged")
-        output_template = (
+        out_dir = os.path.join(base_path,
+                               self.module,
+                               self.temperature,
+                               "drscs",
+                               "merged")
+        out_template = (
             Template("${p}/${m}_drscs_asic${a}_merged.h5")
-            .safe_substitute(p=output_dir,
+            .safe_substitute(p=out_dir,
                              m=self.module,
                              t=self.temperature)
         )
-        output_template = Template(output_template)
+        out_template = Template(out_template)
 
-        create_dir(output_dir)
+        utils.create_dir(out_dir)
 
-        ParallelMerge(input_template,
-                      output_template,
+        ParallelMerge(in_template,
+                      out_template,
                       asic_list,
                       self.n_processes,
                       self.current_list)
 
     def run_correct(self, run_number):
-        data_fname_prefix = "RAW-{}-AGIPD{}*".format(run_number.upper(), module)
-        data_fname = os.path.join(self.input_dir,
+        data_fname_prefix = ("RAW-{}-AGIPD{}*"
+                             .format(run_number.upper(), self.module))
+        data_fname = os.path.join(self.in_dir,
                                   run_number,
                                   data_fname_prefix)
 
@@ -330,10 +331,10 @@ class Analyse():
             part = int(data_fname[-8:-3])
             print("part", part)
 
-            if use_xfel_format:
-                fname_prefix = "dark_AGIPD{}_xfel".format(module)
+            if self.use_xfel_format:
+                fname_prefix = "dark_AGIPD{}_xfel".format(self.module)
             else:
-                fname_prefix = "dark_AGIPD{}_agipd_".format(module)
+                fname_prefix = "dark_AGIPD{}_agipd_".format(self.module)
             dark_fname_prefix = os.path.join(self.dark_dir, fname_prefix)
             dark_fname = glob.glob("{}*".format(dark_fname_prefix))
             if dark_fname:
@@ -343,10 +344,10 @@ class Analyse():
                 sys.exit(1)
             print(dark_fname)
 
-            if use_xfel_format:
-                fname_prefix = "gain_AGIPD{}_xfel".format(module)
+            if self.use_xfel_format:
+                fname_prefix = "gain_AGIPD{}_xfel".format(self.module)
             else:
-                fname_prefix = "gain_AGIPD{}_agipd_".format(module)
+                fname_prefix = "gain_AGIPD{}_agipd_".format(self.module)
 
             gain_fname_prefix = os.path.join(self.gain_dir, fname_prefix)
             gain_fname = glob.glob("{}*".format(gain_fname_prefix))
@@ -354,25 +355,23 @@ class Analyse():
                 gain_fname = gain_fname[0]
             else:
                 print("No gain constants found.")
-                #print("No gain constants found. Quitting.")
-                #sys.exit(1)
+#                print("No gain constants found. Quitting.")
+#                sys.exit(1)
 
-            output_dir = os.path.join(self.output_dir, run_number)
-            create_dir(output_dir)
+            out_dir = os.path.join(self.out_dir, run_number)
+            utils.create_dir(out_dir)
 
-            fname = "corrected_AGIPD{}-S{:05d}.h5".format(module, part)
-            output_fname = os.path.join(output_dir, fname)
+            fname = "corrected_AGIPD{}-S{:05d}.h5".format(self.module, part)
+            out_fname = os.path.join(out_dir, fname)
 
-            obj = Correct(data_fname,
-                          dark_fname,
-                          None,
-                          #gain_fname,
-                          output_fname,
-                          self.energy,
-                          use_xfel_format))
+            Correct(data_fname,
+                    dark_fname,
+                    None,
+                    # gain_fname,
+                    out_fname,
+                    self.energy,
+                    self.use_xfel_format)
 
     def cleanup(self):
         # remove gather dir
-        #self.output_dir_gather
         pass
-

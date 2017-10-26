@@ -1,7 +1,4 @@
 import os
-import sys
-import time
-import numpy as np
 import h5py
 
 import utils
@@ -32,7 +29,8 @@ class JoinConstants():
 
                 prefix = "channel{:02d}".format(channel)
                 for key in file_content:
-                    f.create_dataset(prefix + "/"+ key, data=file_content[key])
+                    f.create_dataset(prefix + "/" + key,
+                                     data=file_content[key])
 
                 f.flush()
         finally:
