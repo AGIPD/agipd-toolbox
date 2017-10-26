@@ -29,15 +29,23 @@ def check_file_exists(file_name):
         print("Output file: ok")
 
 
-def get_module_order():
+def get_channel_order():
     channel_order = [[12, 13, 14, 15, 8, 9, 10, 11],
                      [0, 1, 2, 3, 4, 5, 6, 7]]
 
     return channel_order
 
 
+def get_asic_order():
+    # how the asics are located on the module
+    asic_order = [[16, 15, 14, 13, 12, 11, 10, 9],
+                  [1,   2,  3,  4,  5,  6,  7, 8]]
+
+    return asic_order
+
+
 def located_in_wing2(channel):
-    channel_order = get_module_order()
+    channel_order = get_channel_order()
 
     if int(channel) in channel_order[1]:
         return True

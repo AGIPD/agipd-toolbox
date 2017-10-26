@@ -8,7 +8,7 @@ from process_base import AgipdProcessBase
 class AgipdProcessPcdrs(AgipdProcessBase):
     def __init__(self, input_fname, output_fname, runs, use_xfel_format=False):
 
-        self.fit_interval = [[42, 122], [402, 552]]
+        self.fit_interval = None
         self.n_offsets = 2
 
         super().__init__(input_fname, output_fname, runs, use_xfel_format)
@@ -78,8 +78,14 @@ class AgipdProcessPcdrs(AgipdProcessBase):
             }
         }
 
+    def determine_fit_intervals(self):
+        self.fit_interval = [[42,122], [402,552]]
+#        self.fit_interval = [[40,120], [400,550]]
+
     def calculate(self):
         analog, digital = self.load_data(self.input_fname)
+
+        self.determine_fit_intervals()
 
         print("Start fitting")
         for i in range(self.n_offsets):
@@ -97,14 +103,15 @@ class AgipdProcessPcdrs(AgipdProcessBase):
                                 digital[slice(*self.fit_interval[i]),
                                         mc, ypix, xpix])
 
-                            res = self.result
+                            result = self.result
                             idx = (i, mc, ypix, xpix)
-                            res["slope"]["data"][idx] = res[0][0]
-                            res["offset"]["data"][idx] = res[0][1]
-                            res["gainlevel_mean"]["data"][idx] = gain_mean
+                            result["slope"]["data"][idx] = res[0][0]
+                            result["offset"]["data"][idx] = res[0][1]
+                            result["gainlevel_mean"]["data"][idx] = gain_mean
                         except:
                             print("memcell, xpix, ypix", mc, ypix, xpix)
                             print("analog.shape", analog.shape)
+                            print("res", res)
                             raise
 
         print("Calculate threshold")
@@ -143,17 +150,17 @@ if __name__ == "__main__":
     today = str(date.today())
 
     number_of_runs = 1
-    modules_per_run = 1
+    channels_per_run = 1
 #    number_of_runs = 2
-#    modules_per_run = 16//number_of_runs
+#    channeld_per_run = 16//number_of_runs
     process_list = []
     for j in range(number_of_runs):
-        for i in range(modules_per_run):
-            channel = str(j * modules_per_run + i).zfill(2)
+        for i in range(channels_per_run):
+            channel = j * channels_per_run + i
             print("channel", channel)
 
             input_file_name = (run_list[0].upper() +
-                               "-AGIPD{}-gathered.h5".format(channel))
+                               "-AGIPD{:02d}-gathered.h5".format(channel))
             input_fname = os.path.join(input_base_dir,
                                        run_list[0],
                                        "gather",
@@ -163,10 +170,10 @@ if __name__ == "__main__":
             utils.create_dir(output_dir)
 
             if use_xfel_format:
-                fname = ("{}_AGIPD{}_xfel_{}.h5"
+                fname = ("{}_AGIPD{:02d}_xfel_{}.h5"
                          .format(run_type, channel, today))
             else:
-                fname = ("{}_AGIPD{}_agipd_{}.h5"
+                fname = ("{}_AGIPD{:02d}_agipd_{}.h5"
                          .format(run_type, channel, today))
 
             output_fname = os.path.join(output_dir, fname)

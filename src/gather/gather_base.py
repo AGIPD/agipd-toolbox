@@ -21,29 +21,18 @@ import utils  # noqa E402
 
 class AgipdGatherBase():
     def __init__(self, input_fname, output_fname, runs, max_part=False,
-                 split_asics=True, use_xfel_format=False, backing_store=True):
+                 asic=None, use_xfel_format=False, backing_store=True):
 
         self.input_fname = input_fname
         self.output_fname = output_fname
         self.runs = runs
 
-        self.split_asics = split_asics
         self.max_part = max_part
-        self.split_asics = split_asics
+        self.asic = asic
         self.use_xfel_format = use_xfel_format
         self.backing_store = backing_store
 
         self.use_xfel_format = use_xfel_format
-
-        # TODO extract n_cols and n_rows from raw_shape
-        self.n_rows = 128
-        self.n_cols = 512
-        self.n_memcells = None
-        self.asic_size = 64
-
-        # how the asics are located on the module
-        self.asic_mapping = [[16, 15, 14, 13, 12, 11, 10, 9],
-                             [1, 2, 3, 4, 5, 6, 7, 8]]
 
         self.analog = None
         self.digital = None
@@ -61,12 +50,30 @@ class AgipdGatherBase():
         self.seq_number = None
         self.max_pulses = None
 
+        self.n_rows_total = 128
+        self.n_cols_total = 512
+
+        self.a_row_start = None
+        self.a_row_stop = None
+        self.a_col_start = None
+        self.a_col_stop = None
+
         self.get_parts()
 
         if self.n_parts == 0:
             msg = "No parts to gather found\n"
             msg += "input_fname={}".format(self.input_fname)
             raise Exception(msg)
+
+        if self.asic is None:
+            self.n_rows = self.n_rows_total
+            self.n_cols = self.n_cols_total
+        else:
+            print("asic {}".format(self.asic))
+            self.n_rows = self.asic_size
+            self.n_cols = self.asic_size
+
+            self.determine_asic_border()
 
         self.intiate()
 
@@ -131,7 +138,7 @@ class AgipdGatherBase():
             print("n_frames_total", self.n_frames_total)
 
             self.n_memcells = self.max_pulses // 2
-            print("Number of memoy cells found", self.n_memcells)
+            print("Number of memory cells found", self.n_memcells)
 
             # xfel format has swapped rows and cols
             self.raw_shape = (self.n_memcells, 2, 2, self.n_cols, self.n_rows)
@@ -239,8 +246,8 @@ class AgipdGatherBase():
                 if f is not None:
                     f.close()
 
-            if (source_shape[1] != self.n_rows and
-                    source_shape[2] != self.n_cols):
+            if (source_shape[1] != self.n_rows_total and
+                    source_shape[2] != self.n_cols_total):
                 msg = "Shape of file {} ".format(fname)
                 msg += "does not match requirements\n"
                 msg += "source_shape = {}".format(source_shape)
@@ -248,6 +255,51 @@ class AgipdGatherBase():
 
             self.n_frames_total = int(exp_total_frames)
             self.n_frames = int(exp_total_frames // 2 // self.n_memcells)
+
+    def calculate_mapped_asic(self, asic_order, asics_per_module):
+        index_map = range(asics_per_module[0] * asics_per_module[1])
+
+        for row_i in np.arange(len(asic_order)):
+            try:
+                col_i = asic_order[row_i].index(self.asic)
+                return index_map[row_i * asics_per_module[1] + col_i]
+            except:
+                pass
+        raise Exception("Asic {} is not supported. (asic_order={})"
+                        .format(self.asic, asic_order))
+
+    def determine_asic_border(self):
+        #       ____ ____ ____ ____ ____ ____ ____ ____
+        # 0x64 |    |    |    |    |    |    |    |    |
+        #      |  0 |  1 | 2  | 3  |  4 |  5 | 6  | 7  |
+        # 1x64 |____|____|____|____|____|____|____|____|
+        #      |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
+        # 2x64 |____|____|____|____|____|____|____|____|
+        #      0*64 1x64 2x64 3x64 4x64 5x64 6x64 7x64 8x64
+
+
+        asic_order = utils.get_asic_order()
+        #                  [rows, columns]
+        asics_per_module = [len(asic_order), len(asic_order[0])]
+
+        mapped_asic = self.calculate_mapped_asic(asic_order, asics_per_module)
+        print("mapped_asic={}".format(mapped_asic))
+
+        row_progress = int(mapped_asic / asics_per_module[1])
+        col_progress = int(mapped_asic % asics_per_module[1])
+        print("row_progress: {}".format(row_progress))
+        print("col_progress: {}".format(col_progress))
+
+        self.a_row_start = row_progress * self.asic_size
+        self.a_row_stop = (row_progress + 1) * self.asic_size
+        self.a_col_start = col_progress * self.asic_size
+        self.a_col_stop = (col_progress + 1) * self.asic_size
+
+        print("asic_size {}".format(self.asic_size))
+        print("a_row_start: {}".format(self.a_row_start))
+        print("a_row_stop: {}".format(self.a_row_stop))
+        print("a_col_start: {}".format(self.a_col_start))
+        print("a_col_stop: {}".format(self.a_col_stop))
 
     def run(self):
 
@@ -292,34 +344,42 @@ class AgipdGatherBase():
         self.seq_number = None
 
         for run_idx, run_number in enumerate(self.runs):
+            print("\n\nrun {}".format(run_number))
 
-            pos_idx_rows, pos_idx_cols = self.set_pos_indices(run_idx)
-            print()
-            print("pos_idx_rows", pos_idx_rows)
-            print("pos_idx_cols", pos_idx_cols)
+            self.pos_idxs = self.set_pos_indices(run_idx)
+            print("pos_idxs", self.pos_idxs)
+
+            load_idx_rows = slice(self.a_row_start, self.a_row_stop)
+            load_idx_cols = slice(self.a_col_start, self.a_col_stop)
+            print("load idx: {}, {}".format(load_idx_rows, load_idx_cols) )
 
             self.source_seq_number = [0]
             target_offset = 0
             for i in range(self.n_parts):
                 fname = self.input_fname.format(run_number=run_number, part=i)
+                print("loading file {}".format(fname))
 
-                file_content = utils.load_file_content(fname)
-
-                raw_data_shape = file_content[self.data_path].shape
-                raw_data = file_content[self.data_path]
-
-                self.n_frames_per_file = int(
-                    raw_data_shape[0] // 2 // self.n_memcells)
-
-                print("raw_data.shape", raw_data.shape)
-                print("self.n_frames_per_file", self.n_frames_per_file)
-                print("self.raw_shape", self.raw_shape)
+                excluded = [self.data_path]
+                file_content = utils.load_file_content(fname, excluded)
 
                 # currently the splitting in digital and analog does not work
                 # for XFEL
                 # -> all data is in the first entry of the analog/digital
                 #    dimension
                 if self.use_xfel_format:
+                    # load data
+                    f = h5py.File(fname, "r")
+                    raw_data = f[self.data_path][()]
+                    f.close()
+
+                    self.n_frames_per_file = int(raw_data.shape[0] //
+                                                 2 //
+                                                 self.n_memcells)
+
+                    print("raw_data.shape", raw_data.shape)
+                    print("self.n_frames_per_file", self.n_frames_per_file)
+                    print("self.raw_shape", self.raw_shape)
+
 
                     n_pulses = (file_content[self.pulse_count_path]
                                 .astype(np.int16))
@@ -335,30 +395,45 @@ class AgipdGatherBase():
 
                     source_offset = 0
                     print("n_bursts", n_pulses.size)
+
                     for burst in n_pulses:
-                        source_idx = (slice(source_offset,
-                                            source_offset + burst),
-                                      Ellipsis,
-                                      pos_idx_rows,
-                                      pos_idx_cols)
-                        target_idx = (slice(target_offset,
-                                            target_offset + burst),
-                                      pos_idx_rows,
-                                      pos_idx_cols)
+                        for index_set in self.pos_idxs:
+                            pos_idx_rows = index_set[0]
+                            pos_idx_cols = index_set[1]
+
+                            source_idx = (slice(source_offset,
+                                                source_offset + burst),
+                                          Ellipsis,
+                                          pos_idx_rows,
+                                          pos_idx_cols)
+                            target_idx = (slice(target_offset,
+                                                target_offset + burst),
+                                          pos_idx_rows,
+                                          pos_idx_cols)
+
+
+                            tmp_data[target_idx] = raw_data[source_idx]
 
                         source_offset += burst
                         target_offset += self.max_pulses
 
-                        tmp_data[target_idx] = raw_data[source_idx]
-
                 else:
+                    # load data
+                    f = h5py.File(fname, "r")
+                    raw_data = f[self.data_path][..., load_idx_rows, load_idx_cols]
+                    f.close()
+
+                    self.n_frames_per_file = int(raw_data.shape[0] // 2 // self.n_memcells)
+
+                    print("raw_data.shape", raw_data.shape)
+                    print("self.n_frames_per_file", self.n_frames_per_file)
+                    print("self.raw_shape", self.raw_shape)
                     self.get_seq_number(file_content[self.seq_number_path])
                     self.get_frame_loss_indices()
                     self.fillup_frame_loss(tmp_data,
                                            raw_data,
                                            self.target_index_full_size)
 
-                del file_content[self.data_path]
                 self.metadata[fname] = file_content
 
         print("self.tmp_shape", self.tmp_shape)
@@ -374,7 +449,10 @@ class AgipdGatherBase():
         pos_idx_rows = slice(None)
         pos_idx_cols = slice(None)
 
-        return pos_idx_rows, pos_idx_cols
+        # retuns a list of row/col indixes to give the possibility to
+        # define subgroups
+        # e.g. top half should use these cols and bottom half those ones
+        return [[pos_idx_rows, pos_idx_cols]]
 
     def get_seq_number(self, source_seq_number):
         # if there is frame loss this is recognizable by a missing
@@ -470,8 +548,20 @@ class AgipdGatherBase():
             s_start = self.source_index[i][0]
             s_stop = self.source_index[i][1] + 1
 
-            raw_data[t_start:t_stop, ...] = (
-                loaded_raw_data[s_start:s_stop, ...])
+            for index_set in self.pos_idxs:
+                pos_idx_rows = index_set[0]
+                pos_idx_cols = index_set[1]
+
+                raw_idx = (slice(t_start, t_stop),
+                           Ellipsis,
+                           pos_idx_rows,
+                           pos_idx_cols)
+                loaded_idx = (slice(s_start, s_stop),
+                              Ellipsis,
+                              pos_idx_rows,
+                              pos_idx_cols)
+
+                raw_data[raw_idx] = loaded_raw_data[loaded_idx]
 
 if __name__ == "__main__":
     import multiprocessing
@@ -480,8 +570,8 @@ if __name__ == "__main__":
         "M305": "00",
     }
 
-    use_xfel_format = True
-#    use_xfel_format = False
+    #use_xfel_format = True
+    use_xfel_format = False
 
     if use_xfel_format:
         base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
@@ -548,12 +638,16 @@ if __name__ == "__main__":
         in_subdir = "raw/315-304-309-314-316-306-307/temperature_m25C/dark"
         module = "M304_m2"
         runs = ["00012"]
+        #asic = None # asic (None means full module)
+        asic = 1
 
         max_part = False
-        out_base_path = "/gpfs/exfel/exp/SPB/201701/p002012/scratch/user/kuhnm"
+        out_base_path = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm"
         out_subdir = "tmp"
         meas_type = "dark"
-        meas_spec = {"dark": "tint150ns"}
+        meas_spec = {
+            "dark": "tint150ns",
+            }
 
         input_file_name = ("{}_{}_{}_"
                            .format(module,
@@ -568,15 +662,22 @@ if __name__ == "__main__":
                                   out_subdir,
                                   "gather")
         utils.create_dir(output_dir)
-        output_file_name = ("{}_{}_{}.h5"
-                            .format(module.split("_")[0],
-                                    meas_type,
-                                    meas_spec[meas_type]))
+        if asic is None:
+            output_file_name = ("{}_{}_{}.h5"
+                                .format(module.split("_")[0],
+                                        meas_type,
+                                        meas_spec[meas_type]))
+        else:
+            output_file_name = ("{}_{}_{}_asic{:02d}.h5"
+                                .format(module.split("_")[0],
+                                        meas_type,
+                                        meas_spec[meas_type],
+                                        asic))
         output_fname = os.path.join(output_dir, output_file_name)
 
         obj = AgipdGatherBase(input_fname,
                               output_fname,
                               runs,
                               max_part,
-                              True,  # split_asics
+                              asic,
                               use_xfel_format)
