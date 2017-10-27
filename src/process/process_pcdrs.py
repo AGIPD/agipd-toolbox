@@ -6,15 +6,15 @@ from process_base import AgipdProcessBase
 
 
 class AgipdProcessPcdrs(AgipdProcessBase):
-    def __init__(self, input_fname, output_fname, runs, use_xfel_format=False):
+    def __init__(self, in_fname, out_fname, runs, use_xfel_format=False):
 
         self.fit_interval = None
         self.n_offsets = 2
 
-        super().__init__(input_fname, output_fname, runs, use_xfel_format)
+        super().__init__(in_fname, out_fname, runs, use_xfel_format)
 
     def calculate_(self):
-        analog, digital = self.load_data(self.input_fname)
+        analog, digital = self.load_data(self.in_fname)
         mc = 0
         ypix = 0
         xpix = 0
@@ -83,7 +83,7 @@ class AgipdProcessPcdrs(AgipdProcessBase):
 #        self.fit_interval = [[40,120], [400,550]]
 
     def calculate(self):
-        analog, digital = self.load_data(self.input_fname)
+        analog, digital = self.load_data(self.in_fname)
 
         self.determine_fit_intervals()
 
@@ -139,8 +139,8 @@ if __name__ == "__main__":
 
     import utils
 
-    input_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm"
-    output_base_dir = input_base_dir
+    in_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm"
+    out_base_dir = in_base_dir
     run_list = ["r0488-r0489-r0490-r0491-r0492-r0493-r0494-r0495"]
     run_type = "pcdrs"
 
@@ -159,15 +159,15 @@ if __name__ == "__main__":
             channel = j * channels_per_run + i
             print("channel", channel)
 
-            input_file_name = (run_list[0].upper() +
-                               "-AGIPD{:02d}-gathered.h5".format(channel))
-            input_fname = os.path.join(input_base_dir,
-                                       run_list[0],
-                                       "gather",
-                                       input_file_name)
+            in_file_name = (run_list[0].upper() +
+                            "-AGIPD{:02d}-gathered.h5".format(channel))
+            in_fname = os.path.join(in_base_dir,
+                                    run_list[0],
+                                    "gather",
+                                    in_file_name)
 
-            output_dir = os.path.join(output_base_dir, run_type)
-            utils.create_dir(output_dir)
+            out_dir = os.path.join(out_base_dir, run_type)
+            utils.create_dir(out_dir)
 
             if use_xfel_format:
                 fname = ("{}_AGIPD{:02d}_xfel_{}.h5"
@@ -176,11 +176,11 @@ if __name__ == "__main__":
                 fname = ("{}_AGIPD{:02d}_agipd_{}.h5"
                          .format(run_type, channel, today))
 
-            output_fname = os.path.join(output_dir, fname)
+            out_fname = os.path.join(out_dir, fname)
 
             p = multiprocessing.Process(target=AgipdProcessPcdrs,
-                                        args=(input_fname,
-                                              output_fname,
+                                        args=(in_fname,
+                                              out_fname,
                                               run_list,
                                               use_xfel_format))
             p.start()

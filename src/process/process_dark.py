@@ -6,11 +6,11 @@ from process_base import AgipdProcessBase
 
 
 class AgipdProcessDark(AgipdProcessBase):
-    def __init__(self, input_fname, output_fname, runs, use_xfel_format=False):
+    def __init__(self, in_fname, out_fname, runs, use_xfel_format=False):
 
         self.n_offsets = None
 
-        super().__init__(input_fname, output_fname, runs, use_xfel_format)
+        super().__init__(in_fname, out_fname, runs, use_xfel_format)
 
     def initiate(self):
         self.n_offsets = len(self.runs)
@@ -51,10 +51,10 @@ class AgipdProcessDark(AgipdProcessBase):
 
     def calculate(self):
         for i, run_number in enumerate(self.runs):
-            input_fname = self.input_fname.format(run_number=run_number)
+            in_fname = self.in_fname.format(run_number=run_number)
 
-            print("Start loading data from", input_fname)
-            analog, digital = self.load_data(input_fname)
+            print("Start loading data from", in_fname)
+            analog, digital = self.load_data(in_fname)
             print("Loading done")
 
             print("Start computing means and standard deviations")
@@ -91,9 +91,9 @@ if __name__ == "__main__":
 
     import utils
 
-    input_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm"
-    output_base_dir = input_base_dir
-    run_list = ["0428", "0429", "0430"]
+    in_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm"
+    out_base_dir = in_base_dir
+    run_list = [428, 429, 430]
 
 #    use_xfel_format = False
     use_xfel_format = True
@@ -101,35 +101,39 @@ if __name__ == "__main__":
     today = str(date.today())
 
     number_of_runs = 1
-    modules_per_run = 1
+    channels_per_run = 1
 #    number_of_runs = 2
-#    modules_per_run = 16//number_of_runs
+#    channels_per_run = 16//number_of_runs
     process_list = []
     for j in range(number_of_runs):
-        for i in range(modules_per_run):
-            channel = str(j * modules_per_run + i).zfill(2)
+        for i in range(channels_per_run):
+            channel = j * channels_per_run + i
             print("channel", channel)
 
-            input_file_name = ("R{run_number}-" +
-                               "AGIPD{}-gathered.h5".format(channel))
-            input_fname = os.path.join(input_base_dir,
-                                       "r{run_number}",
-                                       "gather",
-                                       input_file_name)
+            in_file_name = ("R{run_number:04d}-" +
+                            "AGIPD{:02d}-gathered.h5".format(channel))
+            in_fname = os.path.join(in_base_dir,
+                                    "r{run_number:04d}",
+                                    "gather",
+                                    in_file_name)
 
-            output_dir = os.path.join(output_base_dir, "dark")
-            utils.create_dir(output_dir)
+            out_dir = os.path.join(out_base_dir, "dark")
+            utils.create_dir(out_dir)
 
             if use_xfel_format:
-                fname = "dark_AGIPD{}_xfel_{}.h5".format(channel, today)
+                fname = "dark_AGIPD{:02d}_xfel_{}.h5".format(channel, today)
             else:
-                fname = "dark_AGIPD{}_agipd_{}.h5".format(channel, today)
+                fname = "dark_AGIPD{:02d}_agipd_{}.h5".format(channel, today)
 
-            output_fname = os.path.join(output_dir, fname)
+            out_fname = os.path.join(out_dir, fname)
 
+            print("in_fname=", in_fname)
+            print("out_fname", out_fname)
+            print("runs", run_list)
+            print("use_xfel_format=", use_xfel_format)
             p = multiprocessing.Process(target=AgipdProcessDark,
-                                        args=(input_fname,
-                                              output_fname,
+                                        args=(in_fname,
+                                              out_fname,
                                               run_list,
                                               use_xfel_format))
             p.start()

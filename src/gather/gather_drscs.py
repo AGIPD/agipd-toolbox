@@ -22,14 +22,13 @@ import utils
 
 
 class AgipdGatherDrscs(AgipdGatherBase):
-    def __init__(self, input_fname, output_fname, runs, max_part=False,
+    def __init__(self, in_fname, out_fname, runs, max_part=False,
                  asic=None, use_xfel_format=False, backing_store=True):
 
         self.runs = runs
         self.n_runs = 4
-        #self.n_runs = len(self.runs)
 
-        super().__init__(input_fname, output_fname, runs, max_part,
+        super().__init__(in_fname, out_fname, runs, max_part,
                          asic, use_xfel_format, backing_store)
 
     def set_pos_indices(self, run_idx):
@@ -70,11 +69,7 @@ class AgipdGatherDrscs(AgipdGatherBase):
 if __name__ == "__main__":
     import multiprocessing
 
-    module_mapping = {
-        "M305": "00",
-        }
-
-    #use_xfel_format = True
+#    use_xfel_format = True
     use_xfel_format = False
 
     if use_xfel_format:
@@ -84,31 +79,35 @@ if __name__ == "__main__":
         subdir = "scratch/user/kuhnm"
 
         number_of_runs = 1
-        modules_per_run = 1
+        channels_per_run = 1
         for runs in run_list:
             process_list = []
             for j in range(number_of_runs):
-                for i in range(modules_per_run):
-                    module = str(j*modules_per_run+i).zfill(2)
-                    input_fname = os.path.join(
-                        base_path,
-                        "raw",
-                        "r{run_number:04d}",
-                        "RAW-R{run_number:04d}-" + "AGIPD{}".format(module) + "-S{part:05d}.h5")
+                for i in range(channels_per_run):
+                    cannel = j * channels_per_run + i
+                    in_file_name = ("RAW-R{run_number:04d}-" +
+                                    "AGIPD{:02d}".format(channel) +
+                                    "-S{part:05d}.h5")
+                    in_fname = os.path.join(base_path,
+                                            "raw",
+                                            "r{run_number:04d}",
+                                            in_file_name)
 
                     run_subdir = "r" + "-r".join(str(r).zfill(4) for r in runs)
-                    output_dir = os.path.join(base_path,
-                                              subdir,
-                                              run_subdir,
-                                              "gather")
-                    utils.create_dir(output_dir)
-                    output_fname = os.path.join(
-                        output_dir,
-                        "{}-AGIPD{}-gathered.h5".format(run_subdir.upper(), module))
+                    out_dir = os.path.join(base_path,
+                                           subdir,
+                                           run_subdir,
+                                           "gather")
+                    utils.create_dir(out_dir)
+
+                    out_file_name = ("{}-AGIPD{:02d}-gathered.h5"
+                                     .format(run_subdir.upper(), channel))
+                    out_fname = os.path.join(out_dir,
+                                             out_file_name)
 
                     p = multiprocessing.Process(target=AgipdGatherDrscs,
-                                                args=(input_fname,
-                                                      output_fname,
+                                                args=(in_fname,
+                                                      out_fname,
                                                       runs,
                                                       False,  # max_part
                                                       True,  # split_asics
@@ -142,37 +141,37 @@ if __name__ == "__main__":
         meas_spec = {
             "dark": "tint150ns",
             "drscs": current
-            }
+        }
 
-        input_file_name = ("{}_{}_{}_"
-                           .format(module,
-                                   meas_type,
-                                   meas_spec[meas_type])
-                           + "{run_number}_part{part:05d}.nxs")
-        input_fname = os.path.join(in_base_path,
-                                   in_subdir,
-                                   input_file_name)
+        in_file_name = ("{}_{}_{}_"
+                        .format(module,
+                                meas_type,
+                                meas_spec[meas_type])
+                        + "{run_number}_part{part:05d}.nxs")
+        in_fname = os.path.join(in_base_path,
+                                in_subdir,
+                                in_file_name)
 
-        output_dir = os.path.join(out_base_path,
-                                  out_subdir,
-                                  "gather")
-        utils.create_dir(output_dir)
+        out_dir = os.path.join(out_base_path,
+                               out_subdir,
+                               "gather")
+        utils.create_dir(out_dir)
         if asic is None:
-            output_file_name = ("{}_{}_{}.h5"
-                                .format(module.split("_")[0],
-                                        meas_type,
-                                        meas_spec[meas_type]))
+            out_file_name = ("{}_{}_{}.h5"
+                             .format(module.split("_")[0],
+                                     meas_type,
+                                     meas_spec[meas_type]))
         else:
-            output_file_name = ("{}_{}_{}_asic{:02d}.h5"
-                                .format(module.split("_")[0],
-                                        meas_type,
-                                        meas_spec[meas_type],
-                                        asic))
-        output_fname = os.path.join(output_dir, output_file_name)
+            out_file_name = ("{}_{}_{}_asic{:02d}.h5"
+                             .format(module.split("_")[0],
+                                     meas_type,
+                                     meas_spec[meas_type],
+                                     asic))
+        out_fname = os.path.join(out_dir, out_file_name)
 
-        obj = AgipdGatherDrscs(input_fname,
-                              output_fname,
-                              runs,
-                              max_part,
-                              asic,
-                              use_xfel_format)
+        AgipdGatherDrscs(in_fname,
+                         out_fname,
+                         runs,
+                         max_part,
+                         asic,
+                         use_xfel_format)

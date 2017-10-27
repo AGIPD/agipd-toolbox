@@ -11,11 +11,23 @@ import utils
 #from merge_drscs import ParallelMerge
 from correct import Correct
 
+BASE_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+print("BASE_PATH", BASE_PATH)
+SRC_PATH = os.path.join(BASE_PATH, "src")
+GATHER_PATH = os.path.join(SRC_PATH, "gather")
+PROCESS_PATH = os.path.join(SRC_PATH, "process")
+
+if GATHER_PATH not in sys.path:
+    sys.path.insert(0, GATHER_PATH)
+
+if PROCESS_PATH not in sys.path:
+    sys.path.insert(0, PROCESS_PATH)
+
 class Analyse():
     def __init__(self, run_type, meas_type, in_base_dir, out_base_dir,
                  n_processes, module, temperature, meas_spec, asic, asic_list,
-                 safety_factor, runs, max_part,
-                 current_list=None):
+                 safety_factor, runs, max_part, current_list=None,
+                 use_xfel_in_format=True, use_xfel_out_format=False):
         print("started Analyse")
 
         self.run_type = run_type
@@ -31,12 +43,12 @@ class Analyse():
         self.safety_factor = safety_factor
         self.runs = runs
         self.current_list = current_list
-        self.channel = 0
+        self.channel = module
 
         self.max_part = max_part
 
         print("Configured parameter for type {}: ".format(self.run_type))
-        print("module: ", self.module)
+        print("module/channel: ", self.module)
         print("temperature: ", self.temperature)
         print("type: ", self.meas_type)
         print("meas_spec: ", self.meas_spec)
@@ -54,8 +66,8 @@ class Analyse():
         # but there are exceptions
         self.meas_in["drscs_dark"] = "drscs"
 
-        self.use_xfel_in_format = True
-        self.use_xfel_out_format = False
+        self.use_xfel_in_format = use_xfel_in_format
+        self.use_xfel_out_format = use_xfel_out_format
 
         self.run()
 
@@ -87,9 +99,6 @@ class Analyse():
                      "-S{part:05d}.h5")
 
         else:
-            print("meas_in", self.meas_in)
-            print("meas_type", self.meas_type)
-            print("meas_in[meas_type]", self.meas_in[self.meas_type])
             # define in files
             fdir = os.path.join(base_dir,
                                 self.temperature,
@@ -112,16 +121,21 @@ class Analyse():
         if self.use_xfel_in_format:
             # TODO: concider additing this into out_base_dir (joined) and create
             #       subdirs for gathered files
-            run_subdir = "r" + "-r".join(str(r).zfill(4) for r in self.runs)
+            if self.meas_type == "pcdrs" or len(self.runs) == 1:
+                run_subdir = "r" + "-r".join(str(r).zfill(4) for r in self.runs)
+
+                fname = ("{}-AGIPD{:02d}-gathered.h5"
+                         .format(run_subdir.upper(), self.channel))
+
+            else:
+                run_subdir = "r{run_number:04d}"
+
+                fname = ("R{run_number:04d}-" +
+                         "AGIPD{:02d}-gathered.h5".format(self.channel))
 
             fdir = os.path.join(base_dir,
                                 run_subdir,
                                 "gather")
-
-            utils.create_dir(fdir)
-
-            fname = ("{}-AGIPD{:02d}-gathered.h5"
-                     .format(run_subdir.upper(), self.channel))
 
         else:
             # define out files
@@ -130,8 +144,8 @@ class Analyse():
                                 self.temperature,
                                 self.meas_type,
                                 self.meas_spec,
-                                # "gather")
                                 self.run_type)
+                                # "gather")
             # for testing
 #            out_base_dir = ("/gpfs/exfel/exp/SPB/201701/p002012/" +
 #                               "scratch/user/kuhnm")
@@ -166,11 +180,11 @@ class Analyse():
 
         self.use_cfel_gpfs = False
         if self.use_cfel_gpfs:
-            fname = ("{}_{}_{}_asic{}_processed.h5"
+            fname = ("{}_{}_{}_asic{:02d}_processed.h5"
                      .format(self.module,
                              self.meas_type,
                              self.meas_spec,
-                             str(self.asic).zfill(2)))
+                             self.asic))
 
             print("process fname", fname)
 
@@ -227,21 +241,31 @@ class Analyse():
             msg = "Process is not supported for type {}".format(self.meas_type)
             raise Exception(msg)
 
-        # define out files
-        # the in files for processing are the out ones from gather
-        in_dir, in_file_name = self.generate_gather_path(self.in_base_dir)
-        in_fname = os.path.join(in_dir, in_file_name)
+        if self.meas_type == "pcdrs":
+            # adjust list of runs
+            run_list = ["r" + "-r".join(str(r).zfill(4) for r in self.runs)]
+#            run_list = ["r" + "-r".join(str(r).zfill(4) for r in runs) for runs in self.runs]
+
+            # define out files
+            # the in files for processing are the out ones from gather
+            in_dir, in_file_name = self.generate_gather_path(self.in_base_dir)
+            in_fname = os.path.join(in_dir, in_file_name)
+
+        else:
+            run_list = self.runs
+
+            # define out files
+            # the in files for processing are the out ones from gather
+            in_dir, in_file_name = self.generate_gather_path(self.in_base_dir)
+            in_fname = os.path.join(in_dir, in_file_name)
 
         # define out files
         out_dir, out_file_name = self.generate_process_path(self.out_base_dir)
         utils.create_dir(out_dir)
         out_fname = os.path.join(out_dir, out_file_name)
 
-        # generate output
-        run_list = ["r" + "-r".join(str(r).zfill(4) for r in self.runs)]
-        #run_list = ["r" + "-r".join(str(r).zfill(4) for r in runs) for runs in self.runs]
-        #run_list = ["0428", "0429", "0430"]
 
+        # generate output
         print("channel", self.channel)
         print("in_fname=", in_fname)
         print("out_fname", out_fname)

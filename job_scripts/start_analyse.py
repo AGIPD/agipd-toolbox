@@ -1,15 +1,20 @@
+#!/usr/bin/python3
+
 import os
 import sys
 import argparse
 import multiprocessing
-from analuse import Analyse
 
 BASE_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 print("BASE_PATH", BASE_PATH)
 SRC_PATH = os.path.join(BASE_PATH, "src")
+GATHER_PATH = os.path.join(SRC_PATH, "gather")
+PROCESS_PATH = os.path.join(SRC_PATH, "process")
 
 if SRC_PATH not in sys.path:
     sys.path.insert(0, SRC_PATH)
+
+from analyse import Analyse  # noqa E402
 
 
 def get_arguments():
@@ -25,28 +30,35 @@ def get_arguments():
                         help="Base directory to write results to")
     parser.add_argument("--n_processes",
                         type=int,
+                        default=1,
                         help="The number of processes for the pool")
     parser.add_argument("--module",
                         type=str,
-                        required=True,
-                        help="Module to gather, e.g M310")
+                        help="Module to gather, e.g M310 (AGIPD lab)")
+    parser.add_argument("--channel",
+                        type=int,
+                        nargs="+",
+                        help="Module to gather, e.g 1 (XFEL)")
     parser.add_argument("--temperature",
                         type=str,
-                        required=True,
-                        help="temperature to gather, e.g. temperature_30C")
+                        default="",
+                        help="temperature to gather, e.g. temperature_30C"
+                             "(only needed for AGIPD lab data)")
     parser.add_argument("--meas_spec",
                         type=str,
-                        help="Measurement specifics used:\n"
-                             "drscs: Current to use, e.g. itestc20\n"
-                             "dark: Integration time, e.g. tint150ns\n"
-                             "xray: Element used for fluorescence, e.g. Cu")
+                        default=None,
+                        help="Measurement specifics used "
+                             "(only needed for AGIPD lab data):\n"
+                             "dark: Integration time, e.g. tint150ns\n")
+#                             "drscs: Current to use, e.g. itestc20\n"
+#                             "xray: Element used for fluorescence, e.g. Cu")
     parser.add_argument("--asic_list",
                         type=int,
                         nargs="+",
                         help="List of asics")
     parser.add_argument("--safety_factor",
-                        required=True,
                         type=int,
+                        default=None,
                         help="Safty factor used in the determination of the "
                              "gain stage changes of the analog signal "
                              "(used in drscs)")
@@ -58,76 +70,99 @@ def get_arguments():
     parser.add_argument("--type",
                         type=str,
                         required=True,
-                        choices=["dark", "xray", "clamped_gain", "pcdrs",
-                                 "drscs", "drscs_dark", "correct"],
+                        choices=["dark", "pcdrs"],
+#                        choices=["dark", "xray", "clamped_gain", "pcdrs",
+#                                 "drscs", "drscs_dark", "correct"],
                         help="Which type to run: \n"
                              "dark: generating the dark constants\n"
-                             "xray"
-                             "clamped_gain"
-                             "pcdrs"
-                             "drscs"
-                             "drscs_dark"
-                             "correct: apply constants on experiment data")
+                             "pcdrs")
+#                             "xray"
+#                             "clamped_gain"
+#                             "drscs"
+#                             "drscs_dark"
+#                             "correct: apply constants on experiment data")
     parser.add_argument("--run_list",
-                        type=str,
+                        type=int,
                         nargs="+",
                         required=True,
-                        help="Run numbers to extract offset data from (has to "
-                             "be in the order high, medium, low)")
+                        help="Run numbers to extract data from. Requirements: \n"
+                             "dark: 3 runs for the gain stages "
+                             "high, medium, low (in this order)\n"
+                             "pcdrs: 8 runs")
 
-    parser.add_argument("--column_spec",
-                        type=int,
-                        nargs='+',
-                        default=False,
-                        help="Which index files to use for which column, "
-                             "e.g. 9, 10, 11, 12")
     parser.add_argument("--max_part",
                         type=int,
-                        default=False,
+                        default=None,
                         help="Maximum number of parts to be combined")
-    parser.add_argument("--reduced_columns",
-                        type=int,
-                        nargs='+',
-                        default=False,
-                        help="If only a subset of the columns should be "
-                             "gathered")
     parser.add_argument("--current_list",
                         type=str,
                         nargs='+',
-                        help="Lists of currents to analyse")
+                        help="Lists of currents to analyse (used for drscs)")
     parser.add_argument("--energy",
                         type=int,
                         help="Information on photon energy")
+    parser.add_argument("--use_xfel_in_format",
+                        action="store_true",
+                        default=False,
+                        help="Flag describing if the input data is in xfel format")
+    parser.add_argument("--use_xfel_out_format",
+                        action="store_true",
+                        default=False,
+                        help="Flag describing if the output data should be "
+                             "stored in xfel format")
 
     args = parser.parse_args()
 
-    if args.run_type == "gather":
-        if args.column_spec and len(args.column_spec) != 4:
-            print("There have to be 4 columns defined")
-            sys.exit(1)
+    if args.module is None and args.channel is None:
+        msg = ("one of the two folling arguments is required: "
+               "--channel or --module")
+        parser.error(msg)
+    elif args.module is not None and args.channel is not None:
+        msg = ("only one of the two folling arguments is required: "
+               "--channel or --module")
+        parser.error(msg)
 
-        if not args.asic:
-            print("Asic has to be set for run_type {}".format(args.run_type))
-            sys.exit(1)
-    elif args.run_type == "process":
-        if not args.asic_list:
-            print("Asic list has to be set for run_type {}"
-                  .format(args.run_type))
-            sys.exit(1)
+    if args.type == "drscs":
+        if len(args.run_list) != 4:
+            msg = ("There have to be 4 runs defined "
+                   "(each containing 2 columns)")
+            parser.error(msg)
 
-    if args.run_type == "merge" and args.type != "drscs":
-        print("Merge is only supported for drscs")
-        sys.exit(1)
+#    if args.run_type == "gather":
+#        if not args.asic:
+#            print("Asic has to be set for run_type {}".format(args.run_type))
+#            sys.exit(1)
+#    elif args.run_type == "process":
+#        if not args.asic_list:
+#            print("Asic list has to be set for run_type {}"
+#                  .format(args.run_type))
+#            sys.exit(1)
 
-    if ((args.type == "dark" and args.type == "xray" and args.type == "drscs")
+#    if args.run_type == "merge" and args.type != "drscs":
+#        print("Merge is only supported for drscs")
+#        sys.exit(1)
+
+    if (not args.use_xfel_in_format and
+            (args.type == "dark" and
+                args.type == "xray" and
+                args.type == "drscs")
             and not args.meas_spec):
-        print("The meas_spec must be defined!")
-        sys.exit(1)
+        msg = "The meas_spec must be defined!"
+        parser.error(msg)
 
-    if args.type == "dark" and (len(args.run_list) != 3):
-        print("Runs for all 3 gain stages are required to calculate dark "
-              "constants. Quitting.")
-        sys.exit(1)
+    if args.type == "dark" and args.type == "gather" and (len(args.run_list) != 1):
+        msg = ("Gathering only one run at a time for type dark. Quitting.")
+        parser.error(msg)
+
+    if args.type == "dark" and args.type == "process" and (len(args.run_list) != 3):
+        msg = ("Runs for all 3 gain stages are required to calculate dark "
+               "constants. Quitting.")
+        parser.error(msg)
+
+    if args.type == "pcdrs" and (len(args.run_list) != 8):
+        msg = ("Pulse capacitor requires 8 runs to calculate constants. "
+               "Quitting.")
+        parser.error(msg)
 
     return args
 
@@ -138,21 +173,21 @@ class StartAnalyse():
 
         self.run_type = args.run_type
         self.meas_type = args.type
-        self.input_base_dir = args.input_dir
-        self.output_base_dir = args.output_dir
+        self.in_base_dir = args.input_dir
+        self.out_base_dir = args.output_dir
         self.run_list = args.run_list
         self.n_processes = args.n_processes
-        self.module = args.module
+        self.module = args.module or args.channel
         self.temperature = args.temperature
         self.meas_spec = args.meas_spec
-        self.asic_list = args.asic_list
+        self.asic_list = args.asic_list or [None]
         self.safety_factor = args.safety_factor
         self.energy = args.energy
         self.max_part = args.max_part
-        self.column_spec = args.column_spec
-        self.reduced_columns = args.reduced_columns
-        self.current_list = args.current_list
+        self.current_list = args.current_list if args.current_list else None
         self.energy = args.energy
+        self.use_xfel_in_format = args.use_xfel_in_format
+        self.use_xfel_out_format = args.use_xfel_out_format
 
         self.run()
 
@@ -164,8 +199,8 @@ class StartAnalyse():
         if self.run_type == "merge":
             Analyse(self.run_type,
                     self.meas_type,
-                    self.input_base_dir,
-                    self.output_base_dir,
+                    self.in_base_dir,
+                    self.out_base_dir,
                     self.n_processes,
                     self.module,
                     self.temperature,
@@ -173,31 +208,35 @@ class StartAnalyse():
                     0,
                     self.asic_list,
                     self.safety_factor,
-                    self.column_spec,
-                    self.reduced_columns,
+                    self.run_list,
                     self.max_part,
-                    self.current_list)
+                    self.current_list,
+                    self.use_xfel_in_format,
+                    self.use_xfel_out_format)
         else:
-            for asic in self.asic_list:
-                print("Starting script for asic {}\n".format(asic))
+            for m in self.module:
+                for asic in self.asic_list:
+                    print("Starting script for asic {}\n".format(asic))
 
-                p = multiprocessing.Process(target=Analyse,
-                                            args=(self.run_type,
-                                                  self.meas_type,
-                                                  self.input_base_dir,
-                                                  self.output_base_dir,
-                                                  self.n_processes,
-                                                  self.module,
-                                                  self.temperature,
-                                                  self.meas_spec,
-                                                  asic,
-                                                  self.asic_list,
-                                                  self.safety_factor,
-                                                  self.column_spec,
-                                                  self.reduced_columns,
-                                                  self.max_part))
-                jobs.append(p)
-                p.start()
+                    p = multiprocessing.Process(target=Analyse,
+                                                args=(self.run_type,
+                                                      self.meas_type,
+                                                      self.in_base_dir,
+                                                      self.out_base_dir,
+                                                      self.n_processes,
+                                                      m,
+                                                      self.temperature,
+                                                      self.meas_spec,
+                                                      asic,
+                                                      self.asic_list,
+                                                      self.safety_factor,
+                                                      self.run_list,
+                                                      self.max_part,
+                                                      self.current_list, # = None
+                                                      self.use_xfel_in_format,
+                                                      self.use_xfel_in_format))
+                    jobs.append(p)
+                    p.start()
 
             for job in jobs:
                 job.join()

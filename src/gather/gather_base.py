@@ -20,12 +20,12 @@ import utils  # noqa E402
 
 
 class AgipdGatherBase():
-    def __init__(self, input_fname, output_fname, runs, max_part=False,
+    def __init__(self, in_fname, out_fname, runs, max_part=False,
                  asic=None, use_xfel_format=False, backing_store=True):
 
-        self.input_fname = input_fname
-        self.output_fname = output_fname
-        self.runs = runs
+        self.in_fname = in_fname
+        self.out_fname = out_fname
+        self.runs = [int(r) for r in runs]
 
         self.max_part = max_part
         self.asic = asic
@@ -62,7 +62,7 @@ class AgipdGatherBase():
 
         if self.n_parts == 0:
             msg = "No parts to gather found\n"
-            msg += "input_fname={}".format(self.input_fname)
+            msg += "in_fname={}".format(self.in_fname)
             raise Exception(msg)
 
         if self.asic is None:
@@ -79,18 +79,18 @@ class AgipdGatherBase():
 
         print("\n\n\n"
               "start gather\n"
-              "input_fname = {}\n"
-              "output_fname ={}\n"
+              "in_fname = {}\n"
+              "out_fname ={}\n"
               "data_path = {}\n"
-              .format(self.input_fname,
-                      self.output_fname,
+              .format(self.in_fname,
+                      self.out_fname,
                       self.data_path))
 
         self.run()
 
     def get_parts(self):
         # remove extension
-        prefix = self.input_fname.rsplit(".", 1)[0]
+        prefix = self.in_fname.rsplit(".", 1)[0]
         # removet the part section
         prefix = prefix[:-10]
         # use the first run number to determine number of parts
@@ -111,7 +111,7 @@ class AgipdGatherBase():
 
             # use part number 0 to get the information from
             run_number = self.runs[0]
-            fname = self.input_fname.format(run_number=run_number, part=0)
+            fname = self.in_fname.format(run_number=run_number, part=0)
 
             f = None
             try:
@@ -159,11 +159,15 @@ class AgipdGatherBase():
                                       .format(self.collection_path))
 
             run_number = self.runs[0]
-            fname = self.input_fname.format(run_number=run_number, part=0)
+            fname = self.in_fname.format(run_number=run_number, part=0)
 
-            f = h5py.File(fname, "r")
-            raw_data_shape = f[self.data_path].shape
-            f.close()
+            f = None
+            try:
+                f = h5py.File(fname, "r")
+                raw_data_shape = f[self.data_path].shape
+            finally:
+                if f is not None:
+                    f.close()
 
             # dark
             self.max_pulses = 704
@@ -208,7 +212,7 @@ class AgipdGatherBase():
 
         if self.use_xfel_format:
             for i in range(self.n_parts):
-                fname = self.input_fname.format(run_number=run_number, part=i)
+                fname = self.in_fname.format(run_number=run_number, part=i)
                 try:
                     f = h5py.File(fname, "r")
                     pulse_count = f[self.pulse_count_path][()]
@@ -231,7 +235,7 @@ class AgipdGatherBase():
 
         else:
             try:
-                fname = self.input_fname.format(run_number=run_number, part=0)
+                fname = self.in_fname.format(run_number=run_number, part=0)
                 f = h5py.File(fname, "r", libver="latest", drivers="core")
 
                 # TODO: verify that the shape is always right and not
@@ -308,30 +312,35 @@ class AgipdGatherBase():
         self.load_data()
 
         print("Start saving")
-        f = h5py.File(self.output_fname, "w", libver='latest')
-        f.create_dataset("analog", data=self.analog, dtype=np.int16)
-        f.create_dataset("digital", data=self.digital, dtype=np.int16)
+        print("out_fname = {}".format(self.out_fname))
+        f = None
+        try:
+            f = h5py.File(self.out_fname, "w", libver='latest')
+            f.create_dataset("analog", data=self.analog, dtype=np.int16)
+            f.create_dataset("digital", data=self.digital, dtype=np.int16)
 
-        # save metadata from original files
-        idx = 0
-        for set_name, set_value in iter(self.metadata.items()):
-                gname = "metadata_{}".format(idx)
+            # save metadata from original files
+            idx = 0
+            for set_name, set_value in iter(self.metadata.items()):
+                    gname = "metadata_{}".format(idx)
 
-                name = "{}/source".format(gname)
-                f.create_dataset(name, data=set_name)
+                    name = "{}/source".format(gname)
+                    f.create_dataset(name, data=set_name)
 
-                for key, value in iter(set_value.items()):
-                    try:
-                        name = "{}/{}".format(gname, key)
-                        f.create_dataset(name, data=value)
-                    except:
-                        print("Error in", name, value.dtype)
-                        raise
-                idx += 1
-        print("Saving done")
+                    for key, value in iter(set_value.items()):
+                        try:
+                            name = "{}/{}".format(gname, key)
+                            f.create_dataset(name, data=value)
+                        except:
+                            print("Error in", name, value.dtype)
+                            raise
+                    idx += 1
+            print("Saving done")
 
-        f.flush()
-        f.close()
+            f.flush()
+        finally:
+            if f is not None:
+                f.close()
 
         print("gather took time:", time.time() - totalTime, "\n\n")
 
@@ -356,7 +365,7 @@ class AgipdGatherBase():
             self.source_seq_number = [0]
             target_offset = 0
             for i in range(self.n_parts):
-                fname = self.input_fname.format(run_number=run_number, part=i)
+                fname = self.in_fname.format(run_number=run_number, part=i)
                 print("loading file {}".format(fname))
 
                 excluded = [self.data_path]
@@ -368,9 +377,13 @@ class AgipdGatherBase():
                 #    dimension
                 if self.use_xfel_format:
                     # load data
-                    f = h5py.File(fname, "r")
-                    raw_data = f[self.data_path][()]
-                    f.close()
+                    f = None
+                    try:
+                        f = h5py.File(fname, "r")
+                        raw_data = f[self.data_path][()]
+                    finally:
+                        if f is not None:
+                            f.close()
 
                     self.n_frames_per_file = int(raw_data.shape[0] //
                                                  2 //
@@ -419,11 +432,18 @@ class AgipdGatherBase():
 
                 else:
                     # load data
-                    f = h5py.File(fname, "r")
-                    raw_data = f[self.data_path][..., load_idx_rows, load_idx_cols]
-                    f.close()
+                    f = None
+                    try:
+                        f = h5py.File(fname, "r")
+                        idx = (Ellipsis, load_idx_rows, load_idx_cols)
+                        raw_data = f[self.data_path][idx]
+                    finally:
+                        if f is not None:
+                            f.close()
 
-                    self.n_frames_per_file = int(raw_data.shape[0] // 2 // self.n_memcells)
+                    self.n_frames_per_file = int(raw_data.shape[0] //
+                                                 2 //
+                                                 self.n_memcells)
 
                     print("raw_data.shape", raw_data.shape)
                     print("self.n_frames_per_file", self.n_frames_per_file)
@@ -586,37 +606,37 @@ if __name__ == "__main__":
         subdir = "scratch/user/kuhnm"
 
 #        number_of_runs = 1
-#        modules_per_run = 1
+#        channeld_per_run = 1
         number_of_runs = 2
-        modules_per_run = 16 // number_of_runs
+        channels_per_run = 16 // number_of_runs
         for runs in run_list:
             process_list = []
             for j in range(number_of_runs):
-                for i in range(modules_per_run):
-                    channel = str(j * modules_per_run + i).zfill(2)
-                    input_file_name = ("RAW-R{run_number}-" +
-                                       "AGIPD{}".format(channel) +
-                                       "-S{part:05d}.h5")
-                    input_fname = os.path.join(base_path,
-                                               "raw",
-                                               "r{run_number}",
-                                               input_file_name)
+                for i in range(channeld_per_run):
+                    channel = str(j * channeld_per_run + i).zfill(2)
+                    in_file_name = ("RAW-R{run_number}-" +
+                                    "AGIPD{}".format(channel) +
+                                    "-S{part:05d}.h5")
+                    in_fname = os.path.join(base_path,
+                                            "raw",
+                                            "r{run_number}",
+                                            in_file_name)
 
                     run_subdir = "r" + "-r".join(runs)
-                    output_dir = os.path.join(base_path,
-                                              subdir,
-                                              run_subdir,
-                                              "gather")
-                    utils.create_dir(output_dir)
+                    out_dir = os.path.join(base_path,
+                                           subdir,
+                                           run_subdir,
+                                           "gather")
+                    utils.create_dir(out_dir)
 
-                    output_file_name = ("{}-AGIPD{}-gathered.h5"
-                                        .format(run_subdir.upper(), channel))
-                    output_fname = os.path.join(output_dir,
-                                                output_file_name)
+                    out_file_name = ("{}-AGIPD{}-gathered.h5"
+                                     .format(run_subdir.upper(), channel))
+                    out_fname = os.path.join(out_dir,
+                                             out_file_name)
 
                     p = multiprocessing.Process(target=AgipdGatherBase,
-                                                args=(input_fname,
-                                                      output_fname,
+                                                args=(in_fname,
+                                                      out_fname,
                                                       runs,
                                                       False,  # max_part
                                                       True,  # split_asics
@@ -649,35 +669,36 @@ if __name__ == "__main__":
             "dark": "tint150ns",
             }
 
-        input_file_name = ("{}_{}_{}_"
-                           .format(module,
-                                   meas_type,
-                                   meas_spec[meas_type]) +
-                           "{run_number}_part{part:05d}.nxs")
-        input_fname = os.path.join(in_base_path,
-                                   in_subdir,
-                                   input_file_name)
+        in_file_name = ("{}_{}_{}_"
+                        .format(module,
+                                meas_type,
+                                meas_spec[meas_type]) +
+                        "{run_number}_part{part:05d}.nxs")
+        in_fname = os.path.join(in_base_path,
+                                in_subdir,
+                                in_file_name)
 
-        output_dir = os.path.join(out_base_path,
-                                  out_subdir,
-                                  "gather")
-        utils.create_dir(output_dir)
+        out_dir = os.path.join(out_base_path,
+                               out_subdir,
+                               "gather")
+        utils.create_dir(out_dir)
+
         if asic is None:
-            output_file_name = ("{}_{}_{}.h5"
-                                .format(module.split("_")[0],
-                                        meas_type,
-                                        meas_spec[meas_type]))
+            out_file_name = ("{}_{}_{}.h5"
+                             .format(module.split("_")[0],
+                                     meas_type,
+                                     meas_spec[meas_type]))
         else:
-            output_file_name = ("{}_{}_{}_asic{:02d}.h5"
-                                .format(module.split("_")[0],
-                                        meas_type,
-                                        meas_spec[meas_type],
-                                        asic))
-        output_fname = os.path.join(output_dir, output_file_name)
+            out_file_name = ("{}_{}_{}_asic{:02d}.h5"
+                             .format(module.split("_")[0],
+                                     meas_type,
+                                     meas_spec[meas_type],
+                                     asic))
+        out_fname = os.path.join(out_dir, out_file_name)
 
-        obj = AgipdGatherBase(input_fname,
-                              output_fname,
-                              runs,
-                              max_part,
-                              asic,
-                              use_xfel_format)
+        AgipdGatherBase(in_fname,
+                        out_fname,
+                        runs,
+                        max_part,
+                        asic,
+                        use_xfel_format)

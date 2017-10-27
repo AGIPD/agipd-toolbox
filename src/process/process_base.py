@@ -19,10 +19,10 @@ import utils  # noqa E402
 
 
 class AgipdProcessBase():
-    def __init__(self, input_fname, output_fname, runs, use_xfel_format=False):
+    def __init__(self, in_fname, out_fname, runs, use_xfel_format=False):
 
-        self.input_fname = input_fname
-        self.output_fname = output_fname
+        self.in_fname = in_fname
+        self.out_fname = out_fname
         self.use_xfel_format = use_xfel_format
 
         self.runs = runs
@@ -36,8 +36,8 @@ class AgipdProcessBase():
 
         f = None
         try:
-            input_fname = self.input_fname.format(run_number=self.runs[0])
-            f = h5py.File(input_fname, "r")
+            in_fname = self.in_fname.format(run_number=self.runs[0])
+            f = h5py.File(in_fname, "r")
             self.n_memcells = f["analog"].shape[1]
         finally:
             if f is not None:
@@ -46,18 +46,18 @@ class AgipdProcessBase():
         self.shapes = {}
         self.result = {}
 
-        input_fname = self.input_fname.format(run_number=self.runs[0])
-        self.channel = int(input_fname.rsplit("/", 1)[1].split("AGIPD")[1][:2])
+        in_fname = self.in_fname.format(run_number=self.runs[0])
+        self.channel = int(in_fname.rsplit("/", 1)[1].split("AGIPD")[1][:2])
         self.in_wing2 = utils.located_in_wing2(self.channel)
 
         print("\n\n\nStart process_dark")
-        print("input_fname = ", self.input_fname)
-        print("output_fname = ", self.output_fname, "\n")
+        print("in_fname = ", self.in_fname)
+        print("out_fname = ", self.out_fname, "\n")
 
         self.run()
 
-    def load_data(self, input_fname):
-        f = h5py.File(input_fname, "r")
+    def load_data(self, in_fname):
+        f = h5py.File(in_fname, "r")
         analog = f["analog"][()]
         digital = f["digital"][()]
         f.close()
@@ -120,9 +120,9 @@ class AgipdProcessBase():
                                              self.shapes[key]))
 
     def write_data(self):
-        print("Start saving results at", self.output_fname)
+        print("Start saving results at", self.out_fname)
 
-        f = h5py.File(self.output_fname, "w", libver="latest")
+        f = h5py.File(self.out_fname, "w", libver="latest")
 
         for key in self.result:
             f.create_dataset(self.result[key]["path"],
@@ -130,8 +130,12 @@ class AgipdProcessBase():
                              dtype=self.result[key]["type"])
 
         # convert into unicode
-        self.runs = [run.encode('utf8') for run in self.runs]
-        f.create_dataset("run_number", data=self.runs)
+        if type(self.runs[0]) == str:
+            used_run_numbers = [run.encode('utf8') for run in self.runs]
+        else:
+            used_run_numbers = ["r{:04d}".format(run).encode('utf8') for run in self.runs]
+
+        f.create_dataset("run_number", data=used_run_numbers)
 
         f.flush()
         f.close()

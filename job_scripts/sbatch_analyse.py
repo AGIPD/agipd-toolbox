@@ -17,14 +17,38 @@ conf_dir = os.path.join(script_base_dir, "conf")
 def get_arguments():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--config_file",
+    parser.add_argument("--input_dir",
+                       type=str,
+                       required=True,
+                       help="Directory to get data from")
+    parser.add_argument("--output_dir",
+                       type=str,
+                       required=True,
+                       help="Base directory to write results to")
+    parser.add_argument("--type",
                         type=str,
                         required=True,
+                        choices=["dark", "pcdrs"],
+                        help="Which type to run:\n"
+                             "dark: generating the dark constants\n"
+                             "pcdrs: generating the pulse capacitor constants")
+    parser.add_argument("--run_list",
+                        type=int,
+                        required=True,
+                        nargs="+",
+                        help="Run numbers to extract data from. Requirements:\n"
+                             "dark: 3 runs for the gain stages "
+                             "high, medium, low (in this order)\n"
+                             "pcdrs: 8 runs")
+
+    parser.add_argument("--config_file",
+                        type=str,
+#                        required=True,
                         help="Config file name to get config parameters from")
 
     parser.add_argument("--run_type",
                         type=str,
-                        choices=["gather", "process", "merge"],
+                        choices=["gather", "process", "merge", "all"],
                         help="Run type of the analysis")
     parser.add_argument("--no_slurm",
                         action="store_true",
@@ -35,146 +59,135 @@ def get_arguments():
 
     return args
 
-
 class SubmitJobs():
     def __init__(self):
-        global script_base_dir
         global conf_dir
+
+        self.use_xfel = True
+        self.config_file = "xfel"
+
+        # load base config
+        ini_file = os.path.join(conf_dir, "base.ini")
+        self.config = dict()
+        self.load_config(ini_file)
 
         args = get_arguments()
 
-        config_name = args.config_file
+        config_name = args.config_file or self.config_file
         self.no_slurm = args.no_slurm
 
         ini_file = os.path.join(conf_dir, "{}.ini".format(config_name))
         print("Using ini_file: {}".format(ini_file))
 
+        # override base config with values of user config file
+        self.load_config(ini_file)
+
+        try:
+            self.mail_address = self.config["general"]["mail_address"]
+        except KeyError:
+            self.mail_address = None
+
+        run_type = self.config["general"]["run_type"]
+
+        # console parameters overwrite the config file ones
+        self.run_type = args.run_type or run_type
+        self.measurement = args.type or self.config["general"]["measurement"]
+
+        self.partition = self.config["general"]["partition"]
+
+        self.safety_factor  = None
+        self.meas_spec = None
+
+        if self.measurement == "drscs":
+            self.run_type_list = ["gather", "process", "merge"]
+        else:
+            self.run_type_list = ["gather", "process"]
+
+        self.run_list = args.run_list or self.config["general"]["run_list"]
+
+        if self.use_xfel:
+            self.module = self.config["general"]["channel"]
+            self.temperature = None
+        else:
+            self.module = self.config["general"]["module"]
+            self.temperature = self.config["general"]["temperature"]
+
+            if self.measurement == "drscs":
+                self.safety_factor = self.config["drscs"]["safety_factor"]
+                self.meas_spec = self.config[self.measurement]["current"]
+
+            elif self.measurement == "dark":
+                self.meas_spec = self.config[self.measurement]["tint"]
+
+            elif self.measurement == "xray":
+                self.meas_spec = self.config[self.measurement]["element"]
+                self.run_type_list = ["gather", "process"]
+
+
+        self.n_jobs = {}
+        self.n_processes = {}
+        self.time_limit = {}
+        self.input_dir = {}
+        self.output_dir = {}
+        for run_type in self.run_type_list:
+            self.n_jobs[run_type] = int(self.config[run_type]["n_jobs"])
+            self.n_processes[run_type] = self.config[run_type]["n_processes"]
+            self.time_limit[run_type] = self.config[run_type]["time_limit"]
+
+            try:
+                self.input_dir[run_type] = args.input_dir or self.config[run_type]["input_dir"]
+            except KeyError:
+                self.input_dir[run_type] = None
+            try:
+                self.output_dir[run_type] = self.config[run_type]["output_dir"]
+            except KeyError:
+                self.output_dir[run_type] = None
+
+        # overwrite with input and output from command line
+        self.input_dir["gather"] = args.input_dir or self.input_dir["gather"]
+
+        for run_type in self.run_type_list:
+            if run_type != "gather" and args.output_dir is not None:
+                self.input_dir[run_type] = args.output_dir
+            self.output_dir[run_type] = (args.output_dir or
+                                         self.output_dir[run_type])
+
+        # Needed for gather
+        try:
+            self.max_part = self.config["gather"]["max_part"]
+        except KeyError:
+            self.max_part = None
+
+        if self.config["general"]["asic_set"] == "None":
+            self.asic_set = None
+        else:
+            # convert str into list
+            self.asic_set = self.config["general"]["asic_set"][1:-1].split(", ")
+            # convert list entries into ints
+            self.asic_set = list(map(int, self.asic_set))
+
+    def load_config(self, ini_file):
+
         config = configparser.ConfigParser()
         config.read(ini_file)
 
         if not config.sections():
-            print("Non ini file found")
+            print("No ini file found (tried to find {})".format(ini_file))
             sys.exit(1)
 
-        self.mail_address = config["general"]["mail_address"]
-        run_type = config["general"]["run_type"]
+        for section, sec_value in config.items():
+            if section not in self.config:
+                self.config[section]={}
+            for key, key_value in sec_value.items():
+                self.config[section][key] = key_value
 
-        # console parameters overwrite the config file ones
-        self.run_type = args.run_type or run_type
-
-        self.module = config["general"]["module"]
-        self.temperature = config["general"]["temperature"]
-        self.measurement = config["general"]["measurement"]
-        self.safety_factor = config["general"]["safety_factor"]
-        self.partition = config["general"]["partition"]
-
-        self.current = None
-        self.tint = None
-        self.element = None
-
-        if self.measurement == "drscs":
-            current = config[self.measurement]["current"]
-        elif self.measurement == "dark":
-            self.tint = config[self.measurement]["tint"]
-        elif self.measurement == "xray":
-            self.element = config[self.measurement]["element"]
-
-        self.n_jobs = int(config[self.run_type]["n_jobs"])
-        self.n_processes = config[self.run_type]["n_processes"]
-
-        self.input_dir = config[self.run_type]["input_dir"]
-        self.time_limit = config[self.run_type]["time_limit"]
-        self.output_dir = config[self.run_type]["output_dir"]
-
-        # Needed for gather
-        try:
-            self.max_part = config["gather"]["max_part"]
-        except KeyError:
-            self.max_part = False
-        try:
-            self.column_spec = config["gather"]["column_spec"]
-        except KeyError:
-            self.column_spec = False
-
-        # convert str into list
-        asic_set = config["general"]["asic_set"][1:-1].split(", ")
-        # convert list entries into ints
-        asic_set = list(map(int, asic_set))
-
-        self.asic_lists = None
-        self.generate_asic_lists(asic_set, self.n_jobs)
-
-        work_dir = os.path.join(self.output_dir, self.module,
-                                self.temperature, "sbatch_out")
-        if not os.path.exists(work_dir):
-            os.makedirs(work_dir)
-            print("Creating sbatch working dir: {}\n".format(work_dir))
-
-        self.sbatch_params = [
-            "--partition", self.partition,
-            "--time", self.time_limit,
-            "--nodes", "1",
-            "--mail-type", "END",
-            "--mail-user", self.mail_address,
-            "--workdir", work_dir,
-        ]
-
-        script_params = [
-            "--script_base_dir", script_base_dir,
-            "--run_type", self.run_type,
-            "--measurement", self.measurement,
-            "--input_dir", self.input_dir,
-            "--output_dir", self.output_dir,
-            "--n_processes", self.n_processes,
-            "--module", self.module,
-            "--temperature", self.temperature,
-            "--safety_factor", self.safety_factor,
-        ]
-
-        if self.run_type == "gather":
-            if self.max_part:
-                script_params += ["--max_part", self.max_part]
-
-            if self.column_spec:
-                script_params += ["--column_spec", self.column_spec]
-
-        if self.run_type == "merge" and self.measurement == "drscs":
-            # missuse current to set merge as the job name
-            self.current = self.run_type
-            current_list = current.replace(",", "")
-            self.script_params = (script_params +
-                                  ["--current_list", current_list])
-
-            print("run merge")
-            self.run()
-
-        elif self.measurement == "drscs":
-            # comma seperated string into into list
-            current_list = [c.split()[0] for c in current.split(",")]
-
-            for current in current_list:
-                self.current = current
-                self.script_params = (script_params +
-                                      ["--current", current])
-
-                print("run:", current)
-                self.run()
-
-        elif self.measurement == "dark":
-            self.script_params = (script_params +
-                                  ["--tint", self.tint])
-
-            print("run: ", self.tint)
-            self.run()
-
-        elif self.measurement == "xray":
-            self.script_params = (script_params +
-                                  ["--element", self.element])
-
-            print("run: ", self.element)
-            self.run()
+        return config
 
     def generate_asic_lists(self, asic_set, n_jobs):
+
+        if asic_set is None:
+            self.asic_lists = [None]
+            return
 
         if len(asic_set) <= n_jobs:
             # if there are less tasks than jobs, start a job for every task
@@ -196,43 +209,164 @@ class SubmitJobs():
                                 for i in range(start, stop, size + 1)]
 
     def run(self):
+        if self.run_type != "all":
+            self.run_type_list = [self.run_type]
+
+        self.run_type_list = ["gather"]
+        for run_type in self.run_type_list:
+
+            if run_type == "gather" and self.measurement == "dark":
+                run_list = self.run_list #[int(run) for run in self.run_list]
+            else:
+                run_list = [self.run_list]
+
+            for runs in run_list:
+                print("runs", runs, type(runs))
+                self.asic_lists = None
+                self.generate_asic_lists(self.asic_set, self.n_jobs[run_type])
+
+                if self.use_xfel:
+                    work_dir = os.path.join(self.output_dir["process"],
+                                            "sbatch_out")
+                else:
+                    work_dir = os.path.join(self.output_dir, self.module,
+                                            self.temperature, "sbatch_out")
+
+                if not os.path.exists(work_dir):
+                    os.makedirs(work_dir)
+                    print("Creating sbatch working dir: {}\n".format(work_dir))
+
+                self.sbatch_params = [
+                    "--partition", self.partition,
+                    "--time", self.time_limit[run_type],
+                    "--nodes", "1",
+                    "--workdir", work_dir,
+                ]
+
+                if self.mail_address is not None:
+                    self.sbatch_params += [
+                        "--mail-type", "END",
+                        "--mail-user", self.mail_address
+                    ]
+
+                self.script_params = [
+                    "--run_type", run_type,
+                    "--type", self.measurement,
+                    "--input_dir", self.input_dir[run_type],
+                    "--output_dir", self.output_dir[run_type],
+                    "--n_processes", self.n_processes[run_type],
+                ]
+                if type(runs) == list:
+                    self.script_params += [
+                        "--run_list", " ".join(str(r) for r in runs)
+                    ]
+                else:
+                    self.script_params += ["--run_list", str(runs)]
+
+                if self.use_xfel:
+                    self.script_params += [
+                        "--channel", self.module,
+                        "--use_xfel_in_format"
+                    ]
+                else:
+                    self.script_params += ["--module", self.module]
+
+                # parameter which are None raise an error in subprocess
+                # -> do not add them
+                if self.temperature is not None:
+                    self.script_params += ["--temperature", self.temperature]
+
+                if self.safety_factor is not None:
+                    self.script_params += ["--safety_factor", self.safety_factor,]
+
+                if self.max_part is not None:
+                    self.script_params += ["--max_part", self.max_part]
+
+                if self.meas_spec is not None:
+                    self.script_params += ["--meas_spec", self.meas_spec]
+
+                print("self.sbatch_params")
+                print(self.sbatch_params)
+                print()
+                print("self.script_params")
+                print(self.script_params)
+
+                if self.run_type == "merge" and self.measurement == "drscs":
+                    current_list = self.meas_spec.replace(",", "")
+                    self.script_params += ["--current_list", current_list]
+
+                    # missuse current to set merge as the job name
+                    self.meas_spec = self.run_type
+
+                    print("start_job ({})".format(run_type))
+                    self.start_job(run_type)
+
+                elif self.measurement == "drscs":
+                    # comma seperated string into into list
+                    current_list = [c.split()[0] for c in current.split(",")]
+
+                    for current in current_list:
+                        self.meas_spec = current
+                        self.script_params += ["--self.meas_spec", self.meas_spec]
+
+                        print("start_job ({}): {}".format(run_type, current))
+                        self.start_job(run_type)
+
+                else:
+                    print("start_job ({}): {}".format(run_type, self.measurement))
+                    self.start_job(run_type)
+
+
+    def start_job(self, run_type):
         global batch_job_dir
 
         # getting date and time
         now = datetime.datetime.now()
         dt = now.strftime("%Y-%m-%d_%H:%M:%S")
 
-        print("run", self.asic_lists)
+
+        print("run asic_lists", self.asic_lists)
         for asic_set in self.asic_lists:
-            # map to string to be able to call shell script
-            asic_set = " ".join(map(str, asic_set))
-            print("Starting job for asics {}\n".format(asic_set))
-            short_temperature = self.temperature[len("temperature_"):]
+            job_name = ("{}_{}_{}"
+                        .format(run_type,
+                                self.measurement,
+                                self.module))
+            output_name = ("{}_{}_{}"
+                           .format(run_type,
+                                   self.measurement,
+                                   self.module))
+            error_name = ("{}_{}_{}"
+                          .format(run_type,
+                                  self.measurement,
+                                  self.module))
+            if not self.use_xfel:
+                short_temperature = self.temperature[len("temperature_"):]
+                job_name = ("{}_{}_{}"
+                           .format(job_name,
+                                   short_temperature,
+                                   self.meas_spec))
+                output_name = ("{}_{}_{}"
+                               .format(output_name,
+                                       short_temperature,
+                                       self.meas_spec))
+                error_name = ("{}_{}_{}"
+                              .format(error_name,
+                                      short_temperature,
+                                      self.meas_spec))
+
+            if asic_set is not None:
+                # map to string to be able to call shell script
+                asic_set = " ".join(map(str, asic_set))
+                print("Starting job for asics {}\n".format(asic_set))
+
+                job_name = "{}_{}".format(job_name, asic_set)
+                output_name = "{}_{}".format(output_name, asic_set)
+                error_name = "{}_{}".format(error_name, asic_set)
 
             self.sbatch_params += [
-                "--job-name", ("{}_{}_{}_{}_{}_{}"
-                               .format(self.run_type,
-                                       self.measurement,
-                                       self.module,
-                                       short_temperature,
-                                       self.current,
-                                       asic_set)),
-                "--output", ("{}_{}_{}_{}_{}_{}_{}_%j.out"
-                             .format(self.run_type,
-                                     self.measurement,
-                                     self.module,
-                                     short_temperature,
-                                     self.current,
-                                     asic_set,
-                                     dt)),
-                "--error", ("{}_{}_{}_{}_{}_{}_{}_%j.err"
-                            .format(self.run_type,
-                                    self.measurement,
-                                    self.module,
-                                    short_temperature,
-                                    self.current,
-                                    asic_set,
-                                    dt))
+                "--job-name", job_name,
+                "--output", "{}_{}_%j.out".format(output_name, dt),
+                "--error", "{}_{}_%j.err".format(error_name, dt)
             ]
 
 #            #shell_script = os.path.join(batch_job_dir, "analyse.sh")
@@ -243,17 +377,22 @@ class SubmitJobs():
 #                  [asic_set]
 
             shell_script = os.path.join(batch_job_dir, "start_analyse.sh")
-            cmd = [shell_script, batch_job_dir] + self.script_params + \
-                  ["--asic_list", asic_set]
+            cmd = [shell_script, batch_job_dir] + self.script_params
+
+            if asic_set is not None:
+                cmd += ["--asic_list", asic_set]
 
             if not self.no_slurm:
                 cmd = ["sbatch"] + self.sbatch_params + cmd
 
             try:
-                subprocess.call(cmd)
+                a = subprocess.call(cmd)
+                print("subprocess return")#, a)
+#                print("cmd {}".format(cmd))
             except:
                 print("cmd {}".format(cmd))
                 raise
 
 if __name__ == "__main__":
-    SubmitJobs()
+    obj = SubmitJobs()
+    obj.run()
