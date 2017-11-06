@@ -134,14 +134,89 @@ def load_file_content(fname, excluded=[]):
     return file_content
 
 
-def write_content(file_content, fname, prefix=""):
-    f = h5py.File(fname, "w")
+def write_content(fname, file_content, prefix="", excluded=[]):
+    f = h5py.File(fname, "w", libver="latest")
 
     for key in file_content:
-        f.create_dataset(prefix + "/" + key, data=file_content[key])
+        if key not in excluded:
+            f.create_dataset(prefix + "/" + key, data=file_content[key])
 
     f.close()
 
+
+def calculate_mapped_asic(self, asic_order):
+    #                  [rows, columns]
+    asics_per_module = [len(asic_order), len(asic_order[0])]
+
+    index_map = range(asics_per_module[0] * asics_per_module[1])
+
+    for row_i in np.arange(len(asic_order)):
+        try:
+            col_i = asic_order[row_i].index(self.asic)
+            return index_map[row_i * asics_per_module[1] + col_i]
+        except:
+            pass
+    raise Exception("Asic {} is not supported. (asic_order={})"
+                    .format(self.asic, asic_order))
+
+
+def determine_asic_border(mapped_asic, asic_size):
+    #       ____ ____ ____ ____ ____ ____ ____ ____
+    # 0x64 |    |    |    |    |    |    |    |    |
+    #      |  0 |  1 | 2  | 3  |  4 |  5 | 6  | 7  |
+    # 1x64 |____|____|____|____|____|____|____|____|
+    #      |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
+    # 2x64 |____|____|____|____|____|____|____|____|
+    #      0*64 1x64 2x64 3x64 4x64 5x64 6x64 7x64 8x64
+
+    row_progress = int(mapped_asic / asics_per_module[1])
+    col_progress = int(mapped_asic % asics_per_module[1])
+    print("row_progress: {}".format(row_progress))
+    print("col_progress: {}".format(col_progress))
+
+    row_start = row_progress * asic_size
+    row_stop = (row_progress + 1) * asic_size
+    col_start = col_progress * asic_size
+    col_stop = (col_progress + 1) * asic_size
+
+    print("asic_size {}".format(asic_size))
+    print("row_start: {}".format(row_start))
+    print("row_stop: {}".format(row_stop))
+    print("col_start: {}".format(col_start))
+    print("col_stop: {}".format(col_stop))
+
+    return row_start, row_stop, col_start, col_stop
+
+
+def concatenate_to_module(data):
+    asic_order = self.get_asic_order()[0]
+    # upper row
+    asic_row = asic_order[0]
+
+    # index goes from 0 to 15
+    data_upper = data[asic_row[0] - 1]
+
+    for asic in asic_row[1:]:
+        data_upper = np.concatenate((data_upper,
+                                     data[asic - 1]),
+                                     axis=2)
+
+    # lower row
+    asic_row = asic_order[1]
+
+    data_lower = data[asic_row[0] - 1]
+
+    for asic in asic_row[1:]:
+        data_lower = np.concatenate((data_lower,
+                                     data[asic - 1]),
+                                     axis=2)
+
+    # combine them
+    result = np.concatenate((data_upper,
+                             data_lower),
+                             axis=1)
+
+    return result
 
 def setup_logging(name, level):
 
