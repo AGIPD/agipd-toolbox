@@ -73,7 +73,15 @@ class AgipdGatherBase():
             self.n_rows = self.asic_size
             self.n_cols = self.asic_size
 
-            self.determine_asic_border()
+            asic_order = utils.get_asic_order()
+            mapped_asic = utils.calculate_mapped_asic(asic_order)
+            print("mapped_asic={}".format(mapped_asic))
+
+            (self.a_row_start,
+             self.a_row_stop,
+             self.a_col_start,
+             self.a_col_stop) = utils.determine_asic_border(mapped_asic,
+                                                            self.asic_size)
 
         self.intiate()
 
@@ -259,51 +267,6 @@ class AgipdGatherBase():
 
             self.n_frames_total = int(exp_total_frames)
             self.n_frames = int(exp_total_frames // 2 // self.n_memcells)
-
-    def calculate_mapped_asic(self, asic_order, asics_per_module):
-        index_map = range(asics_per_module[0] * asics_per_module[1])
-
-        for row_i in np.arange(len(asic_order)):
-            try:
-                col_i = asic_order[row_i].index(self.asic)
-                return index_map[row_i * asics_per_module[1] + col_i]
-            except:
-                pass
-        raise Exception("Asic {} is not supported. (asic_order={})"
-                        .format(self.asic, asic_order))
-
-    def determine_asic_border(self):
-        #       ____ ____ ____ ____ ____ ____ ____ ____
-        # 0x64 |    |    |    |    |    |    |    |    |
-        #      |  0 |  1 | 2  | 3  |  4 |  5 | 6  | 7  |
-        # 1x64 |____|____|____|____|____|____|____|____|
-        #      |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
-        # 2x64 |____|____|____|____|____|____|____|____|
-        #      0*64 1x64 2x64 3x64 4x64 5x64 6x64 7x64 8x64
-
-
-        asic_order = utils.get_asic_order()
-        #                  [rows, columns]
-        asics_per_module = [len(asic_order), len(asic_order[0])]
-
-        mapped_asic = self.calculate_mapped_asic(asic_order, asics_per_module)
-        print("mapped_asic={}".format(mapped_asic))
-
-        row_progress = int(mapped_asic / asics_per_module[1])
-        col_progress = int(mapped_asic % asics_per_module[1])
-        print("row_progress: {}".format(row_progress))
-        print("col_progress: {}".format(col_progress))
-
-        self.a_row_start = row_progress * self.asic_size
-        self.a_row_stop = (row_progress + 1) * self.asic_size
-        self.a_col_start = col_progress * self.asic_size
-        self.a_col_stop = (col_progress + 1) * self.asic_size
-
-        print("asic_size {}".format(self.asic_size))
-        print("a_row_start: {}".format(self.a_row_start))
-        print("a_row_stop: {}".format(self.a_row_stop))
-        print("a_col_start: {}".format(self.a_col_start))
-        print("a_col_stop: {}".format(self.a_col_stop))
 
     def run(self):
 

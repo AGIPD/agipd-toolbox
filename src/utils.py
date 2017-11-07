@@ -4,6 +4,7 @@ import os
 import sys
 import numpy as np
 import h5py
+import collections
 
 import logging
 from logging.config import dictConfig
@@ -53,31 +54,46 @@ def located_in_wing2(channel):
         return False
 
 
+def is_xfel_format(data_shape):
+    if data_shape[-2:] == (512, 128):
+        return True
+    else:
+        return False
+
+
 def convert_to_agipd_format(module, data):
 
-    in_wing2 = located_in_wing2(module)
-
     if isinstance(data, np.ndarray):
-        data_dim = len(data.shape)
-        if data_dim == 2:
-            if in_wing2:
-                data = data[::-1, :]
-            else:
-                data = data[:, ::-1]
-        elif data_dim > 2:
-            if in_wing2:
-                data = data[..., ::-1, :]
-            else:
-                data = data[..., :, ::-1]
-        else:
-            print("data to convert is of the wrong dimension")
+        if is_xfel_format(data.shape):
+            pass
 
-        # converts (..., 128, 512) to (..., 512, 128)
-        last = len(data.shape) - 1
-        data = np.swapaxes(data, last, last - 1)
+        else:
+            in_wing2 = located_in_wing2(module)
+
+            data_dim = len(data.shape)
+            if data_dim == 2:
+                if in_wing2:
+                    data = data[::-1, :]
+                else:
+                    data = data[:, ::-1]
+            elif data_dim > 2:
+                if in_wing2:
+                    data = data[..., ::-1, :]
+                else:
+                    data = data[..., :, ::-1]
+            else:
+                print("data to convert is of the wrong dimension")
+
+            # converts (..., 128, 512) to (..., 512, 128)
+            last = len(data.shape) - 1
+            data = np.swapaxes(data, last, last - 1)
 
     elif isinstance(data, tuple):
-        data = (data[:-2] + (data[-1], data[-2]))
+        if is_xfel_format(data):
+            pass
+
+        else:
+            data = (data[:-2] + (data[-1], data[-2]))
 
     else:
         raise Exception("Convertion failed: type {} not supported"
@@ -88,29 +104,37 @@ def convert_to_agipd_format(module, data):
 
 def convert_to_xfel_format(channel, data):
 
-    in_wing2 = located_in_wing2(channel)
-
     if isinstance(data, np.ndarray):
-        # converts (..., 128, 512) to (..., 512, 128)
-        last = len(data.shape) - 1
-        data = np.swapaxes(data, last, last - 1)
+        if is_xfel_format(data.shape):
+            pass
 
-        data_dim = len(data.shape)
-        if data_dim == 2:
-            if in_wing2:
-                data = data[::-1, :]
-            else:
-                data = data[:, ::-1]
-        elif data_dim > 2:
-            if in_wing2:
-                data = data[..., ::-1, :]
-            else:
-                data = data[..., :, ::-1]
         else:
-            print("data to convert is of the wrong dimension")
+            in_wing2 = located_in_wing2(channel)
+
+            # converts (..., 128, 512) to (..., 512, 128)
+            last = len(data.shape) - 1
+            data = np.swapaxes(data, last, last - 1)
+
+            data_dim = len(data.shape)
+            if data_dim == 2:
+                if in_wing2:
+                    data = data[::-1, :]
+                else:
+                    data = data[:, ::-1]
+            elif data_dim > 2:
+                if in_wing2:
+                    data = data[..., ::-1, :]
+                else:
+                    data = data[..., :, ::-1]
+            else:
+                print("data to convert is of the wrong dimension")
 
     elif isinstance(data, tuple):
-        data = (data[:-2] + (data[-1], data[-2]))
+        if is_xfel_format(data):
+            pass
+
+        else:
+            data = (data[:-2] + (data[-1], data[-2]))
 
     else:
         raise Exception("Convertion failed: type {} not supported"
@@ -145,6 +169,23 @@ def write_content(fname, file_content, prefix="", excluded=[]):
 
 
 def calculate_mapped_asic(self, asic_order):
+    # converts asic numbering
+    # e.g. convert an ordering like this (defined in asic_order):
+    #  ____ ____ ____ ____ ____ ____ ____ ____
+    # |    |    |    |    |    |    |    |    |
+    # | 16 | 15 | 14 | 13 | 12 | 11 | 10 |  9 |
+    # |____|____|____|____|____|____|____|____|
+    # |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |
+    # |____|____|____|____|____|____|____|____|
+    #
+    #                   into
+    #  ____ ____ ____ ____ ____ ____ ____ ____
+    # |    |    |    |    |    |    |    |    |
+    # |  0 |  1 | 2  | 3  |  4 |  5 |  6 |  7 |
+    # |____|____|____|____|____|____|____|____|
+    # |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
+    # |____|____|____|____|____|____|____|____|
+
     #                  [rows, columns]
     asics_per_module = [len(asic_order), len(asic_order[0])]
 
@@ -163,7 +204,7 @@ def calculate_mapped_asic(self, asic_order):
 def determine_asic_border(mapped_asic, asic_size):
     #       ____ ____ ____ ____ ____ ____ ____ ____
     # 0x64 |    |    |    |    |    |    |    |    |
-    #      |  0 |  1 | 2  | 3  |  4 |  5 | 6  | 7  |
+    #      |  0 |  1 | 2  | 3  |  4 |  5 |  6 |  7 |
     # 1x64 |____|____|____|____|____|____|____|____|
     #      |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
     # 2x64 |____|____|____|____|____|____|____|____|
@@ -188,8 +229,13 @@ def determine_asic_border(mapped_asic, asic_size):
     return row_start, row_stop, col_start, col_stop
 
 
-def concatenate_to_module(data):
-    asic_order = self.get_asic_order()[0]
+def concatenate_to_module(data, row_axis=2, col_axis=1):
+
+    # datra was not splitted into asics but contained the whole module
+    if len(data) == 1:
+        return data[0]
+
+    asic_order = get_asic_order()
     # upper row
     asic_row = asic_order[0]
 
@@ -199,7 +245,7 @@ def concatenate_to_module(data):
     for asic in asic_row[1:]:
         data_upper = np.concatenate((data_upper,
                                      data[asic - 1]),
-                                     axis=2)
+                                     axis=row_axis)
 
     # lower row
     asic_row = asic_order[1]
@@ -209,14 +255,29 @@ def concatenate_to_module(data):
     for asic in asic_row[1:]:
         data_lower = np.concatenate((data_lower,
                                      data[asic - 1]),
-                                     axis=2)
+                                     axis=row_axis)
 
     # combine them
     result = np.concatenate((data_upper,
                              data_lower),
-                             axis=1)
+                             axis=col_axis)
 
     return result
+
+
+# source: https://stackoverflow.com/questions/6027558/flatten-nested-python-dictionaries-compressing-keys
+def flatten(d, parent_key='', sep='/'):
+    # converts nested dictionary into flat one
+    # e.g. {"a": {"n":1, "m":2}} -> {"a/n":1, "a/m":2}
+
+    items = []
+    for k, v in d.items():
+        new_key = parent_key + sep + str(k) if parent_key else k
+        if isinstance(v, collections.MutableMapping):
+            items.extend(flatten(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
 
 def setup_logging(name, level):
 
