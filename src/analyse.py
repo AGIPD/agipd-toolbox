@@ -168,15 +168,13 @@ class Analyse():
         return fdir, fname
 
     def generate_process_path(self, base_dir):
-        today = str(date.today())
-
         fdir = os.path.join(base_dir,
                             self.meas_type)
 
         if self.use_xfel_out_format:
-            fname = "{}_AGIPD{:02d}_xfel_{}.h5".format(self.meas_type, self.channel, today)
+            fname = "{}_AGIPD{:02d}_xfel.h5".format(self.meas_type, self.channel)
         else:
-            fname = "{}_AGIPD{:02d}_agipd_{}.h5".format(self.meas_type, self.channel, today)
+            fname = "{}_AGIPD{:02d}_agipd.h5".format(self.meas_type, self.channel)
 
         self.use_cfel_gpfs = False
         if self.use_cfel_gpfs:
