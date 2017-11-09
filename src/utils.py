@@ -64,7 +64,7 @@ def is_xfel_format(data_shape):
 def convert_to_agipd_format(module, data):
 
     if isinstance(data, np.ndarray):
-        if is_xfel_format(data.shape):
+        if not is_xfel_format(data.shape):
             pass
 
         else:
