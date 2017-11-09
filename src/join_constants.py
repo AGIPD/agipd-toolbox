@@ -10,7 +10,7 @@ def get_arguments():
     parser.add_argument("--base_dir",
                         type=str,
                         required=True,
-                        help="Base direcory to work in")
+                        help="Base directory to work in")
     parser.add_argument("--input_file",
                         type=str,
                         required=True,
@@ -30,7 +30,7 @@ class JoinConstants():
         self.in_fname = in_fname
         self.out_fname = out_fname
 
-        self.n_channels = 1#16
+        self.n_channels = 16
 
         self.source_content = None
 
@@ -42,6 +42,7 @@ class JoinConstants():
         try:
             f = h5py.File(out_fname, "w")
 
+            # TODO change to automatic channel detection
             for channel in range(self.n_channels):
                 fname = self.in_fname.format(channel)
 
