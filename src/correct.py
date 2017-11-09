@@ -3,14 +3,6 @@ import sys
 import numpy as np
 import time
 import os
-tmp_raw_data = {}
-
-
-def get_file_content(name, obj):
-    global tmp_raw_data
-
-    if isinstance(obj, h5py.Dataset):
-        tmp_raw_data[name] = obj[()]
 
 
 class Correct():
@@ -33,15 +25,8 @@ class Correct():
         self.n_memcells = None
         self.output_data_shape = None
 
-        self.module_order = [[12, 13, 14, 15, 8, 9, 10, 11],
-                             [0, 1, 2, 3, 4, 5, 6, 7]]
-
-        self.module = self.data_fname.rsplit("/", 1)[1].split("AGIPD")[1][:2]
-        if self.module in self.module_order[1]:
-            print("in wing2 (module {})".format(self.module))
-            self.in_wing2 = True
-        else:
-            self.in_wing2 = False
+        self.channel = self.data_fname.rsplit("/", 1)[1].split("AGIPD")[1][:2]
+        self.in_wing2 = utils.located_in_wing2(self.channel)
 
         print("\n\n\nStart correcting")
         print("data_fname = ", self.data_fname)
@@ -104,20 +89,20 @@ class Correct():
         print("Done correcting")
 
 #        if self.use_xfel_format:
-#            self.convert_to_xfel_format()
+#            utils.convert_to_xfel_format(self.channel, self.analog)
+#            utils.convert_to_xfel_format(self.channel, self.digital)
+#            utils.convert_to_xfel_format(self.channel, self.thresholds_shape)
+#            utils.convert_to_xfel_format(self.channel, self.offsets_shape)
 
         self.write_data()
 
         print('correction took time:  ', time.time() - total_time, '\n\n')
 
     def load_data(self):
-        global tmp_raw_data
 
-        f = h5py.File(self.data_fname, "r")
-        f.visititems(get_file_content)
-        f.close()
+        self.raw_data_content = utils.load_file_content()
 
-        raw_data = tmp_raw_data[self.data_path]
+        raw_data = self.raw_data_content[self.data_path]
 
         self.n_frames = int(raw_data.shape[0] / 2 / self.n_memcells)
         raw_data.shape = (self.n_frames,) + self.raw_shape
@@ -157,26 +142,7 @@ class Correct():
 #        print("offest", offset[idx])
 #        print("corrected", self.analog_corrected[(0,)+ idx])
 
-    def convert_to_xfel_format(self):
-        if self.in_wing2:
-            self.analog = self.analog[..., ::-1, :]
-            self.digital = self.digital[..., ::-1, :]
-        else:
-            self.analog = self.analog[..., :, ::-1]
-            self.digital = self.digital[..., :, ::-1]
-
-        self.analog = np.swapaxes(self.analog, 3, 2)
-        self.digital = np.swapaxes(self.digital, 3, 2)
-
-        s = self.thresholds_shape
-        self.thresholds_shape = s[:-2] + (s[-1], s[-2])
-
-        s = self.offsets_shape
-        self.offsets_shape = s[:-2] + (s[-1], s[-2])
-
     def write_data(self):
-        global tmp_raw_data
-
         print("Start saving results at", self.output_fname)
 
         self.analog_corrected.shape = self.output_data_shape
@@ -184,9 +150,9 @@ class Correct():
 
         save_file = h5py.File(self.output_fname, "w", libver="latest")
 
-        for key in tmp_raw_data:
+        for key in self.raw_data_content:
             if key != self.data_path:
-                save_file.create_dataset(key, data=tmp_raw_data[key])
+                save_file.create_dataset(key, data=self.raw_data_content[key])
 
         save_file.create_dataset(self.data_path,
                                  data=self.analog_corrected)

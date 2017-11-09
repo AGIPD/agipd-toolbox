@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import time
 import os
+from datetime import date
 
 try:
     CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -135,7 +136,11 @@ class AgipdProcessBase():
         else:
             used_run_numbers = ["r{:04d}".format(run).encode('utf8') for run in self.runs]
 
-        f.create_dataset("run_number", data=used_run_numbers)
+        today = str(date.today())
+        metadata_base_path = "collection"
+
+        f.create_dataset("{}/run_number".format(metadata_base_path), data=used_run_numbers)
+        f.create_dataset("{}/creation_date".format(metadata_base_path), data=today)
 
         f.flush()
         f.close()
