@@ -182,13 +182,29 @@ class StartAnalyse():
         self.meas_spec = args.meas_spec
         self.asic_list = args.asic_list or [None]
         self.safety_factor = args.safety_factor
-        self.energy = args.energy
         self.max_part = args.max_part
         self.current_list = args.current_list if args.current_list else None
         self.energy = args.energy
         self.use_xfel_in_format = args.use_xfel_in_format
         self.use_xfel_out_format = args.use_xfel_out_format
 
+        print("====== Configured parameter in class StartAnalyse ======")
+        print("meas_type {}:".format(self.meas_type))
+        print("module/channel: ", self.module)
+        print("in_dir: ", self.in_base_dir)
+        print("out_dir: ", self.out_base_dir)
+        print("run_list: ", self.run_list)
+        print("n_processes: ", self.n_processes)
+        print("temperature: ", self.temperature)
+        print("meas_spec: ", self.meas_spec)
+        print("asic_list: ", self.asic_list)
+        print("safety_factor: ", self.safety_factor)
+        print("max_part: ", self.max_part)
+        print("current_list: ", self.current_list)
+        print("energy: ", self.energy)
+        print("use_xfel_in_format: ", self.use_xfel_in_format)
+        print("use_xfel_out_format: ", self.use_xfel_out_format)
+        print("========================================================")
         self.run()
 
     def run(self):
@@ -234,7 +250,7 @@ class StartAnalyse():
                                                       self.max_part,
                                                       self.current_list, # = None
                                                       self.use_xfel_in_format,
-                                                      self.use_xfel_in_format))
+                                                      self.use_xfel_out_format))
                     jobs.append(p)
                     p.start()
 

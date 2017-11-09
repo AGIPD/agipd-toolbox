@@ -3,7 +3,6 @@ import sys
 import datetime
 import time
 # import numpy as np
-from datetime import date
 from string import Template
 import glob
 
@@ -47,7 +46,11 @@ class Analyse():
 
         self.max_part = max_part
 
-        print("Configured parameter for type {}: ".format(self.run_type))
+        self.use_xfel_in_format = use_xfel_in_format
+        self.use_xfel_out_format = use_xfel_out_format
+
+        print("====== Configured parameter in class Analyse ======")
+        print("type {}:".format(self.run_type))
         print("module/channel: ", self.module)
         print("temperature: ", self.temperature)
         print("type: ", self.meas_type)
@@ -59,15 +62,15 @@ class Analyse():
         print("runs: ", self.runs)
         print("max_part: ", self.max_part)
         print("current_list: ", self.current_list)
+        print("use_xfel_in_format: ", self.use_xfel_in_format)
+        print("use_xfel_out_format: ", self.use_xfel_out_format)
+        print("===================================================")
 
         # Usually the in directory and file names correspond to the
         # meas_type
         self.meas_in = {self.meas_type: self.meas_type}
         # but there are exceptions
         self.meas_in["drscs_dark"] = "drscs"
-
-        self.use_xfel_in_format = use_xfel_in_format
-        self.use_xfel_out_format = use_xfel_out_format
 
         self.run()
 
