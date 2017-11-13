@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import os
 import sys
 import datetime
@@ -137,6 +139,7 @@ class Analyse():
                          "AGIPD{:02d}-gathered.h5".format(self.channel))
 
             fdir = os.path.join(base_dir,
+                                self.meas_type,
                                 run_subdir,
                                 "gather")
 
@@ -172,7 +175,8 @@ class Analyse():
 
     def generate_process_path(self, base_dir):
         fdir = os.path.join(base_dir,
-                            self.meas_type)
+                            self.meas_type,
+                            "process")
 
         if self.use_xfel_out_format:
             fname = "{}_AGIPD{:02d}_xfel.h5".format(self.meas_type, self.channel)
