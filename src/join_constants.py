@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import os
 import h5py
 import argparse
@@ -69,7 +71,7 @@ if __name__ == "__main__":
     in_file_name = args.input_file
     in_fname = os.path.join(base_dir, in_file_name)
 
-#    out_file_name = "dark_joint_constants_agipd.h5"
+#    out_file_name = "dark_joined_constants_agipd.h5"
     out_file_name = args.output_file
     out_fname = os.path.join(base_dir, out_file_name)
 
