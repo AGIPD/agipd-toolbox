@@ -21,8 +21,8 @@ def create_dir(directory_name):
                 pass
 
 
-def check_file_exists(file_name):
-    print("save_file = {}".format(file_name))
+def check_file_exists(file_name, quit=True):
+    print("file_name = {}".format(file_name))
     if os.path.exists(file_name):
         print("Output file already exists")
         sys.exit(1)
@@ -150,6 +150,8 @@ def load_file_content(fname, excluded=[]):
     def get_file_content(name, obj):
         if isinstance(obj, h5py.Dataset) and name not in excluded:
             file_content[name] = obj[()]
+            if file_content[name].dtype == object:
+                file_content[name] = file_content[name].astype('S')
 
     f = h5py.File(fname, "r")
     f.visititems(get_file_content)
