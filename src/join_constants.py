@@ -3,6 +3,7 @@
 import os
 import h5py
 import argparse
+import glob
 
 import utils
 
@@ -36,22 +37,25 @@ class JoinConstants():
         self.in_fname = in_fname
         self.out_fname = out_fname
 
-        #TODO detecting automatically how many parts are available
-        self.n_channels = 16
-
         self.source_content = None
 
-        self.run()
+    def get_file_names(self):
+        fname = self.in_fname.replace("{:02}", "*")
+
+        file_list = glob.glob(fname)
+        file_list.sort()
+
+        return file_list
 
     def run(self):
+        file_list = self.get_file_names()
 
         f = None
         try:
-            f = h5py.File(out_fname, "w")
+            f = h5py.File(self.out_fname, "w")
 
             # TODO change to automatic channel detection
-            for channel in range(self.n_channels):
-                fname = self.in_fname.format(channel)
+            for channel, fname in enumerate(file_list):
 
                 print("loading content of file {}".format(fname))
                 file_content = utils.load_file_content(fname)
@@ -81,4 +85,5 @@ if __name__ == "__main__":
     out_dir = args.output_dir
     out_fname = os.path.join(out_dir, out_file_name)
 
-    JoinConstants(in_fname, out_fname)
+    obj = JoinConstants(in_fname, out_fname)
+    obj.run()

@@ -11,6 +11,8 @@ import glob
 import utils
 #from merge_drscs import ParallelMerge
 from correct import Correct
+from convert_format import ConvertFormat
+from join_constants import JoinConstants
 
 BASE_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 print("BASE_PATH", BASE_PATH)
@@ -86,6 +88,8 @@ class Analyse():
             self.run_process()
         elif self.run_type == "merge":
             self.run_merge_drscs()
+        elif self.run_type == "join":
+            self.run_join()
         else:
             print("Unsupported argument: run_type {}".format(self.run_type))
 
@@ -97,11 +101,11 @@ class Analyse():
             # define in files
             fdir = os.path.join(base_dir,
                                 "raw",
-                                "r{run_number:04d}")
+                                "r{run_number:04}")
 
-            fname = ("RAW-R{run_number:04d}-" +
-                     "AGIPD{:02d}".format(self.channel) +
-                     "-S{part:05d}.h5")
+            fname = ("RAW-R{run_number:04}-" +
+                     "AGIPD{:02}".format(self.channel) +
+                     "-S{part:05}.h5")
 
         else:
             # define in files
@@ -118,7 +122,7 @@ class Analyse():
                      .format(self.module,
                              self.meas_type,
                              self.meas_spec)
-                     + "{run_number:04d}_part{part:05d}.nxs")
+                     + "{run_number:04}_part{part:05}.nxs")
 
         return fdir, fname
 
@@ -129,14 +133,14 @@ class Analyse():
             if self.meas_type == "pcdrs" or len(self.runs) == 1:
                 run_subdir = "r" + "-r".join(str(r).zfill(4) for r in self.runs)
 
-                fname = ("{}-AGIPD{:02d}-gathered.h5"
+                fname = ("{}-AGIPD{:02}-gathered.h5"
                          .format(run_subdir.upper(), self.channel))
 
             else:
-                run_subdir = "r{run_number:04d}"
+                run_subdir = "r{run_number:04}"
 
-                fname = ("R{run_number:04d}-" +
-                         "AGIPD{:02d}-gathered.h5".format(self.channel))
+                fname = ("R{run_number:04}-" +
+                         "AGIPD{:02}-gathered.h5".format(self.channel))
 
             fdir = os.path.join(base_dir,
                                 self.meas_type,
@@ -165,7 +169,7 @@ class Analyse():
                                  self.meas_type,
                                  self.meas_spec))
             else:
-                fname = ("{}_{}_{}_asic{:02d}.h5"
+                fname = ("{}_{}_{}_asic{:02}.h5"
                          .format(self.module,
                                  self.meas_type,
                                  self.meas_spec,
@@ -173,7 +177,7 @@ class Analyse():
 
         return fdir, fname
 
-    def generate_process_path(self, base_dir):
+    def generate_process_path(self, base_dir, use_xfel_out_format, as_template=False):
         run_subdir = "r" + "-r".join(str(r).zfill(4) for r in self.runs)
 
         fdir = os.path.join(base_dir,
@@ -181,14 +185,17 @@ class Analyse():
                             run_subdir,
                             "process")
 
-        if self.use_xfel_out_format:
-            fname = "{}_AGIPD{:02d}_xfel.h5".format(self.meas_type, self.channel)
+        if use_xfel_out_format:
+            fname = self.meas_type + "_AGIPD{:02}_xfel.h5"
         else:
-            fname = "{}_AGIPD{:02d}_agipd.h5".format(self.meas_type, self.channel)
+            fname = self.meas_type + "_AGIPD{:02}_agipd.h5"
+
+        if not as_template:
+            fname = fname.format(self.channel)
 
         self.use_cfel_gpfs = False
         if self.use_cfel_gpfs:
-            fname = ("{}_{}_{}_asic{:02d}_processed.h5"
+            fname = ("{}_{}_{}_asic{:02}_processed.h5"
                      .format(self.module,
                              self.meas_type,
                              self.meas_spec,
@@ -204,6 +211,39 @@ class Analyse():
                                 self.run_type)
 
         return fdir, fname
+
+    def generate_join_path(self, base_dir, use_xfel_out_format):
+        run_subdir = "r" + "-r".join(str(r).zfill(4) for r in self.runs)
+
+        fdir = os.path.join(base_dir,
+                            self.meas_type,
+                            run_subdir)
+
+        if use_xfel_out_format:
+            fname = "{}_joined_constants_xfel.h5".format(self.meas_type)
+        else:
+            fname = "{}_joined_constants_agipd.h5".format(self.meas_type)
+
+        self.use_cfel_gpfs = False
+        if self.use_cfel_gpfs:
+            raise Exception("CFEL gpfs not supported for join at the moment")
+#            fname = ("{}_{}_{}_asic{:02d}_processed.h5"
+#                     .format(self.module,
+#                             self.meas_type,
+#                             self.meas_spec,
+#                             self.asic))
+
+#            print("process fname", fname)
+
+#            fdir = os.path.join(self.out_base_dir,
+#                                self.module,
+#                                self.temperature,
+#                                self.meas_type,
+#                                self.meas_spec,
+#                                self.run_type)
+
+        return fdir, fname
+
 
     def run_gather(self):
         if self.meas_type == "pcdrs":
@@ -273,7 +313,10 @@ class Analyse():
             in_fname = os.path.join(in_dir, in_file_name)
 
         # define out files
-        out_dir, out_file_name = self.generate_process_path(self.out_base_dir)
+        out_dir, out_file_name = (
+            self.generate_process_path(self.out_base_dir,
+                                       self.use_xfel_out_format)
+        )
         out_fname = os.path.join(out_dir, out_file_name)
 
         if os.path.exists(out_fname):
@@ -301,6 +344,60 @@ class Analyse():
     #                            self.n_processes,
     #                            self.safety_factor,
     #                            out_fname)
+
+        c_out_dir, c_out_file_name = (
+            self.generate_process_path(self.out_base_dir,
+                                       not self.use_xfel_out_format)
+        )
+        c_out_fname = os.path.join(c_out_dir, c_out_file_name)
+
+        print("convert format")
+        print("output filename = {}".format(c_out_fname))
+        if os.path.exists(c_out_fname):
+#            print("output filename = {}".format(c_out_fname))
+            print("WARNING: output file already exist. Skipping convert.")
+        else:
+            if self.use_xfel_out_format:
+                c_obj = ConvertFormat(out_fname, c_out_fname, "agipd", self.channel)
+            else:
+                c_obj = ConvertFormat(out_fname, c_out_fname, "xfel", self.channel)
+
+            c_obj.run()
+
+    def run_join(self):
+        # join constants in agipd format as well as the xfel format
+
+        in_dir, in_file_name = (
+            self.generate_process_path(self.in_base_dir,
+                                       self.use_xfel_out_format,
+                                       as_template=True)
+        )
+        in_fname = os.path.join(in_dir, in_file_name)
+
+        out_dir, out_file_name = (
+            self.generate_join_path(self.out_base_dir,
+                                    self.use_xfel_out_format)
+        )
+        out_fname = os.path.join(out_dir, out_file_name)
+
+        obj = JoinConstants(in_fname, out_fname)
+        obj.run()
+
+        # now do the other format
+        in_dir, in_file_name = (
+            self.generate_process_path(self.in_base_dir,
+                                       not self.use_xfel_out_format)
+        )
+        in_fname = os.path.join(in_dir, in_file_name)
+
+        out_dir, out_file_name = (
+            self.generate_join_path(self.out_base_dir,
+                                    not self.use_xfel_out_format)
+        )
+        out_fname = os.path.join(out_dir, out_file_name)
+
+        obj = JoinConstants(in_fname, out_fname)
+        obj.run()
 
     def run_merge_drscs(self):
 

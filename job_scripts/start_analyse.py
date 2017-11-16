@@ -65,7 +65,7 @@ def get_arguments():
     parser.add_argument("--run_type",
                         type=str,
                         required=True,
-                        choices=["gather", "process", "merge"],
+                        choices=["gather", "process", "merge", "join"],
                         help="What type of run should be started")
     parser.add_argument("--type",
                         type=str,

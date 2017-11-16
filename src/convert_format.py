@@ -61,7 +61,7 @@ class ConvertFormat():
 
     def run(self):
         print("Loading input_file from {}".format(self.input_fname))
-        file_content = utils.load_file_content(input_fname)
+        file_content = utils.load_file_content(self.input_fname)
 
         print("Converting")
         for key in self.keys_to_convert:

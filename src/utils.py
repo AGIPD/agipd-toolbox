@@ -150,7 +150,10 @@ def load_file_content(fname, excluded=[]):
     def get_file_content(name, obj):
         if isinstance(obj, h5py.Dataset) and name not in excluded:
             file_content[name] = obj[()]
-            if file_content[name].dtype == object:
+            # if object types are not converted writing gives the error
+            # TypeError: Object dtype dtype('O') has no native HDF5 equivalent
+            if (isinstance(file_content[name], np.ndarray) and
+                    file_content[name].dtype == object):
                 file_content[name] = file_content[name].astype('S')
 
     f = h5py.File(fname, "r")
