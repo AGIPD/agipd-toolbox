@@ -99,7 +99,7 @@ if __name__ == "__main__":
 #    #output_format = "agipd"
 #    output_format = "xfel"
 #
-    output_filename = "pcdrs_AGIPD{:02d}_{}.h5"
+#    output_filename = "{}_AGIPD{:02d}_{}.h5".format("pcdrs")
     output_fname = os.path.join(base_dir,
                                 output_filename.format(channel, output_format))
 

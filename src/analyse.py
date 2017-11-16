@@ -174,8 +174,11 @@ class Analyse():
         return fdir, fname
 
     def generate_process_path(self, base_dir):
+        run_subdir = "r" + "-r".join(str(r).zfill(4) for r in self.runs)
+
         fdir = os.path.join(base_dir,
                             self.meas_type,
+                            run_subdir,
                             "process")
 
         if self.use_xfel_out_format:
@@ -219,22 +222,27 @@ class Analyse():
 
         # define out files
         out_dir, out_file_name = self.generate_gather_path(self.out_base_dir)
-        utils.create_dir(out_dir)
         out_fname = os.path.join(out_dir, out_file_name)
 
-        print("in_fname=", in_fname)
-        print("out_fname=", out_fname)
-        print("runs=", self.runs)
-        print("max_part=", self.max_part)
-        print("asic=", self.asic)
-        print("use_xfel_in_format=", self.use_xfel_in_format)
-        print()
-        Gather(in_fname,
-               out_fname,
-               self.runs,
-               self.max_part,
-               self.asic,
-               self.use_xfel_in_format)
+        if os.path.exists(out_fname):
+            print("output filename = {}".format(out_fname))
+            print("WARNING: output file already exist. Skipping gather.")
+        else:
+            utils.create_dir(out_dir)
+
+            print("in_fname=", in_fname)
+            print("out_fname=", out_fname)
+            print("runs=", self.runs)
+            print("max_part=", self.max_part)
+            print("asic=", self.asic)
+            print("use_xfel_in_format=", self.use_xfel_in_format)
+            print()
+            Gather(in_fname,
+                   out_fname,
+                   self.runs,
+                   self.max_part,
+                   self.asic,
+                   self.use_xfel_in_format)
 
     def run_process(self):
 
@@ -266,29 +274,33 @@ class Analyse():
 
         # define out files
         out_dir, out_file_name = self.generate_process_path(self.out_base_dir)
-        utils.create_dir(out_dir)
         out_fname = os.path.join(out_dir, out_file_name)
 
+        if os.path.exists(out_fname):
+            print("output filename = {}".format(out_fname))
+            print("WARNING: output file already exist. Skipping process.")
+        else:
+            utils.create_dir(out_dir)
 
-        # generate output
-        print("channel", self.channel)
-        print("in_fname=", in_fname)
-        print("out_fname", out_fname)
-        print("runs", run_list)
-        print("use_xfel_out_format=", self.use_xfel_out_format)
-        Process(in_fname,
-                out_fname,
-                run_list,
-                self.use_xfel_out_format)
+            # generate output
+            print("channel", self.channel)
+            print("in_fname=", in_fname)
+            print("out_fname", out_fname)
+            print("runs", run_list)
+            print("use_xfel_out_format=", self.use_xfel_out_format)
+            Process(in_fname,
+                    out_fname,
+                    run_list,
+                    self.use_xfel_out_format)
 
-#            ParallelProcess(self.asic,
-#                            in_fname,
-#                            np.arange(64),
-#                            np.arange(64),
-#                            np.arange(352),
-#                            self.n_processes,
-#                            self.safety_factor,
-#                            out_fname)
+    #            ParallelProcess(self.asic,
+    #                            in_fname,
+    #                            np.arange(64),
+    #                            np.arange(64),
+    #                            np.arange(352),
+    #                            self.n_processes,
+    #                            self.safety_factor,
+    #                            out_fname)
 
     def run_merge_drscs(self):
 
@@ -320,13 +332,18 @@ class Analyse():
         )
         out_template = Template(out_template)
 
-        utils.create_dir(out_dir)
+        if os.path.exists(out_fname):
+            print("output filename = {}".format(out_fname))
+            print("WARNING: output file already exist. Skipping gather.")
+        else:
 
-        ParallelMerge(in_template,
-                      out_template,
-                      asic_list,
-                      self.n_processes,
-                      self.current_list)
+            utils.create_dir(out_dir)
+
+            ParallelMerge(in_template,
+                          out_template,
+                          asic_list,
+                          self.n_processes,
+                          self.current_list)
 
     def run_correct(self, run_number):
         data_fname_prefix = ("RAW-{}-AGIPD{}*"

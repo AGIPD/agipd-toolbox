@@ -9,14 +9,18 @@ import utils
 def get_arguments():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--base_dir",
+    parser.add_argument("--input_dir",
                         type=str,
                         required=True,
-                        help="Base directory to work in")
+                        help="Input directory to load data from")
     parser.add_argument("--input_file",
                         type=str,
                         required=True,
                         help="Template for input files")
+    parser.add_argument("--output_dir",
+                        type=str,
+                        required=True,
+                        help="Output directory to write results to")
     parser.add_argument("--output_file",
                         type=str,
                         required=True,
@@ -32,6 +36,7 @@ class JoinConstants():
         self.in_fname = in_fname
         self.out_fname = out_fname
 
+        #TODO detecting automatically how many parts are available
         self.n_channels = 16
 
         self.source_content = None
@@ -67,12 +72,13 @@ if __name__ == "__main__":
 #    base_dir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm/dark"
 #    in_file_name = "dark_AGIPD{:02d}_agipd_2017-10-27.h5"
 
-    base_dir = args.base_dir
+    in_dir = args.input_dir
     in_file_name = args.input_file
-    in_fname = os.path.join(base_dir, in_file_name)
+    in_fname = os.path.join(in_dir, in_file_name)
 
 #    out_file_name = "dark_joined_constants_agipd.h5"
     out_file_name = args.output_file
-    out_fname = os.path.join(base_dir, out_file_name)
+    out_dir = args.output_dir
+    out_fname = os.path.join(out_dir, out_file_name)
 
     JoinConstants(in_fname, out_fname)
