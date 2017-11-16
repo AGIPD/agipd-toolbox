@@ -123,7 +123,6 @@ class SubmitJobs():
                 self.meas_spec = self.config[self.measurement]["element"]
                 self.run_type_list = ["gather", "process"]
 
-
         self.n_jobs = {}
         self.n_processes = {}
         self.time_limit = {}
@@ -212,7 +211,6 @@ class SubmitJobs():
         if self.run_type != "all":
             self.run_type_list = [self.run_type]
 
-        self.run_type_list = ["gather"]
         for run_type in self.run_type_list:
 
             if run_type == "gather" and self.measurement == "dark":
@@ -226,7 +224,7 @@ class SubmitJobs():
                 self.generate_asic_lists(self.asic_set, self.n_jobs[run_type])
 
                 if self.use_xfel:
-                    work_dir = os.path.join(self.output_dir["process"],
+                    work_dir = os.path.join(self.output_dir[run_type],
                                             "sbatch_out")
                 else:
                     work_dir = os.path.join(self.output_dir, self.module,
@@ -257,9 +255,7 @@ class SubmitJobs():
                     "--n_processes", self.n_processes[run_type],
                 ]
                 if type(runs) == list:
-                    self.script_params += [
-                        "--run_list", " ".join(str(r) for r in runs)
-                    ]
+                    self.script_params += ["--run_list"] + [str(r) for r in runs]
                 else:
                     self.script_params += ["--run_list", str(runs)]
 
