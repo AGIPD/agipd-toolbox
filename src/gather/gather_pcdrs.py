@@ -1,22 +1,5 @@
 import numpy as np
-import os
-import sys
-
 from gather_base import AgipdGatherBase
-
-try:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-except:
-    CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
-
-BASE_PATH = os.path.dirname(os.path.dirname(CURRENT_DIR))
-SRC_PATH = os.path.join(BASE_PATH, "src")
-
-if SRC_PATH not in sys.path:
-    sys.path.insert(0, SRC_PATH)
-
-import utils  # noqa E402
-
 
 class AgipdGatherPcdrs(AgipdGatherBase):
     def __init__(self, input_fname, output_fname, runs, max_part=False,
@@ -53,6 +36,21 @@ class AgipdGatherPcdrs(AgipdGatherBase):
 
 if __name__ == "__main__":
     import multiprocessing
+    import os
+    import sys
+
+    try:
+        CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
+    except:
+        CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
+
+    BASE_PATH = os.path.dirname(os.path.dirname(CURRENT_DIR))
+    SRC_PATH = os.path.join(BASE_PATH, "src")
+
+    if SRC_PATH not in sys.path:
+        sys.path.insert(0, SRC_PATH)
+
+    import utils  # noqa E402
 
     use_xfel_format = True
 #    use_xfel_format = False
