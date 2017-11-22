@@ -106,10 +106,11 @@ class SubmitJobs():
         self.run_list = args.run_list or self.config["general"]["run_list"]
 
         if self.use_xfel:
-            self.module = self.config["general"]["channel"]
+            # convert str into list
+            self.module_list = self.config["general"]["channel"].split(" ")
             self.temperature = None
         else:
-            self.module = self.config["general"]["module"]
+            self.module_list = self.config["general"]["module"].split(" ")
             self.temperature = self.config["general"]["temperature"]
 
             if self.measurement == "drscs":
@@ -208,126 +209,187 @@ class SubmitJobs():
                                 for i in range(start, stop, size + 1)]
 
     def run(self):
-        if self.run_type != "all":
-            self.run_type_list = [self.run_type]
+        if self.run_type == "join":
+            self.run_type_list_per_module = []
+            self.run_type_list_module_dep = [self.run_type]
+        elif self.run_type != "all":
+            self.run_type_list_module_dep = [self.run_type]
+            self.run_type_list_per_module = []
+        else:
+            self.run_type_list_per_module = [t for t in self.run_type_list if t != "join"]
+            self.run_type_list_module_dep = ["join"]
 
-        jobnums = []
-        for run_type in self.run_type_list:
-            jobnums = self.create_job(run_type, jobnums)
+
+        dep_overview = {}
+
+        # jobs concering single modules
+        jobnums_mod = []
+        for module in self.module_list:
+            self.module = module
+
+            dep_overview[module] = {}
+
+            jobnums_type = []
+            for run_type in self.run_type_list_per_module:
+                if run_type == "gather" and self.measurement == "dark":
+                    run_list = self.run_list
+                else:
+                    run_list = [self.run_list]
+
+                dep_overview[module][run_type] = {}
+
+                dep_jobs = ":".join(jobnums_type)
+                for runs in run_list:
+
+                    jn = self.create_job(run_type, runs, dep_jobs)
+                    jobnums_type.append(jn)
+
+                    if type(runs) == list:
+                        runs_string = "-".join(list(map(str, runs)))
+                    else:
+                        runs_string = str(runs)
+                    dep_overview[module][run_type][runs_string] = {}
+                    dep_overview[module][run_type][runs_string]["jobnum"] = jn
+                    dep_overview[module][run_type][runs_string]["deb_jobs"] = dep_jobs
+
+            jobnums_mod += jobnums_type
+
+        # jobs concering all modules
+        dep_overview["all_modules"] = {}
+        jobnums_indp = jobnums_mod
+        for run_type in self.run_type_list_module_dep:
+            dep_jobs = ":".join(jobnums_indp)
+
+            jn = self.create_job(run_type, self.run_list, dep_jobs)
+            jobnums_indp.append(jn)
+
+            if type(runs) == list:
+                runs_string = "-".join(list(map(str, self.run_list)))
+            else:
+                runs_string = str(runs)
+            dep_overview["all_modules"][run_type] = {}
+            dep_overview["all_modules"][run_type][runs_string] = {}
+            dep_overview["all_modules"][run_type][runs_string]["jobnum"] = jn
+            dep_overview["all_modules"][run_type][runs_string]["deb_jobs"] = dep_jobs
+
+        # print overview of dependencies
+        print("\nDependencies Overview")
+        for module in dep_overview:
+            for run_type in dep_overview[module]:
+                for runs in dep_overview[module][run_type]:
+                    if  dep_overview[module][run_type][runs]["deb_jobs"] == "":
+                        print("{}\t{}\t{}\t{}\tno dependencies"
+                              .format(module,
+                                      run_type,
+                                      runs,
+                                      dep_overview[module][run_type][runs]["jobnum"]))
+                    else:
+                        print("{}\t{}\t{}\t{}\tdepending on\t{}"
+                              .format(module,
+                                      run_type,
+                                      runs,
+                                      dep_overview[module][run_type][runs]["jobnum"],
+                                      dep_overview[module][run_type][runs]["deb_jobs"]))
+
 
         print("\nCurrent status:\n")
         os.system("squeue --user $USER")
 
-    def create_job(self, run_type, dep_jobs):
-        if run_type == "gather" and self.measurement == "dark":
-            run_list = self.run_list #[int(run) for run in self.run_list]
+    def create_job(self, run_type, runs, dep_jobs):
+        print("runs", runs, type(runs))
+        self.asic_lists = None
+        self.generate_asic_lists(self.asic_set, self.n_jobs[run_type])
+
+        if self.use_xfel:
+            work_dir = os.path.join(self.output_dir[run_type],
+                                    "sbatch_out")
         else:
-            run_list = [self.run_list]
+            work_dir = os.path.join(self.output_dir, self.module,
+                                    self.temperature, "sbatch_out")
 
-        deb_jobs = ":".join(dep_jobs)
+        if not os.path.exists(work_dir):
+            os.makedirs(work_dir)
+            print("Creating sbatch working dir: {}\n".format(work_dir))
 
-        for runs in run_list:
-            print("runs", runs, type(runs))
-            self.asic_lists = None
-            self.generate_asic_lists(self.asic_set, self.n_jobs[run_type])
+        self.sbatch_params = [
+            "--partition", self.partition,
+            "--time", self.time_limit[run_type],
+            "--nodes", "1",
+            "--workdir", work_dir,
+        ]
 
-            if self.use_xfel:
-                work_dir = os.path.join(self.output_dir[run_type],
-                                        "sbatch_out")
-            else:
-                work_dir = os.path.join(self.output_dir, self.module,
-                                        self.temperature, "sbatch_out")
-
-            if not os.path.exists(work_dir):
-                os.makedirs(work_dir)
-                print("Creating sbatch working dir: {}\n".format(work_dir))
-
-            self.sbatch_params = [
-                "--partition", self.partition,
-                "--time", self.time_limit[run_type],
-                "--nodes", "1",
-                "--workdir", work_dir,
+        if self.mail_address is not None:
+            self.sbatch_params += [
+                "--mail-type", "END",
+                "--mail-user", self.mail_address
             ]
 
-            if self.mail_address is not None:
-                self.sbatch_params += [
-                    "--mail-type", "END",
-                    "--mail-user", self.mail_address
-                ]
+        self.script_params = [
+            "--run_type", run_type,
+            "--type", self.measurement,
+            "--input_dir", self.input_dir[run_type],
+            "--output_dir", self.output_dir[run_type],
+            "--n_processes", self.n_processes[run_type],
+        ]
+        if type(runs) == list:
+            self.script_params += ["--run_list"] + [str(r) for r in runs]
+        else:
+            self.script_params += ["--run_list", str(runs)]
 
-            self.script_params = [
-                "--run_type", run_type,
-                "--type", self.measurement,
-                "--input_dir", self.input_dir[run_type],
-                "--output_dir", self.output_dir[run_type],
-                "--n_processes", self.n_processes[run_type],
+        if self.use_xfel:
+            self.script_params += [
+                "--channel", self.module,
+                "--use_xfel_in_format"
             ]
-            if type(runs) == list:
-                self.script_params += ["--run_list"] + [str(r) for r in runs]
-            else:
-                self.script_params += ["--run_list", str(runs)]
+        else:
+            self.script_params += ["--module", self.module]
 
-            if self.use_xfel:
-                self.script_params += [
-                    "--channel", self.module,
-                    "--use_xfel_in_format"
-                ]
-            else:
-                self.script_params += ["--module", self.module]
+        # parameter which are None raise an error in subprocess
+        # -> do not add them
+        if self.temperature is not None:
+            self.script_params += ["--temperature", self.temperature]
 
-            # parameter which are None raise an error in subprocess
-            # -> do not add them
-            if self.temperature is not None:
-                self.script_params += ["--temperature", self.temperature]
+        if self.safety_factor is not None:
+            self.script_params += ["--safety_factor", self.safety_factor,]
 
-            if self.safety_factor is not None:
-                self.script_params += ["--safety_factor", self.safety_factor,]
+        if self.max_part is not None:
+            self.script_params += ["--max_part", self.max_part]
 
-            if self.max_part is not None:
-                self.script_params += ["--max_part", self.max_part]
+        if self.meas_spec is not None:
+            self.script_params += ["--meas_spec", self.meas_spec]
 
-            if self.meas_spec is not None:
-                self.script_params += ["--meas_spec", self.meas_spec]
+        print("self.sbatch_params")
+        print(self.sbatch_params)
+        print()
+        print("self.script_params")
+        print(self.script_params)
 
-            print("self.sbatch_params")
-            print(self.sbatch_params)
-            print()
-            print("self.script_params")
-            print(self.script_params)
+        if self.run_type == "merge" and self.measurement == "drscs":
+            current_list = self.meas_spec.replace(",", "")
+            self.script_params += ["--current_list", current_list]
 
-            jobnums = []
-            if self.run_type == "merge" and self.measurement == "drscs":
-                current_list = self.meas_spec.replace(",", "")
-                self.script_params += ["--current_list", current_list]
+            # missuse current to set merge as the job name
+            self.meas_spec = self.run_type
 
-                # missuse current to set merge as the job name
-                self.meas_spec = self.run_type
+            print("start_job ({})".format(run_type))
+            jobnum = self.start_job(run_type, dep_jobs)
 
-                print("start_job ({})".format(run_type))
-                jn = self.start_job(run_type, deb_jobs)
+        elif self.measurement == "drscs":
+            # comma seperated string into into list
+            current_list = [c.split()[0] for c in current.split(",")]
 
-                jobnums.append(jn)
+            for current in current_list:
+                self.meas_spec = current
+                self.script_params += ["--self.meas_spec", self.meas_spec]
 
-            elif self.measurement == "drscs":
-                # comma seperated string into into list
-                current_list = [c.split()[0] for c in current.split(",")]
+                print("start_job ({}): {}".format(run_type, current))
+                jobnum = self.start_job(run_type, dep_jobs)
 
-                for current in current_list:
-                    self.meas_spec = current
-                    self.script_params += ["--self.meas_spec", self.meas_spec]
+        else:
+            print("start_job ({}): {}".format(run_type, self.measurement))
+            jobnum = self.start_job(run_type, dep_jobs)
 
-                    print("start_job ({}): {}".format(run_type, current))
-                    jn = self.start_job(run_type, deb_jobs)
-                    jobnums.append(jn)
-
-            else:
-                print("start_job ({}): {}".format(run_type, self.measurement))
-                jn = self.start_job(run_type, deb_jobs)
-                jobnums.append(jn)
-
-            dep_jobs = ":".join(jobnums)
-
-        return jobnums
+        return jobnum
 
     def submit_job(self, cmd, jobname):
         p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -346,7 +408,7 @@ class SubmitJobs():
 
         return jobnum
 
-    def start_job(self, run_type, deb_jobs):
+    def start_job(self, run_type, dep_jobs):
         global batch_job_dir
 
         # getting date and time
@@ -414,9 +476,9 @@ class SubmitJobs():
             jobnum = None
             if not self.no_slurm:
                 path = "/home/kuhnm/calibration/job_scripts/test"
-                if deb_jobs != "":
-                    self.sbatch_params += ["--depend=afterok:{}".format(deb_jobs),
-                                          "--kill-on-invalid-dep=yes"]
+                if dep_jobs != "":
+                    self.sbatch_params += ["--depend=afterok:{}".format(dep_jobs),
+                                           "--kill-on-invalid-dep=yes"]
 #                cmd = ["sbatch"] + job_params + ["{}/job{}.sh".format(path, 1)]
 #                print(cmd)
 
