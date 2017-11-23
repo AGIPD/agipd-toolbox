@@ -263,10 +263,10 @@ class SubmitJobs():
             jn = self.create_job(run_type, self.run_list, dep_jobs)
             jobnums_indp.append(jn)
 
-            if type(runs) == list:
+            if type(self.run_list) == list:
                 runs_string = "-".join(list(map(str, self.run_list)))
             else:
-                runs_string = str(runs)
+                runs_string = str(self.run_list)
             dep_overview["all_modules"][run_type] = {}
             dep_overview["all_modules"][run_type][runs_string] = {}
             dep_overview["all_modules"][run_type][runs_string]["jobnum"] = jn

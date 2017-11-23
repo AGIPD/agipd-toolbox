@@ -386,7 +386,8 @@ class Analyse():
         # now do the other format
         in_dir, in_file_name = (
             self.generate_process_path(self.in_base_dir,
-                                       not self.use_xfel_out_format)
+                                       not self.use_xfel_out_format,
+                                       as_template=True)
         )
         in_fname = os.path.join(in_dir, in_file_name)
 
