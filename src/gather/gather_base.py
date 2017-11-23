@@ -309,6 +309,10 @@ class AgipdGatherBase():
 
     def load_data(self):
 
+        # to use the interleaved or not interleaved format
+        self.use_interleaved = True
+        #self.use_interleaved = False
+
         print("raw_tmp_shape", self.raw_tmp_shape)
         tmp_data = np.zeros(self.raw_tmp_shape, dtype=np.int16)
 
@@ -349,8 +353,9 @@ class AgipdGatherBase():
                             f.close()
 
                     self.n_frames_per_file = int(raw_data.shape[0] //
-                                                 2 //
                                                  self.n_memcells)
+                    if self.use_interleaved:
+                        self.n_frames_per_file = self.n_frames_per_file // 2
 
                     print("raw_data.shape", raw_data.shape)
                     print("self.n_frames_per_file", self.n_frames_per_file)
@@ -364,7 +369,8 @@ class AgipdGatherBase():
                                   np.min(n_pulses),
                                   np.max(n_pulses)))
 
-                    raw_data = raw_data[:, 0, ...]
+                    if self.use_interleaved:
+                        raw_data = raw_data[:, 0, ...]
 
                     raw_data = utils.convert_to_agipd_format(self.channel,
                                                              raw_data)
@@ -405,8 +411,9 @@ class AgipdGatherBase():
                             f.close()
 
                     self.n_frames_per_file = int(raw_data.shape[0] //
-                                                 2 //
                                                  self.n_memcells)
+                    if self.use_interleaved:
+                        self.n_frames_per_file = self.n_frames_per_file // 2
 
                     print("raw_data.shape", raw_data.shape)
                     print("self.n_frames_per_file", self.n_frames_per_file)
