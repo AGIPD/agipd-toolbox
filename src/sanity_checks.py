@@ -100,12 +100,21 @@ class SanityChecks(unittest.TestCase):
         cls._data = data
         cls._data_sep = data_sep
 
+        cls._path = {
+            "header": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header",
+            "image": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image",
+            "trailer": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/trailer"
+        }
+
+        cls._seq_start = 0
+        cls._seq_stop = 3
+
     # per test
     def setUp(self):
         pass
 
     def test_n_seqs_equal(self):
-        print("Test that all modules have the same number of sequences")
+        #print("Test that all modules have the same number of sequences")
 
         res = []
         for channel in range(16):
@@ -117,7 +126,7 @@ class SanityChecks(unittest.TestCase):
         self.assertEqual(len(np.unique(res)), 1)
 
     def test_n_train_equal(self):
-        print("Check if number of trains are equal for all module (per seq)")
+        #print("Check if number of trains are equal for all module (per seq)")
 
         seq_start = 0
         seq_stop = 3
@@ -134,6 +143,78 @@ class SanityChecks(unittest.TestCase):
             unique = np.unique(res[:, seq])
 
             self.assertEqual(len(unique), 1, msg)
+
+    def test_dims_header(self):
+        for channel in range(16):
+            for seq in range(self._seq_start, self._seq_stop):
+                fname = self._file_raw_temp.format(channel, seq)
+                #print(fname)
+
+                group_name = self._path["header"].format(channel)
+
+                f = h5py.File(fname, "r")
+                keys = list(f[group_name].keys())
+
+                res = []
+                for key in keys:
+                    path = "{}/{}".format(group_name, key)
+                    res.append(f[path].shape[0])
+
+                f.close()
+
+                dims = dict(zip(keys, res))
+                msg = ("Channel {}, sep {}: dimensions in header are not the same\n"
+                       "(dimensions are {})".format(channel, seq, dims))
+                unique = np.unique(res)
+                self.assertEqual(len(unique), 1, msg)
+
+    def test_dims_image(self):
+        for channel in range(16):
+            for seq in range(self._seq_start, self._seq_stop):
+                fname = self._file_raw_temp.format(channel, seq)
+                #print(fname)
+
+                group_name = self._path["image"].format(channel)
+
+                f = h5py.File(fname, "r")
+                keys = list(f[group_name].keys())
+
+                res = []
+                for key in keys:
+                    path = "{}/{}".format(group_name, key)
+                    res.append(f[path].shape[0])
+
+                f.close()
+
+                dims = dict(zip(keys, res))
+                msg = ("Channel {}, sep {}: dimensions in header are not the same\n"
+                       "(dimensions are {})".format(channel, seq, dims))
+                unique = np.unique(res)
+                self.assertEqual(len(unique), 1, msg)
+
+    def test_dims_trailer(self):
+        for channel in range(16):
+            for seq in range(self._seq_start, self._seq_stop):
+                fname = self._file_raw_temp.format(channel, seq)
+                #print(fname)
+
+                group_name = self._path["trailer"].format(channel)
+
+                f = h5py.File(fname, "r")
+                keys = list(f[group_name].keys())
+
+                res = []
+                for key in keys:
+                    path = "{}/{}".format(group_name, key)
+                    res.append(f[path].shape[0])
+
+                f.close()
+
+                dims = dict(zip(keys, res))
+                msg = ("Channel {}, sep {}: dimensions in header are not the same\n"
+                       "(dimensions are {})".format(channel, seq, dims))
+                unique = np.unique(res)
+                self.assertEqual(len(unique), 1, msg)
 
     # per test
     def tearDown(self):
