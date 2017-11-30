@@ -5,14 +5,35 @@ import os
 import utils
 import unittest
 import glob
+import argparse
 
 
-beamtime = "201730/p900009"
-run = 709
+beamtime = None
+run = None
 file_raw_prefix_temp = None
 file_raw_temp = None
 data = None
 data_sep = None
+
+def get_arguments():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--instrument_cycle",
+                        type=str,
+                        required=True,
+                        help="Which instrument_cycle the beamtime was taken, e.g 201701")
+    parser.add_argument("--beamtime",
+                        type=str,
+                        required=True,
+                        help="Which beamtime to check")
+    parser.add_argument("--run",
+                        type=int,
+                        required=True,
+                        help="Which run to check")
+
+    args = parser.parse_args()
+    return args
+
 
 def read_in_data(file_raw_temp, channel, dict_key, read_in_path, seq_start,
                  seq_stop, data, data_sep, convert=False):
@@ -227,4 +248,16 @@ class SanityChecks(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+
+    #instrument_cycle = "201730"
+    #bt = "p900009"
+    #r = 709
+    args = get_arguments()
+
+    beamtime = "{}/{}".format(args.instrument_cycle, args.beamtime)
+    run = args.run
+
+    itersuite = unittest.TestLoader().loadTestsFromTestCase(SanityChecks)
+    runner = unittest.TextTestRunner(verbosity=2).run(itersuite)
+
+    #unittest.main(verbosity=2)
