@@ -15,20 +15,72 @@ file_raw_temp = None
 data = None
 
 def get_arguments():
-    parser = argparse.ArgumentParser()
+    description = {
+        "test_n_seqs_equal": "Tests that all modules have the same number of \n"
+                             "sequences",
+        "test_n_train_equal": "Checks if number of trains is equal for all module\n"
+                              "(per seq)",
+        "test_dims_header": ("Checks if the first dimension is equal for all\n"
+                             "datasets contained in 'header' (per module and per seq)"),
+        "test_dims_image": ("Checks if the first dimension is equal for all datasets\n"
+                            "contained in 'image' (per module and per seq)"),
+        "test_dims_trailer": ("Checks if the first dimension is equal for all\n"
+                              "datasets contained in 'trailer' (per module and per seq)"),
+        "test_train_id_shift": ("Checks if the first train id value is equal for all\n"
+                                "modules"),
+        "test_train_id_shift": ("Checks if the train ids taken from detector, header\n"
+                                "and trailer are equal (per module)"),
+    }
+
+    # determine how long the space for the keys should be
+    max_key_len = 0
+    for key in description:
+        l = len(key)
+        if l > max_key_len:
+            max_key_len = l
+
+    # maximum line length
+    max_len = 80
+
+    epilog = "Test descriptions:\n"
+    epilog += "-" * max_len + "\n"
+
+    for key in description:
+        test_desc = "| {} {}".format((key + ":").ljust(max_key_len + 1),
+                                     description[key])
+        desc_split = test_desc.split("\n")
+
+        test_desc = desc_split[0].ljust(max_len - 1) + "|\n"
+        for s in desc_split[1:]:
+            # pad the description to key length
+            line = (" " * (max_key_len + 3) + s)
+            # fill up line to maximum length
+            line = line.ljust(max_len - 2)
+            test_desc += "|" + line + "|\n"
+
+        epilog += test_desc
+        epilog += "|" + "-" * (max_len - 2) + "|\n"
+
+    # remove the '|' from the last line again
+    li = epilog.rsplit("|", 2)
+    epilog = "-".join(li)
+
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=epilog)
 
     parser.add_argument("--instrument_cycle",
                         type=str,
                         required=True,
-                        help="Which instrument_cycle the beamtime was taken, e.g 201701")
+                        help="The instrument_cycle the beamtime was taken, e.g 201701")
     parser.add_argument("--beamtime",
                         type=str,
                         required=True,
-                        help="Which beamtime to check")
+                        help="The beamtime to check")
     parser.add_argument("--run",
                         type=int,
                         required=True,
-                        help="Which run to check")
+                        help="The run to check")
 
     args = parser.parse_args()
     return args
@@ -125,7 +177,7 @@ class SanityChecks(unittest.TestCase):
         pass
 
     def test_n_seqs_equal(self):
-        print("\n\tTests that all modules have the same number of sequences")
+        #print("\n\tTests that all modules have the same number of sequences")
 
         res = []
         for channel in range(16):
@@ -139,7 +191,7 @@ class SanityChecks(unittest.TestCase):
         self._n_sequences = res[0]
 
     def test_n_train_equal(self):
-        print("\n\tChecks if number of trains is equal for all module (per seq)")
+        #print("\n\tChecks if number of trains is equal for all module (per seq)")
 
         seq_start = 0
         seq_stop = 3
@@ -158,8 +210,8 @@ class SanityChecks(unittest.TestCase):
             self.assertEqual(len(unique), 1, msg)
 
     def test_dims_header(self):
-        print("\n\tChecks if the first dimension is equal for all datasets \n"
-              "\tcontained in '{}' (per module and per seq)".format("header"))
+        #print("\n\tChecks if the first dimension is equal for all datasets \n"
+        #      "\tcontained in '{}' (per module and per seq)".format("header"))
 
         for channel in range(16):
             for seq in range(self._seq_start, self._seq_stop):
@@ -185,8 +237,8 @@ class SanityChecks(unittest.TestCase):
                 self.assertEqual(len(unique), 1, msg)
 
     def test_dims_image(self):
-        print("\n\tChecks if the first dimension is equal for all datasets \n"
-              "\tcontained in '{}' (per module and per seq)".format("image"))
+        #print("\n\tChecks if the first dimension is equal for all datasets \n"
+        #      "\tcontained in '{}' (per module and per seq)".format("image"))
 
         for channel in range(16):
             for seq in range(self._seq_start, self._seq_stop):
@@ -212,8 +264,8 @@ class SanityChecks(unittest.TestCase):
                 self.assertEqual(len(unique), 1, msg)
 
     def test_dims_trailer(self):
-        print("\n\tChecks if the first dimension is equal for all datasets \n"
-              "\tcontained in '{}' (per module and per seq)".format("trailer"))
+        #print("\n\tChecks if the first dimension is equal for all datasets \n"
+        #      "\tcontained in '{}' (per module and per seq)".format("trailer"))
 
         for channel in range(16):
             for seq in range(self._seq_start, self._seq_stop):
@@ -239,7 +291,8 @@ class SanityChecks(unittest.TestCase):
                 self.assertEqual(len(unique), 1, msg)
 
     def test_train_id_shift(self):
-        print("\n\tChecks if the first train id value is equal for all modules")
+        #print("\n\tChecks if the first train id value is equal for all modules")
+
         usable_start = 2
 
         first_train_ids = [d["header_train_id"][0][usable_start + 0] for d in data]
