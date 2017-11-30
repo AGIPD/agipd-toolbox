@@ -135,7 +135,7 @@ class SanityChecks(unittest.TestCase):
         pass
 
     def test_n_seqs_equal(self):
-        #print("Test that all modules have the same number of sequences")
+        print("\n\tTests that all modules have the same number of sequences")
 
         res = []
         for channel in range(16):
@@ -147,7 +147,7 @@ class SanityChecks(unittest.TestCase):
         self.assertEqual(len(np.unique(res)), 1)
 
     def test_n_train_equal(self):
-        #print("Check if number of trains are equal for all module (per seq)")
+        print("\n\tChecks if number of trains is equal for all module (per seq)")
 
         seq_start = 0
         seq_stop = 3
@@ -166,6 +166,9 @@ class SanityChecks(unittest.TestCase):
             self.assertEqual(len(unique), 1, msg)
 
     def test_dims_header(self):
+        print("\n\tChecks if the first dimension is equal for all datasets \n"
+              "\tcontained in '{}' (per module and per seq)".format("header"))
+
         for channel in range(16):
             for seq in range(self._seq_start, self._seq_stop):
                 fname = self._file_raw_temp.format(channel, seq)
@@ -190,6 +193,9 @@ class SanityChecks(unittest.TestCase):
                 self.assertEqual(len(unique), 1, msg)
 
     def test_dims_image(self):
+        print("\n\tChecks if the first dimension is equal for all datasets \n"
+              "\tcontained in '{}' (per module and per seq)".format("image"))
+
         for channel in range(16):
             for seq in range(self._seq_start, self._seq_stop):
                 fname = self._file_raw_temp.format(channel, seq)
@@ -214,6 +220,9 @@ class SanityChecks(unittest.TestCase):
                 self.assertEqual(len(unique), 1, msg)
 
     def test_dims_trailer(self):
+        print("\n\tChecks if the first dimension is equal for all datasets \n"
+              "\tcontained in '{}' (per module and per seq)".format("trailer"))
+
         for channel in range(16):
             for seq in range(self._seq_start, self._seq_stop):
                 fname = self._file_raw_temp.format(channel, seq)
