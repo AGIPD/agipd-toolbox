@@ -67,8 +67,10 @@ def setUpModule():
     file_raw_temp = file_raw_prefix_temp + "{:05d}.h5"
 
     path_temp = {
+        "detector_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/detector/trainId",
         "header_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header/trainId",
         "image_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/trainId",
+        "trailer_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/trailer/trainId",
         "cell_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/cellId",
         "pulse_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/pulseId",
         "data": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/data"
@@ -79,7 +81,7 @@ def setUpModule():
 
     data = [{} for i in range(16)]
 
-    for dict_key in ["header_train_id"]:
+    for dict_key in ["detector_train_id", "header_train_id", "trailer_train_id"]:
         for channel in np.arange(16):
             read_in_path = path_temp[dict_key].format(channel)
             read_in_data(file_raw_temp,
@@ -116,6 +118,7 @@ class SanityChecks(unittest.TestCase):
 
         cls._seq_start = 0
         cls._seq_stop = 3
+        cls._n_sequences = len(data[0]["header_train_id"])
 
     # per test
     def setUp(self):
@@ -132,6 +135,8 @@ class SanityChecks(unittest.TestCase):
             res.append(len(seq_files))
 
         self.assertEqual(len(np.unique(res)), 1)
+
+        self._n_sequences = res[0]
 
     def test_n_train_equal(self):
         print("\n\tChecks if number of trains is equal for all module (per seq)")
@@ -249,6 +254,26 @@ class SanityChecks(unittest.TestCase):
         unique = np.unique(first_train_ids)
         self.assertEqual(len(unique), 1, msg)
 
+    def test_train_id_equal(self):
+        #print("\n\tChecks if the train ids taken from detector, header and trailer are equal (per module)")
+
+        seq_start = 0
+        seq_stop = 3
+
+        res = []
+        for channel in np.arange(16):
+            for seq in range(self._n_sequences):
+                d_detector = self._data[channel]["detector_train_id"][seq]
+                d_header = self._data[channel]["header_train_id"][seq]
+                d_trailer = self._data[channel]["trailer_train_id"][seq]
+
+                detector_vs_header = (d_detector == d_header).all()
+                header_vs_trailer = (d_header == d_trailer).all()
+                res = np.logical_and( detector_vs_header, header_vs_trailer)
+
+                msg = ("train ids from detector, header and trailer do not "
+                       "match for channel {}, seq {}".format(channel, seq))
+                self.assertTrue(res, msg)
 
     # per test
     def tearDown(self):
