@@ -246,6 +246,23 @@ class SanityChecks(unittest.TestCase):
                 unique = np.unique(res)
                 self.assertEqual(len(unique), 1, msg)
 
+    def test_train_id_shift(self):
+        print("\n\tChecks if the first train id value is equal for all modules")
+        usable_start = 2
+
+        first_train_ids = [d_sep["header_train_id"][0][usable_start + 0] for d_sep in data_sep]
+        train_id_start = np.min(first_train_ids)
+
+        diff_first_train = np.where(first_train_ids != train_id_start)[0]
+
+        msg = ("Channels with shifted first train id: {}\n".format(diff_first_train))
+        for i, train_id in enumerate(first_train_ids):
+            msg += "channel {:02}: {}\n".format(i, train_id)
+
+        unique = np.unique(first_train_ids)
+        self.assertEqual(len(unique), 1, msg)
+
+
     # per test
     def tearDown(self):
         pass
