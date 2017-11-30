@@ -13,7 +13,6 @@ run = None
 file_raw_prefix_temp = None
 file_raw_temp = None
 data = None
-data_sep = None
 
 def get_arguments():
     parser = argparse.ArgumentParser()
@@ -36,10 +35,9 @@ def get_arguments():
 
 
 def read_in_data(file_raw_temp, channel, dict_key, read_in_path, seq_start,
-                 seq_stop, data, data_sep, convert=False):
+                 seq_stop, data, convert=False):
 
-    data[channel][dict_key] = None
-    data_sep[channel][dict_key] = []
+    data[channel][dict_key] = []
 
     for seq in range(seq_start, seq_stop):
         fname = file_raw_temp.format(channel, seq)
@@ -52,13 +50,7 @@ def read_in_data(file_raw_temp, channel, dict_key, read_in_path, seq_start,
         if convert:
             read_in_data = utils.convert_to_agipd_format(channel, read_in_data)
 
-        d = data[channel]
-        if d[dict_key] is None:
-            d[dict_key] = read_in_data
-        else:
-            d[dict_key] = np.append(d[dict_key], read_in_data, axis=0)
-
-        data_sep[channel][dict_key].append(read_in_data)
+        data[channel][dict_key].append(read_in_data)
 
 
 # for the whole module
@@ -68,7 +60,6 @@ def setUpModule():
     global file_raw_prefix_temp
     global file_raw_temp
     global data
-    global data_sep
 
     file_raw_prefix_temp = ("/gpfs/exfel/exp/SPB/{bt}/raw/r{r:04d}/RAW-R{r:04d}"
                                      .format(bt=beamtime, r=run) +
@@ -87,7 +78,6 @@ def setUpModule():
     seq_stop = 3
 
     data = [{} for i in range(16)]
-    data_sep = [{} for i in range(16)]
 
     for dict_key in ["header_train_id"]:
         for channel in np.arange(16):
@@ -98,8 +88,7 @@ def setUpModule():
                          read_in_path,
                          seq_start,
                          seq_stop,
-                         data,
-                         data_sep)
+                         data)
 
 
 # for the whole module
@@ -114,12 +103,10 @@ class SanityChecks(unittest.TestCase):
         global file_raw_prefix_temp
         global file_raw_temp
         global data
-        global data_sep
 
         cls._file_raw_prefix_temp = file_raw_prefix_temp
         cls._file_raw_temp = file_raw_temp
         cls._data = data
-        cls._data_sep = data_sep
 
         cls._path = {
             "header": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header",
@@ -154,11 +141,11 @@ class SanityChecks(unittest.TestCase):
 
         res = []
         for channel in np.arange(16):
-            d_sep = self._data_sep[channel]["header_train_id"]
-            res.append([len(d_sep[seq]) for seq in range(len(d_sep))])
+            d = self._data[channel]["header_train_id"]
+            res.append([len(d[seq]) for seq in range(self._n_sequences)])
 
         res = np.array(res)
-        for seq in range(len(d_sep)):
+        for seq in range(len(d)):
             msg = ("Not all modules have the same number of trains for seq {}\n"
                    "(n_trains={})".format(seq, res[:, seq]))
             unique = np.unique(res[:, seq])
@@ -250,7 +237,7 @@ class SanityChecks(unittest.TestCase):
         print("\n\tChecks if the first train id value is equal for all modules")
         usable_start = 2
 
-        first_train_ids = [d_sep["header_train_id"][0][usable_start + 0] for d_sep in data_sep]
+        first_train_ids = [d["header_train_id"][0][usable_start + 0] for d in data]
         train_id_start = np.min(first_train_ids)
 
         diff_first_train = np.where(first_train_ids != train_id_start)[0]
