@@ -35,8 +35,8 @@ def create_epilog():
         "test_train_id_equal": ("Checks if the train ids taken from detector, header\n"
                                 "and trailer are equal (per module)"),
         "test_dim_data": ("Checks if the sum of the pulseCount entries is\n"
-                          "corresponding to the data)"),
-        "test_diff_train_id": ("Checks if the trainId is monotonically nondecreasing"),
+                          "corresponding to the data"),
+        "test_diff_train_id": ("Checks if the trainId is monotonically increasing"),
     }
 
     # determine how long the space for the keys should be
@@ -383,7 +383,7 @@ class SanityChecks(unittest.TestCase):
 
     def test_diff_train_id(self):
         """
-        Checks if the trainId is monotonically nondecreasing
+        Checks if the trainId is monotonically increasing
         """
 
         for channel in range(self._n_channels):
@@ -395,7 +395,7 @@ class SanityChecks(unittest.TestCase):
 
                 diff = np.diff(train_id)
 
-                msg = ("Channel {}, sequence {}: TrainId is not monotonically nondecreasing"
+                msg = ("Channel {}, sequence {}: TrainId is not monotonically increasing"
                        .format(channel, seq))
                 self.assertTrue(np.all(diff > 0), msg)
 
