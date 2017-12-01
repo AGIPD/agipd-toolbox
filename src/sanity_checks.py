@@ -13,8 +13,12 @@ run = None
 file_raw_prefix_temp = None
 file_raw_temp = None
 data = None
+path_temp = None
+description = None
 
-def get_arguments():
+def create_epilog():
+    global description
+
     description = {
         "test_n_seqs_equal": "Tests that all modules have the same number of \n"
                              "sequences",
@@ -28,8 +32,11 @@ def get_arguments():
                               "datasets contained in 'trailer' (per module and per seq)"),
         "test_train_id_shift": ("Checks if the first train id value is equal for all\n"
                                 "modules"),
-        "test_train_id_shift": ("Checks if the train ids taken from detector, header\n"
+        "test_train_id_equal": ("Checks if the train ids taken from detector, header\n"
                                 "and trailer are equal (per module)"),
+        "test_dim_data": ("Checks if the sum of the pulseCount entries is\n"
+                          "corresponding to the data)"),
+        "test_diff_train_id": ("Checks if the trainId is monotonically nondecreasing"),
     }
 
     # determine how long the space for the keys should be
@@ -64,6 +71,13 @@ def get_arguments():
     # remove the '|' from the last line again
     li = epilog.rsplit("|", 2)
     epilog = "-".join(li)
+
+    return epilog
+
+
+def get_arguments():
+
+    epilog = create_epilog()
 
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -112,6 +126,7 @@ def setUpModule():
     global file_raw_prefix_temp
     global file_raw_temp
     global data
+    global path_temp
 
     file_raw_prefix_temp = ("/gpfs/exfel/exp/SPB/{bt}/raw/r{r:04d}/RAW-R{r:04d}"
                                      .format(bt=beamtime, r=run) +
@@ -119,10 +134,14 @@ def setUpModule():
     file_raw_temp = file_raw_prefix_temp + "{:05d}.h5"
 
     path_temp = {
+        "header": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header",
+        "image": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image",
+        "trailer": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/trailer",
         "detector_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/detector/trainId",
         "header_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header/trainId",
         "image_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/trainId",
         "trailer_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/trailer/trainId",
+        "pulse_count": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header/pulseCount",
         "cell_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/cellId",
         "pulse_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/pulseId",
         "data": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/data"
@@ -133,7 +152,12 @@ def setUpModule():
 
     data = [{} for i in range(16)]
 
-    for dict_key in ["detector_train_id", "header_train_id", "trailer_train_id"]:
+    keys_to_read_in = ["detector_train_id",
+                       "header_train_id",
+                       "trailer_train_id",
+                       "pulse_count"]
+
+    for dict_key in keys_to_read_in:
         for channel in np.arange(16):
             read_in_path = path_temp[dict_key].format(channel)
             read_in_data(file_raw_temp,
@@ -157,30 +181,32 @@ class SanityChecks(unittest.TestCase):
         global file_raw_prefix_temp
         global file_raw_temp
         global data
+        global path_temp
 
         cls._file_raw_prefix_temp = file_raw_prefix_temp
         cls._file_raw_temp = file_raw_temp
         cls._data = data
-
-        cls._path = {
-            "header": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header",
-            "image": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image",
-            "trailer": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/trailer"
-        }
+        cls._path = path_temp
 
         cls._seq_start = 0
         cls._seq_stop = 3
         cls._n_sequences = len(data[0]["header_train_id"])
+        cls._n_channels = 16
+
+        cls._usable_start = 2
+
 
     # per test
     def setUp(self):
         pass
 
     def test_n_seqs_equal(self):
-        #print("\n\tTests that all modules have the same number of sequences")
+        """
+        Tests that all modules have the same number of sequences
+        """
 
         res = []
-        for channel in range(16):
+        for channel in range(self._n_channels):
             fname_prefix = self._file_raw_prefix_temp.format(channel) + "*.h5"
             seq_files = sorted(glob.glob(fname_prefix))
 
@@ -191,13 +217,12 @@ class SanityChecks(unittest.TestCase):
         self._n_sequences = res[0]
 
     def test_n_train_equal(self):
-        #print("\n\tChecks if number of trains is equal for all module (per seq)")
-
-        seq_start = 0
-        seq_stop = 3
+        """
+        Checks if number of trains is equal for all module (per seq)
+        """
 
         res = []
-        for channel in np.arange(16):
+        for channel in np.arange(self._n_channels):
             d = self._data[channel]["header_train_id"]
             res.append([len(d[seq]) for seq in range(self._n_sequences)])
 
@@ -210,10 +235,12 @@ class SanityChecks(unittest.TestCase):
             self.assertEqual(len(unique), 1, msg)
 
     def test_dims_header(self):
-        #print("\n\tChecks if the first dimension is equal for all datasets \n"
-        #      "\tcontained in '{}' (per module and per seq)".format("header"))
+        """
+        Checks if the first dimension is equal for all datasets contained
+        in 'header' (per module and per seq)
+        """
 
-        for channel in range(16):
+        for channel in range(self._n_channels):
             for seq in range(self._seq_start, self._seq_stop):
                 fname = self._file_raw_temp.format(channel, seq)
                 #print(fname)
@@ -237,10 +264,12 @@ class SanityChecks(unittest.TestCase):
                 self.assertEqual(len(unique), 1, msg)
 
     def test_dims_image(self):
-        #print("\n\tChecks if the first dimension is equal for all datasets \n"
-        #      "\tcontained in '{}' (per module and per seq)".format("image"))
+        """
+        Checks if the first dimension is equal for all datasets contained
+        in 'image' (per module and per seq)"
+        """
 
-        for channel in range(16):
+        for channel in range(self._n_channels):
             for seq in range(self._seq_start, self._seq_stop):
                 fname = self._file_raw_temp.format(channel, seq)
                 #print(fname)
@@ -264,10 +293,12 @@ class SanityChecks(unittest.TestCase):
                 self.assertEqual(len(unique), 1, msg)
 
     def test_dims_trailer(self):
-        #print("\n\tChecks if the first dimension is equal for all datasets \n"
-        #      "\tcontained in '{}' (per module and per seq)".format("trailer"))
+        """
+        Checks if the first dimension is equal for all datasets contained in
+        'trailer' (per module and per seq)"
+        """
 
-        for channel in range(16):
+        for channel in range(self._n_channels):
             for seq in range(self._seq_start, self._seq_stop):
                 fname = self._file_raw_temp.format(channel, seq)
                 #print(fname)
@@ -291,11 +322,11 @@ class SanityChecks(unittest.TestCase):
                 self.assertEqual(len(unique), 1, msg)
 
     def test_train_id_shift(self):
-        #print("\n\tChecks if the first train id value is equal for all modules")
+        """
+        Checks if the first train id value is equal for all modules
+        """
 
-        usable_start = 2
-
-        first_train_ids = [d["header_train_id"][0][usable_start + 0] for d in data]
+        first_train_ids = [d["header_train_id"][0][self._usable_start + 0] for d in data]
         train_id_start = np.min(first_train_ids)
 
         diff_first_train = np.where(first_train_ids != train_id_start)[0]
@@ -308,13 +339,13 @@ class SanityChecks(unittest.TestCase):
         self.assertEqual(len(unique), 1, msg)
 
     def test_train_id_equal(self):
-        #print("\n\tChecks if the train ids taken from detector, header and trailer are equal (per module)")
-
-        seq_start = 0
-        seq_stop = 3
+        """
+        Checks if the train ids taken from detector, header and trailer are
+        equal (per module)
+        """
 
         res = []
-        for channel in np.arange(16):
+        for channel in np.arange(self._n_channels):
             for seq in range(self._n_sequences):
                 d_detector = self._data[channel]["detector_train_id"][seq]
                 d_header = self._data[channel]["header_train_id"][seq]
@@ -328,6 +359,46 @@ class SanityChecks(unittest.TestCase):
                        "match for channel {}, seq {}".format(channel, seq))
                 self.assertTrue(res, msg)
 
+    def test_dim_data(self):
+        """
+        Checks if the sum of the pulseCount entries is corresponding to the data)
+        """
+
+        for channel in range(self._n_channels):
+            for seq in range(self._n_sequences):
+                n_total_pulses = np.sum(self._data[channel]["pulse_count"][seq])
+
+                fname = self._file_raw_temp.format(channel, seq)
+                #print(fname)
+                group_name = self._path["data"].format(channel)
+
+                f = h5py.File(fname, "r")
+                data_shape = f[group_name].shape
+                f.close()
+
+                msg = ("Channel {}, sequence {}: PulseCount and data shape do not match\n"
+                        "(pulseCount sum: {} vs data shape: {})"
+                       .format(channel, seq, n_total_pulses, data_shape[0]))
+                self.assertEqual(n_total_pulses, data_shape[0], msg)
+
+    def test_diff_train_id(self):
+        """
+        Checks if the trainId is monotonically nondecreasing
+        """
+
+        for channel in range(self._n_channels):
+            for seq in range(self._n_sequences):
+                train_id = self._data[channel]["header_train_id"][seq]
+
+                # remove placeholders
+                train_id = np.where(train_id != 0)
+
+                diff = np.diff(train_id)
+
+                msg = ("Channel {}, sequence {}: TrainId is not monotonically nondecreasing"
+                       .format(channel, seq))
+                self.assertTrue(np.all(diff > 0), msg)
+
     # per test
     def tearDown(self):
         pass
@@ -336,6 +407,23 @@ class SanityChecks(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         pass
+
+
+def suite():
+    suite = unittest.TestSuite()
+
+    # to make sure that this test always is the first one to be executed
+    suite.addTest(SanityChecks("test_n_seqs_equal"))
+
+    # get the other tests
+    test_list = list(description.keys())
+    test_list.remove("test_n_seqs_equal")
+
+    # add them in a reproducable way
+    for key in sorted(test_list):
+        suite.addTest(SanityChecks(key))
+
+    return suite
 
 
 if __name__ == "__main__":
@@ -348,7 +436,7 @@ if __name__ == "__main__":
     beamtime = "{}/{}".format(args.instrument_cycle, args.beamtime)
     run = args.run
 
-    itersuite = unittest.TestLoader().loadTestsFromTestCase(SanityChecks)
-    runner = unittest.TextTestRunner(verbosity=2).run(itersuite)
-
-    #unittest.main(verbosity=2)
+#    itersuite = unittest.TestLoader().loadTestsFromTestCase(SanityChecks)
+    itersuite = suite()
+    runner = unittest.TextTestRunner(verbosity=2)
+    runner.run(itersuite)
