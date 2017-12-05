@@ -40,6 +40,8 @@ class AgipdProcessPcdrs(AgipdProcessBase):
         self.n_xpixs = self.n_cols
         # n_memcells is set in init of base class thus has to be overwritten
         # here
+        #TODO do this dynamically
+        #self.n_memcells = 74
         self.n_memcells = 32
         print("n_memcell={}, n_ypixs={}, n_xpixs={}"
               .format(self.n_memcells, self.n_xpixs, self.n_ypixs))

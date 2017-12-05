@@ -57,7 +57,7 @@ class JoinConstants():
             # TODO change to automatic channel detection
             for channel, fname in enumerate(file_list):
 
-                print("loading content of file {}".format(fname))
+                print("channel{}: loading content of file {}".format(channel, fname))
                 file_content = utils.load_file_content(fname)
 
                 prefix = "channel{:02d}".format(channel)

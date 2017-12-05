@@ -50,6 +50,10 @@ class AgipdGatherBase():
         self.seq_number = None
         self.max_pulses = None
 
+        # to use the interleaved or not interleaved format
+        #self.use_interleaved = True
+        self.use_interleaved = False
+
         self.n_rows_total = 128
         self.n_cols_total = 512
 
@@ -145,11 +149,16 @@ class AgipdGatherBase():
             print("n_frames", self.n_frames)
             print("n_frames_total", self.n_frames_total)
 
-            self.n_memcells = self.max_pulses // 2
+            self.n_memcells = self.max_pulses
+            if self.use_interleaved:
+                self.n_memcells = self.n_memcells // 2
             print("Number of memory cells found", self.n_memcells)
 
             # xfel format has swapped rows and cols
-            self.raw_shape = (self.n_memcells, 2, 2, self.n_cols, self.n_rows)
+            if self.use_interleaved:
+                self.raw_shape = (self.n_memcells, 2, 2, self.n_cols, self.n_rows)
+            else:
+                self.raw_shape = (self.n_memcells, 2, self.n_cols, self.n_rows)
 
             self.channel = int(k.split("CH")[0])
             self.in_wing2 = utils.located_in_wing2(self.channel)
@@ -192,11 +201,16 @@ class AgipdGatherBase():
 
         self.define_needed_data_paths()
 
-        self.n_frames_per_file = int(raw_data_shape[0] // 2 // self.n_memcells)
+        self.n_frames_per_file = int(raw_data_shape[0] // self.n_memcells)
+        if self.use_interleaved:
+            self.n_frames_per_file = self._n_frames_per_file // 2
         print("n_frames_per_file", self.n_frames_per_file)
 
         # tmp data is already converted into agipd format
-        self.raw_tmp_shape = (self.n_frames_total, self.n_rows, self.n_cols)
+        if self.use_interleaved:
+            self.raw_tmp_shape = (self.n_frames_total, self.n_rows, self.n_cols)
+        else:
+            self.raw_tmp_shape = (self.n_frames_total, 2, self.n_rows, self.n_cols)
 
         self.tmp_shape = (-1, self.n_memcells, 2, self.n_rows, self.n_cols)
 
@@ -233,10 +247,13 @@ class AgipdGatherBase():
 
                 # max_pulses has to be an odd number because every memory cell
                 # need analog and digital data
-                if self.max_pulses % 2 != 0:
+                if self.use_interleaved and self.max_pulses % 2 != 0:
                     self.max_pulses += 1
 
                 n_trains += pulse_count.size
+
+            print("pulse_count.size", pulse_count.size)
+            print("n_trains", n_trains)
 
             self.n_frames = n_trains
             self.n_frames_total = self.max_pulses * n_trains
@@ -308,10 +325,6 @@ class AgipdGatherBase():
         print("gather took time:", time.time() - totalTime, "\n\n")
 
     def load_data(self):
-
-        # to use the interleaved or not interleaved format
-        self.use_interleaved = True
-        #self.use_interleaved = False
 
         print("raw_tmp_shape", self.raw_tmp_shape)
         tmp_data = np.zeros(self.raw_tmp_shape, dtype=np.int16)
@@ -390,11 +403,23 @@ class AgipdGatherBase():
                                           pos_idx_cols)
                             target_idx = (slice(target_offset,
                                                 target_offset + burst),
+                                          Ellipsis,
                                           pos_idx_rows,
                                           pos_idx_cols)
 
+                            try:
+                                tmp_data[target_idx] = raw_data[source_idx]
+                            except:
+                                print("burst", burst)
+                                print("tmp_data.shape", tmp_data.shape)
+                                print("raw_data.shape", raw_data.shape)
+                                print("target_idx", target_idx)
+                                print("source_idx", source_idx)
+                                raise
 
-                            tmp_data[target_idx] = raw_data[source_idx]
+                        if burst == 0:
+                            #print("n_pulses", n_pulses)
+                            print("burst == 0")
 
                         source_offset += burst
                         target_offset += self.max_pulses
