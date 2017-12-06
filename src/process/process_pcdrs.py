@@ -40,7 +40,9 @@ class AgipdProcessPcdrs(AgipdProcessBase):
         self.n_xpixs = self.n_cols
         # n_memcells is set in init of base class thus has to be overwritten
         # here
-        #TODO do this dynamically
+        # reason: in run 488, ... the data shows 67 memory cells being written
+        # although only 64 contain actual usefull data
+        # TODO what happens if data is processed for all 67?
         #self.n_memcells = 74
         self.n_memcells = 32
         print("n_memcell={}, n_ypixs={}, n_xpixs={}"

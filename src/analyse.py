@@ -136,6 +136,7 @@ class Analyse():
                 fname = ("{}-AGIPD{:02}-gathered.h5"
                          .format(run_subdir.upper(), self.channel))
 
+            #TODO fill run_number + for what is this else (what cases)?
             else:
                 run_subdir = "r{run_number:04}"
 

@@ -213,8 +213,8 @@ class SubmitJobs():
             self.run_type_list_per_module = []
             self.run_type_list_module_dep = [self.run_type]
         elif self.run_type != "all":
-            self.run_type_list_module_dep = [self.run_type]
-            self.run_type_list_per_module = []
+            self.run_type_list_per_module = [self.run_type]
+            self.run_type_list_module_dep = []
         else:
             self.run_type_list_per_module = [t for t in self.run_type_list if t != "join"]
             self.run_type_list_module_dep = ["join"]
@@ -300,6 +300,7 @@ class SubmitJobs():
         self.asic_lists = None
         self.generate_asic_lists(self.asic_set, self.n_jobs[run_type])
 
+        # work_dir is the directory where the sbatch log files are stored
         if self.use_xfel:
             work_dir = os.path.join(self.output_dir[run_type],
                                     "sbatch_out")
