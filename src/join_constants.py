@@ -7,6 +7,7 @@ import glob
 
 import utils
 
+
 def get_arguments():
     parser = argparse.ArgumentParser()
 
@@ -57,7 +58,8 @@ class JoinConstants():
             # TODO change to automatic channel detection
             for channel, fname in enumerate(file_list):
 
-                print("channel{}: loading content of file {}".format(channel, fname))
+                print("channel{}: loading content of file {}"
+                      .format(channel, fname))
                 file_content = utils.load_file_content(fname)
 
                 prefix = "channel{:02d}".format(channel)

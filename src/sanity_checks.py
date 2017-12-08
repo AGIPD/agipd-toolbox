@@ -1,8 +1,6 @@
 import numpy as np
 import h5py
-import sys
-import os
-#import utils
+# import utils
 import unittest
 import glob
 import argparse
@@ -17,31 +15,31 @@ path_temp = None
 
 
 description = {
-    # -------------------------------------------------------------------------------- #
-    "test_n_seqs_equal":   ("Tests that all modules have the same number of \n"
+    # ----------------------i-------------------------------------------------------- #   # noqa E501
+    "test_n_seqs_equal":   ("Tests that all modules have the same number of \n"           # noqa E241
                             "sequences"),
-    "test_n_train_equal":  ("Checks if number of trains is equal for all module\n"
+    "test_n_train_equal":  ("Checks if number of trains is equal for all module\n"        # noqa E241
                             "(per seq)"),
-    "test_dims_header":    ("Checks if the first dimension is equal for all\n"
-                            "datasets contained in 'header' (per module and per seq)"),
-    "test_dims_image":     ("Checks if the first dimension is equal for all datasets\n"
+    "test_dims_header":    ("Checks if the first dimension is equal for all\n"            # noqa E241
+                            "datasets contained in 'header' (per module and per seq)"),   # noqa E501
+    "test_dims_image":     ("Checks if the first dimension is equal for all datasets\n"   # noqa E241
                             "contained in 'image' (per module and per seq)"),
-    "test_dims_trailer":   ("Checks if the first dimension is equal for all\n"
-                            "datasets contained in 'trailer' (per module and per seq)"),
-    "test_train_id_shift": ("Checks if the first train id value is equal for all\n"
+    "test_dims_trailer":   ("Checks if the first dimension is equal for all\n"            # noqa E241
+                            "datasets contained in 'trailer' (per module and per seq)"),  # noqa E501
+    "test_train_id_shift": ("Checks if the first train id value is equal for all\n"       # noqa E241
                             "modules"),
-    "test_train_id_equal": ("Checks if the train ids taken from detector, header\n"
+    "test_train_id_equal": ("Checks if the train ids taken from detector, header\n"       # noqa E241
                             "and trailer are equal (per module)"),
-    "test_data_vs_pulsec": ("Checks if the sum of the pulseCount entries is\n"
+    "test_data_vs_pulsec": ("Checks if the sum of the pulseCount entries is\n"            # noqa E241
                             "corresponding to the data"),
-    "test_train_id_diff":  ("Checks if the trainId is monotonically increasing"),
-    "test_train_id_tzero": ("Checks number of placeholder in trainId and if they are\n"
+    "test_train_id_diff":  ("Checks if the trainId is monotonically increasing"),         # noqa E241
+    "test_train_id_tzero": ("Checks number of placeholder in trainId and if they are\n"   # noqa E241
                             "always at the end"),
-    "test_train_id_zeros": ("Checks if trainId containes zeros which are not at the\n"
+    "test_train_id_zeros": ("Checks if trainId containes zeros which are not at the\n"    # noqa E241
                             "end"),
-    "test_train_loss":     ("Checks for missing entries in trainId"),
-    "test_data_tzeros":    ("Check if additional data entries are trailing zeros"),
-    "test_data_vs_tr_id":  ("Checks if the dimension of the image trainId is\n"
+    "test_train_loss":     ("Checks for missing entries in trainId"),                     # noqa E241
+    "test_data_tzeros":    ("Check if additional data entries are trailing zeros"),       # noqa E241
+    "test_data_vs_tr_id":  ("Checks if the dimension of the image trainId is\n"           # noqa E241
                             "corresponding to the data)"),
 }
 
@@ -96,7 +94,8 @@ def get_arguments():
     parser.add_argument("--instrument_cycle",
                         type=str,
                         required=True,
-                        help="The instrument_cycle the beamtime was taken, e.g 201701")
+                        help="The instrument_cycle the beamtime was taken, "
+                             "e.g 201701")
     parser.add_argument("--beamtime",
                         type=str,
                         required=True,
@@ -117,14 +116,14 @@ def read_in_data(file_raw_temp, channel, dict_key, read_in_path, seq_start,
 
     for seq in range(seq_start, seq_stop):
         fname = file_raw_temp.format(channel, seq)
-        #print(fname)
 
         f = h5py.File(fname, "r")
         read_in_data = f[read_in_path][()].astype("int")
         f.close()
 
 #        if convert:
-#            read_in_data = utils.convert_to_agipd_format(channel, read_in_data)
+#            read_in_data = utils.convert_to_agipd_format(channel,
+#                                                         read_in_data)
 
         data[channel][dict_key].append(read_in_data)
 
@@ -135,11 +134,8 @@ def get_trailing_zeros(data):
     for seq in range(len(data)):
 
         eq_zero_idx = np.where(data[seq] == 0)[0]
-        #print(eq_zero_idx)
         diff_zeros = np.diff(eq_zero_idx)
-        #print(diff_zeros)
         non_consecutive_idx = np.where(diff_zeros != 1)[0]
-        #print(non_consecutive_idx)
 
         if eq_zero_idx.size == 0:
             res.append(0)
@@ -152,9 +148,8 @@ def get_trailing_zeros(data):
             else:
                 trailing_zeros_start = eq_zero_idx[non_consecutive_idx[-1] + 1]
             trailing_zeros_stop = eq_zero_idx[last_eq_zero_idx - 1] + 1
-            #print(trailing_zeros_start, trailing_zeros_stop)
+
             n_zeros = trailing_zeros_stop - trailing_zeros_start
-            #print("number of zeros: ", n_zeros)
 
             res.append(n_zeros)
 
@@ -170,22 +165,22 @@ def setUpModule():
     global data
     global path_temp
 
-    file_raw_prefix_temp = ("/gpfs/exfel/exp/SPB/{bt}/raw/r{r:04d}/RAW-R{r:04d}"
-                                     .format(bt=beamtime, r=run) +
-                                     "-AGIPD{:02d}-S")
+    file_raw_prefix_temp = ("/gpfs/exfel/exp/SPB/{bt}/raw/r{r:04d}/"
+                            "RAW-R{r:04d}".format(bt=beamtime, r=run) +
+                            "-AGIPD{:02d}-S")
     file_raw_temp = file_raw_prefix_temp + "{:05d}.h5"
 
     path_temp = {
         "header": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header",
         "image": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image",
         "trailer": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/trailer",
-        "detector_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/detector/trainId",
-        "header_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header/trainId",
-        "image_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/trainId",
-        "trailer_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/trailer/trainId",
-        "pulse_count": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header/pulseCount",
+        "detector_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/detector/trainId",  # noqa E501
+        "header_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header/trainId",  # noqa E501
+        "image_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/trainId",  # noqa E501
+        "trailer_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/trailer/trainId",  # noqa E501
+        "pulse_count": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header/pulseCount",  # noqa E501
         "cell_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/cellId",
-        "pulse_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/pulseId",
+        "pulse_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/pulseId",  # noqa E501
         "data": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/data"
     }
 
@@ -237,7 +232,6 @@ class SanityChecks(unittest.TestCase):
 
         cls._usable_start = 2
 
-
     # per test
     def setUp(self):
         pass
@@ -272,8 +266,6 @@ class SanityChecks(unittest.TestCase):
         msg = ""
         res = np.array(res)
         for seq in range(len(d)):
-#            msg = ("\nNot all modules have the same number of trains for seq {}\n"
-#                   "(n_trains={})".format(seq, res[:, seq]))
             unique = np.unique(res[:, seq])
 
             try:
@@ -282,8 +274,9 @@ class SanityChecks(unittest.TestCase):
                 # tried to use subtest for this but it broke the new lines
                 # in the check summary
                 assert_failed = True
-                msg += ("\nNot all modules have the same number of trains for seq {}\n"
-                       "(n_trains={})".format(seq, res[:, seq]))
+                msg += ("\nNot all modules have the same number of trains "
+                        "for seq {}\n"
+                        "(n_trains={})".format(seq, res[:, seq]))
 
         # for clarity only print one error message for all sequences
         if assert_failed:
@@ -300,7 +293,6 @@ class SanityChecks(unittest.TestCase):
         for channel in range(self._n_channels):
             for seq in range(self._seq_start, self._seq_stop):
                 fname = self._file_raw_temp.format(channel, seq)
-                #print(fname)
 
                 group_name = self._path["header"].format(channel)
 
@@ -338,7 +330,6 @@ class SanityChecks(unittest.TestCase):
         for channel in range(self._n_channels):
             for seq in range(self._seq_start, self._seq_stop):
                 fname = self._file_raw_temp.format(channel, seq)
-                #print(fname)
 
                 group_name = self._path["image"].format(channel)
 
@@ -376,7 +367,6 @@ class SanityChecks(unittest.TestCase):
         for channel in range(self._n_channels):
             for seq in range(self._seq_start, self._seq_stop):
                 fname = self._file_raw_temp.format(channel, seq)
-                #print(fname)
 
                 group_name = self._path["trailer"].format(channel)
 
@@ -408,12 +398,14 @@ class SanityChecks(unittest.TestCase):
         Checks if the first train id value is equal for all modules
         """
 
-        first_train_ids = [d["header_train_id"][0][self._usable_start + 0] for d in data]
+        first_train_ids = [d["header_train_id"][0][self._usable_start + 0]
+                           for d in data]
         train_id_start = np.min(first_train_ids)
 
         diff_first_train = np.where(first_train_ids != train_id_start)[0]
 
-        msg = ("\nChannels with shifted first train id: {}\n".format(diff_first_train))
+        msg = ("\nChannels with shifted first train id: {}\n"
+               .format(diff_first_train))
         for i, train_id in enumerate(first_train_ids):
             msg += "channel {:02}: {}\n".format(i, train_id)
 
@@ -437,14 +429,15 @@ class SanityChecks(unittest.TestCase):
 
                 detector_vs_header = (d_detector == d_header).all()
                 header_vs_trailer = (d_header == d_trailer).all()
-                res = np.logical_and( detector_vs_header, header_vs_trailer)
+                res = np.logical_and(detector_vs_header, header_vs_trailer)
 
                 try:
                     self.assertTrue(res)
                 except AssertionError:
                     assert_failed = True
-                    msg = ("\nTrainIds from detector, header and trailer do not "
-                            "match for channel {:02}, seq {}".format(channel, seq))
+                    msg = ("\nTrainIds from detector, header and trailer do "
+                           "not match for channel {:02}, seq {}"
+                           .format(channel, seq))
 
         # for clarity only print one error message for all sequences
         if assert_failed:
@@ -452,7 +445,8 @@ class SanityChecks(unittest.TestCase):
 
     def test_data_vs_pulsec(self):
         """
-        Checks if the sum of the pulseCount entries is corresponding to the data)
+        Checks if the sum of the pulseCount entries is corresponding to the
+        data
         """
 
         assert_failed = False
@@ -460,10 +454,10 @@ class SanityChecks(unittest.TestCase):
                "channels and sequences (pulseCount sum vs data shape):")
         for channel in range(self._n_channels):
             for seq in range(self._n_sequences):
-                n_total_pulses = np.sum(self._data[channel]["pulse_count"][seq])
+                d = self._data[channel]["pulse_count"][seq]
+                n_total_pulses = np.sum(d)
 
                 fname = self._file_raw_temp.format(channel, seq)
-                #print(fname)
                 group_name = self._path["data"].format(channel)
 
                 f = h5py.File(fname, "r")
@@ -475,9 +469,11 @@ class SanityChecks(unittest.TestCase):
                 except AssertionError:
                     assert_failed = True
                     msg += ("\nChannel {:02}, sequence {} ({} vs {})"
-                            .format(channel, seq, n_total_pulses, data_shape[0]))
+                            .format(channel, seq, n_total_pulses,
+                                    data_shape[0]))
 
-        # for clarity only print one error message for all channels and sequences
+        # for clarity only print one error message for all channels and
+        # sequences
         if assert_failed:
             self.fail(msg)
 
@@ -505,13 +501,15 @@ class SanityChecks(unittest.TestCase):
                     msg += ("\nChannel {:02}, sequence {}"
                             .format(channel, seq))
 
-        # for clarity only print one error message for all channels and sequences
+        # for clarity only print one error message for all channels and
+        # sequences
         if assert_failed:
             self.fail(msg)
 
     def test_train_id_tzero(self):
         """
-        Checks number of placeholder in trainId and if they are always at the end
+        Checks number of placeholder in trainId and if they are always at the
+        end
         """
 
         res = [[] for i in range(self._n_sequences)]
@@ -545,19 +543,16 @@ class SanityChecks(unittest.TestCase):
         """
 
         assert_failed = False
-        msg = ("\nTrainid contains zeros which are not at the end for following"
-               " channels and sequences:")
+        msg = ("\nTrainid contains zeros which are not at the end for "
+               "following channels and sequences:")
         for ch, _ in enumerate(data):
             d = data[ch]["header_train_id"]
 
             for seq in range(len(d)):
 
                 eq_zero_idx = np.where(data[seq] == 0)[0]
-                #print(eq_zero_idx)
                 diff_zeros = np.diff(eq_zero_idx)
-                #print(diff_zeros)
                 non_consecutive_idx = np.where(diff_zeros != 1)[0]
-                #print(non_consecutive_idx)
 
                 try:
                     self.assertEqual(non_consecutive_idx.size, 0)
@@ -565,7 +560,8 @@ class SanityChecks(unittest.TestCase):
                     assert_failed = True
                     msg += ("\nChannel {:02}, seq {}".format(ch, seq))
 
-        # for clarity only print one error message for all channels and sequences
+        # for clarity only print one error message for all channels and
+        # sequences
         if assert_failed:
             self.fail(msg)
 
@@ -576,6 +572,7 @@ class SanityChecks(unittest.TestCase):
 
         assert_failed = False
         msg = ""
+        last_seq = None
         for ch, _ in enumerate(data):
             for seq in range(self._n_sequences):
                 d = data[ch]["header_train_id"][seq]
@@ -599,9 +596,10 @@ class SanityChecks(unittest.TestCase):
                     self.assertEqual(train_loss_idx.size, 0, msg)
                 except AssertionError:
                     assert_failed = True
-                    msg += ("\nChannel {:02}, seq {}: Train loss found at indices:\n"
-                            .format(ch, seq))
-                    for idx  in train_loss_idx:
+                    msg += ("\nChannel {:02}, seq {}: Train loss found at "
+                            "indices:\n".format(ch, seq))
+
+                    for idx in train_loss_idx:
                         idx_o = idx_no_zeros[idx]
                         msg += ("\tidx {}: ... {} ..."
                                 .format(idx_o,
@@ -613,15 +611,17 @@ class SanityChecks(unittest.TestCase):
                         self.assertEqual(last_seq + 1, d_no_zeros[0])
                     except AssertionError:
                         assert_failed = True
-                        msg = ("\nChannel {:02}: Train loss found between sequences"
-                               " {} and {}\n".format(ch, seq - 1 , seq))
+                        msg = ("\nChannel {:02}: Train loss found between "
+                               "sequences {} and {}\n"
+                               .format(ch, seq - 1, seq))
                         msg += ("(end of seq {}: {}, start of seq {}: {})"
                                 .format(seq - 1, last_seq, seq, d_no_zeros[0]))
 
                 # keep the last trainId for the next iteration
                 last_seq = d_no_zeros[-1]
 
-        # for clarity only print one error message for all channels and sequences
+        # for clarity only print one error message for all channels and
+        # sequences
         if assert_failed:
             self.fail(msg)
 
@@ -634,10 +634,10 @@ class SanityChecks(unittest.TestCase):
         msg = "\nData containes extra data which is not zero for:"
         for channel in range(self._n_channels):
             for seq in range(self._n_sequences):
-                n_total_pulses = np.sum(self._data[channel]["pulse_count"][seq])
+                d = self._data[channel]["pulse_count"][seq]
+                n_total_pulses = np.sum(d)
 
                 fname = self._file_raw_temp.format(channel, seq)
-                #print(fname)
                 group_name = self._path["data"].format(channel)
 
                 f = h5py.File(fname, "r")
@@ -655,15 +655,17 @@ class SanityChecks(unittest.TestCase):
                 except AssertionError:
                     assert_failed = True
                     msg += ("\nChannel {:02}, seq{} (number of zeros {})"
-                           .format(channel, seq, extra_data.shape[0]))
+                            .format(channel, seq, extra_data.shape[0]))
 
-        # for clarity only print one error message for all channels and sequences
+        # for clarity only print one error message for all channels and
+        # sequences
         if assert_failed:
             self.fail(msg)
 
     def test_data_vs_tr_id(self):
         """
-        Checks if the dimension of the image trainId is corresponding to the data)
+        Checks if the dimension of the image trainId is corresponding to the
+        data
         """
 
         assert_failed = False
@@ -672,7 +674,6 @@ class SanityChecks(unittest.TestCase):
         for channel in range(self._n_channels):
             for seq in range(self._n_sequences):
                 fname = self._file_raw_temp.format(channel, seq)
-                #print(fname)
 
                 group_name = self._path["image_train_id"].format(channel)
                 data_name = self._path["data"].format(channel)
@@ -687,9 +688,11 @@ class SanityChecks(unittest.TestCase):
                 except AssertionError:
                     assert_failed = True
                     msg += ("Channel {:02}, sequence {} ({} vs {})\n"
-                            .format(channel, seq, train_id_shape[0], data_shape[0]))
+                            .format(channel, seq, train_id_shape[0],
+                                    data_shape[0]))
 
-        # for clarity only print one error message for all channels and sequences
+        # for clarity only print one error message for all channels and
+        # sequences
         if assert_failed:
             self.fail(msg)
 
@@ -722,9 +725,9 @@ def suite():
 
 if __name__ == "__main__":
 
-    #instrument_cycle = "201730"
-    #bt = "p900009"
-    #r = 709
+    # instrument_cycle = "201730"
+    # bt = "p900009"
+    # r = 709
     args = get_arguments()
 
     beamtime = "{}/{}".format(args.instrument_cycle, args.beamtime)

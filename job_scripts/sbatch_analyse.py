@@ -18,13 +18,13 @@ def get_arguments():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--input_dir",
-                       type=str,
-                       required=True,
-                       help="Directory to get data from")
+                        type=str,
+                        required=True,
+                        help="Directory to get data from")
     parser.add_argument("--output_dir",
-                       type=str,
-                       required=True,
-                       help="Base directory to write results to")
+                        type=str,
+                        required=True,
+                        help="Base directory to write results to")
     parser.add_argument("--type",
                         type=str,
                         required=True,
@@ -36,14 +36,14 @@ def get_arguments():
                         type=int,
                         required=True,
                         nargs="+",
-                        help="Run numbers to extract data from. Requirements:\n"
+                        help="Run numbers to extract data from. "
+                             "Requirements:\n"
                              "dark: 3 runs for the gain stages "
                              "high, medium, low (in this order)\n"
                              "pcdrs: 8 runs")
 
     parser.add_argument("--config_file",
                         type=str,
-#                        required=True,
                         help="Config file name to get config parameters from")
 
     parser.add_argument("--run_type",
@@ -58,6 +58,7 @@ def get_arguments():
     args = parser.parse_args()
 
     return args
+
 
 class SubmitJobs():
     def __init__(self):
@@ -95,7 +96,7 @@ class SubmitJobs():
 
         self.partition = self.config["general"]["partition"]
 
-        self.safety_factor  = None
+        self.safety_factor = None
         self.meas_spec = None
 
         if self.measurement == "drscs":
@@ -135,7 +136,8 @@ class SubmitJobs():
             self.time_limit[run_type] = self.config[run_type]["time_limit"]
 
             try:
-                self.input_dir[run_type] = args.input_dir or self.config[run_type]["input_dir"]
+                self.input_dir[run_type] = (args.input_dir or
+                                            self.config[run_type]["input_dir"])
             except KeyError:
                 self.input_dir[run_type] = None
             try:
@@ -161,8 +163,9 @@ class SubmitJobs():
         if self.config["general"]["asic_set"] == "None":
             self.asic_set = None
         else:
+            conf_asic_set = self.config["general"]["asic_set"]
             # convert str into list
-            self.asic_set = self.config["general"]["asic_set"][1:-1].split(", ")
+            self.asic_set = conf_asic_set[1:-1].split(", ")
             # convert list entries into ints
             self.asic_set = list(map(int, self.asic_set))
 
@@ -177,7 +180,7 @@ class SubmitJobs():
 
         for section, sec_value in config.items():
             if section not in self.config:
-                self.config[section]={}
+                self.config[section] = {}
             for key, key_value in sec_value.items():
                 self.config[section][key] = key_value
 
@@ -216,9 +219,9 @@ class SubmitJobs():
             self.run_type_list_per_module = [self.run_type]
             self.run_type_list_module_dep = []
         else:
-            self.run_type_list_per_module = [t for t in self.run_type_list if t != "join"]
+            self.run_type_list_per_module = [t for t in self.run_type_list
+                                             if t != "join"]
             self.run_type_list_module_dep = ["join"]
-
 
         dep_overview = {}
 
@@ -248,9 +251,10 @@ class SubmitJobs():
                         runs_string = "-".join(list(map(str, runs)))
                     else:
                         runs_string = str(runs)
-                    dep_overview[module][run_type][runs_string] = {}
-                    dep_overview[module][run_type][runs_string]["jobnum"] = jn
-                    dep_overview[module][run_type][runs_string]["deb_jobs"] = dep_jobs
+                    d_o = dep_overview[module][run_type]
+                    d_o[runs_string] = {}
+                    d_o[runs_string]["jobnum"] = jn
+                    d_o[runs_string]["deb_jobs"] = dep_jobs
 
             jobnums_mod += jobnums_type
 
@@ -267,30 +271,32 @@ class SubmitJobs():
                 runs_string = "-".join(list(map(str, self.run_list)))
             else:
                 runs_string = str(self.run_list)
-            dep_overview["all_modules"][run_type] = {}
-            dep_overview["all_modules"][run_type][runs_string] = {}
-            dep_overview["all_modules"][run_type][runs_string]["jobnum"] = jn
-            dep_overview["all_modules"][run_type][runs_string]["deb_jobs"] = dep_jobs
+            d_o = dep_overview["all_modules"]
+            d_o[run_type] = {}
+            d_o[run_type][runs_string] = {}
+            d_o[run_type][runs_string]["jobnum"] = jn
+            d_o[run_type][runs_string]["deb_jobs"] = dep_jobs
 
         # print overview of dependencies
         print("\nDependencies Overview")
         for module in dep_overview:
             for run_type in dep_overview[module]:
                 for runs in dep_overview[module][run_type]:
-                    if  dep_overview[module][run_type][runs]["deb_jobs"] == "":
+                    d_o = dep_overview[module][run_type][runs]
+
+                    if d_o["deb_jobs"] == "":
                         print("{}\t{}\t{}\t{}\tno dependencies"
                               .format(module,
                                       run_type,
                                       runs,
-                                      dep_overview[module][run_type][runs]["jobnum"]))
+                                      d_o["jobnum"]))
                     else:
                         print("{}\t{}\t{}\t{}\tdepending on\t{}"
                               .format(module,
                                       run_type,
                                       runs,
-                                      dep_overview[module][run_type][runs]["jobnum"],
-                                      dep_overview[module][run_type][runs]["deb_jobs"]))
-
+                                      d_o["jobnum"],
+                                      d_o["deb_jobs"]))
 
         print("\nCurrent status:\n")
         os.system("squeue --user $USER")
@@ -351,7 +357,7 @@ class SubmitJobs():
             self.script_params += ["--temperature", self.temperature]
 
         if self.safety_factor is not None:
-            self.script_params += ["--safety_factor", self.safety_factor,]
+            self.script_params += ["--safety_factor", self.safety_factor]
 
         if self.max_part is not None:
             self.script_params += ["--max_part", self.max_part]
@@ -393,7 +399,10 @@ class SubmitJobs():
         return jobnum
 
     def submit_job(self, cmd, jobname):
-        p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(cmd,
+                             stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
         output, err = p.communicate()
         rc = p.returncode
 
@@ -416,7 +425,6 @@ class SubmitJobs():
         now = datetime.datetime.now()
         dt = now.strftime("%Y-%m-%d_%H:%M:%S")
 
-
         print("run asic_lists", self.asic_lists)
         for asic_set in self.asic_lists:
             job_name = ("{}_{}_{}"
@@ -434,9 +442,9 @@ class SubmitJobs():
             if not self.use_xfel:
                 short_temperature = self.temperature[len("temperature_"):]
                 job_name = ("{}_{}_{}"
-                           .format(job_name,
-                                   short_temperature,
-                                   self.meas_spec))
+                            .format(job_name,
+                                    short_temperature,
+                                    self.meas_spec))
                 output_name = ("{}_{}_{}"
                                .format(output_name,
                                        short_temperature,
@@ -476,15 +484,14 @@ class SubmitJobs():
 
             jobnum = None
             if not self.no_slurm:
-                path = "/home/kuhnm/calibration/job_scripts/test"
                 if dep_jobs != "":
-                    self.sbatch_params += ["--depend=afterok:{}".format(dep_jobs),
-                                           "--kill-on-invalid-dep=yes"]
-#                cmd = ["sbatch"] + job_params + ["{}/job{}.sh".format(path, 1)]
-#                print(cmd)
+                    self.sbatch_params += [
+                        "--depend=afterok:{}".format(dep_jobs),
+                        "--kill-on-invalid-dep=yes"
+                    ]
 
                 cmd = ["sbatch"] + self.sbatch_params + cmd
-                #print("submitting job with command:", cmd)
+                # print("submitting job with command:", cmd)
 
                 jobnum = self.submit_job(cmd, "{} job".format(run_type))
             else:

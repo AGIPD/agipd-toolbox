@@ -1,6 +1,7 @@
 import numpy as np
 from gather_base import AgipdGatherBase
 
+
 class AgipdGatherPcdrs(AgipdGatherBase):
     def __init__(self, input_fname, output_fname, runs, max_part=False,
                  asic=None, use_xfel_format=False, backing_store=True):
@@ -13,7 +14,7 @@ class AgipdGatherPcdrs(AgipdGatherBase):
 
     def set_pos_indices(self, run_idx):
 
-        #TODO instead of concatenate use two lists
+        # TODO instead of concatenate use two lists
 
         start = self.n_runs - 1 - run_idx
         stop = self.n_rows // 2
@@ -72,7 +73,7 @@ if __name__ == "__main__":
                 for i in range(channels_per_run):
                     channel = j * channels_per_run + i
                     input_file_name = ("RAW-R{run_number:04d}-" +
-                            "AGIPD{:02d}".format(channel) +
+                                       "AGIPD{:02d}".format(channel) +
                                        "-S{part:05d}.h5")
                     input_fname = os.path.join(base_dir,
                                                "raw",

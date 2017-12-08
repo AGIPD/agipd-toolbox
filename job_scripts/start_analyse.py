@@ -71,8 +71,8 @@ def get_arguments():
                         type=str,
                         required=True,
                         choices=["dark", "pcdrs"],
-#                        choices=["dark", "xray", "clamped_gain", "pcdrs",
-#                                 "drscs", "drscs_dark", "correct"],
+                        # choices=["dark", "xray", "clamped_gain", "pcdrs",
+                        #          "drscs", "drscs_dark", "correct"],
                         help="Which type to run: \n"
                              "dark: generating the dark constants\n"
                              "pcdrs")
@@ -85,7 +85,8 @@ def get_arguments():
                         type=int,
                         nargs="+",
                         required=True,
-                        help="Run numbers to extract data from. Requirements: \n"
+                        help="Run numbers to extract data from. "
+                             "Requirements:\n"
                              "dark: 3 runs for the gain stages "
                              "high, medium, low (in this order)\n"
                              "pcdrs: 8 runs")
@@ -104,7 +105,8 @@ def get_arguments():
     parser.add_argument("--use_xfel_in_format",
                         action="store_true",
                         default=False,
-                        help="Flag describing if the input data is in xfel format")
+                        help="Flag describing if the input data is in xfel "
+                             "format")
     parser.add_argument("--use_xfel_out_format",
                         action="store_true",
                         default=False,
@@ -150,11 +152,13 @@ def get_arguments():
         msg = "The meas_spec must be defined!"
         parser.error(msg)
 
-    if args.type == "dark" and args.type == "gather" and (len(args.run_list) != 1):
+    if (args.type == "dark" and
+            args.type == "gather" and (len(args.run_list) != 1)):
         msg = ("Gathering only one run at a time for type dark. Quitting.")
         parser.error(msg)
 
-    if args.type == "dark" and args.type == "process" and (len(args.run_list) != 3):
+    if (args.type == "dark" and
+            args.type == "process" and (len(args.run_list) != 3)):
         msg = ("Runs for all 3 gain stages are required to calculate dark "
                "constants. Quitting.")
         parser.error(msg)
@@ -234,23 +238,25 @@ class StartAnalyse():
                 for asic in self.asic_list:
                     print("Starting script for asic {}\n".format(asic))
 
-                    p = multiprocessing.Process(target=Analyse,
-                                                args=(self.run_type,
-                                                      self.meas_type,
-                                                      self.in_base_dir,
-                                                      self.out_base_dir,
-                                                      self.n_processes,
-                                                      m,
-                                                      self.temperature,
-                                                      self.meas_spec,
-                                                      asic,
-                                                      self.asic_list,
-                                                      self.safety_factor,
-                                                      self.run_list,
-                                                      self.max_part,
-                                                      self.current_list, # = None
-                                                      self.use_xfel_in_format,
-                                                      self.use_xfel_out_format))
+                    p = multiprocessing.Process(
+                        target=Analyse,
+                        args=(self.run_type,
+                              self.meas_type,
+                              self.in_base_dir,
+                              self.out_base_dir,
+                              self.n_processes,
+                              m,
+                              self.temperature,
+                              self.meas_spec,
+                              asic,
+                              self.asic_list,
+                              self.safety_factor,
+                              self.run_list,
+                              self.max_part,
+                              self.current_list,  # = None
+                              self.use_xfel_in_format,
+                              self.use_xfel_out_format)
+                    )
                     jobs.append(p)
                     p.start()
 

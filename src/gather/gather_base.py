@@ -51,7 +51,7 @@ class AgipdGatherBase():
         self.max_pulses = None
 
         # to use the interleaved or not interleaved format
-        #self.use_interleaved = True
+        # self.use_interleaved = True
         self.use_interleaved = False
 
         self.n_rows_total = 128
@@ -156,9 +156,11 @@ class AgipdGatherBase():
 
             # xfel format has swapped rows and cols
             if self.use_interleaved:
-                self.raw_shape = (self.n_memcells, 2, 2, self.n_cols, self.n_rows)
+                self.raw_shape = (self.n_memcells, 2, 2,
+                                  self.n_cols, self.n_rows)
             else:
-                self.raw_shape = (self.n_memcells, 2, self.n_cols, self.n_rows)
+                self.raw_shape = (self.n_memcells, 2,
+                                  self.n_cols, self.n_rows)
 
             self.channel = int(k.split("CH")[0])
             self.in_wing2 = utils.located_in_wing2(self.channel)
@@ -208,9 +210,11 @@ class AgipdGatherBase():
 
         # tmp data is already converted into agipd format
         if self.use_interleaved:
-            self.raw_tmp_shape = (self.n_frames_total, self.n_rows, self.n_cols)
+            self.raw_tmp_shape = (self.n_frames_total,
+                                  self.n_rows, self.n_cols)
         else:
-            self.raw_tmp_shape = (self.n_frames_total, 2, self.n_rows, self.n_cols)
+            self.raw_tmp_shape = (self.n_frames_total, 2,
+                                  self.n_rows, self.n_cols)
 
         self.tmp_shape = (-1, self.n_memcells, 2, self.n_rows, self.n_cols)
 
@@ -340,7 +344,7 @@ class AgipdGatherBase():
 
             load_idx_rows = slice(self.a_row_start, self.a_row_stop)
             load_idx_cols = slice(self.a_col_start, self.a_col_stop)
-            print("load idx: {}, {}".format(load_idx_rows, load_idx_cols) )
+            print("load idx: {}, {}".format(load_idx_rows, load_idx_cols))
 
             self.source_seq_number = [0]
             target_offset = 0
@@ -373,7 +377,6 @@ class AgipdGatherBase():
                     print("raw_data.shape", raw_data.shape)
                     print("self.n_frames_per_file", self.n_frames_per_file)
                     print("self.raw_shape", self.raw_shape)
-
 
                     n_pulses = (file_content[self.pulse_count_path]
                                 .astype(np.int16))
@@ -418,7 +421,6 @@ class AgipdGatherBase():
                                 raise
 
                         if burst == 0:
-                            #print("n_pulses", n_pulses)
                             print("burst == 0")
 
                         source_offset += burst
@@ -585,7 +587,7 @@ if __name__ == "__main__":
         "M305": "00",
     }
 
-    #use_xfel_format = True
+#    use_xfel_format = True
     use_xfel_format = False
 
     if use_xfel_format:
@@ -607,8 +609,8 @@ if __name__ == "__main__":
         for runs in run_list:
             process_list = []
             for j in range(number_of_runs):
-                for i in range(channeld_per_run):
-                    channel = str(j * channeld_per_run + i).zfill(2)
+                for i in range(channels_per_run):
+                    channel = str(j * channels_per_run + i).zfill(2)
                     in_file_name = ("RAW-R{run_number}-" +
                                     "AGIPD{}".format(channel) +
                                     "-S{part:05d}.h5")
@@ -653,7 +655,7 @@ if __name__ == "__main__":
         in_subdir = "raw/315-304-309-314-316-306-307/temperature_m25C/dark"
         module = "M304_m2"
         runs = ["00012"]
-        #asic = None # asic (None means full module)
+#        asic = None  # asic (None means full module)
         asic = 1
 
         max_part = False
@@ -662,7 +664,7 @@ if __name__ == "__main__":
         meas_type = "dark"
         meas_spec = {
             "dark": "tint150ns",
-            }
+        }
 
         in_file_name = ("{}_{}_{}_"
                         .format(module,

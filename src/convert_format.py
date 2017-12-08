@@ -6,6 +6,7 @@ import h5py
 
 import utils
 
+
 def get_arguments():
     parser = argparse.ArgumentParser()
 
@@ -36,7 +37,8 @@ def get_arguments():
 
 
 class ConvertFormat():
-    def __init__(self, input_fname, output_fname, output_format, channel, key_list=None):
+    def __init__(self, input_fname, output_fname, output_format, channel,
+                 key_list=None):
         self.input_fname = input_fname
         self.output_fname = output_fname
         self.output_format = output_format

@@ -5,7 +5,6 @@ import time
 import numpy as np
 import os
 import sys
-from string import Template
 import utils
 
 
@@ -38,8 +37,8 @@ class Combine():
         self.use_xfel_format = use_xfel_format
         if self.use_xfel_format:
             if module is None:
-                sys.exit("To convert to xfel format the channel number in XFEL "
-                         "numbering has to be specified")
+                sys.exit("To convert to xfel format the channel number in "
+                         "XFEL numbering has to be specified")
         self.module = int(module)
 
         if self.use_old_format:
@@ -181,16 +180,13 @@ class Combine():
             if utils.is_xfel_format(offset.shape):
                 offset = utils.convert_to_xfel_format(self.module, offset)
                 slope = utils.convert_to_xfel_format(self.module, slope)
-                threshold = utils.convert_to_xfel_format(self.module, threshold)
+                threshold = utils.convert_to_xfel_format(self.module,
+                                                         threshold)
 
             a_ci_offset[asic] = offset
             a_ci_slope[asic] = slope
             a_threshold[asic] = threshold
 
-
-        #print("a_ci_offset", a_ci_offset, len(a_ci_offset))
-        #print("a_ci_slope", a_ci_slope)
-        #print("a_threshold", a_threshold)
         self.ci_offset = utils.concatenate_to_module(a_ci_offset)
         self.ci_slope = utils.concatenate_to_module(a_ci_slope)
         threshold = utils.concatenate_to_module(a_threshold)
@@ -220,16 +216,13 @@ class Combine():
             if utils.is_xfel_format(offset.shape):
                 offset = utils.convert_to_xfel_format(self.module, offset)
                 slope = utils.convert_to_xfel_format(self.module, slope)
-                threshold = utils.convert_to_xfel_format(self.module, threshold)
+                threshold = utils.convert_to_xfel_format(self.module,
+                                                         threshold)
 
             a_offset[asic] = offset
             a_slope[asic] = slope
             a_threshold[asic] = threshold
 
-
-        #print("a_ci_offset", a_ci_offset, len(a_ci_offset))
-        #print("a_ci_slope", a_ci_slope)
-        #print("a_threshold", a_threshold)
         self.ci_offset = utils.concatenate_to_module(a_offset)
         self.ci_slope = utils.concatenate_to_module(a_slope)
         threshold = utils.concatenate_to_module(a_threshold)
@@ -281,7 +274,7 @@ class Combine():
 #            slope = self.ci_slope[..., :self.n_memcells]
             f = factor[np.newaxis, :, :]
             for i in range(self.n_gains):
-                # xray_gain_<m|l> = cs_gain_<m|l> * xray_gain_h175 / cs_gain_h175
+                # xray_gain_<m|l> = cs_gain_<m|l> * xray_gain_h175 / cs_gain_h175  # noqa E501
                 self.result["gain"][i, ...] = np.multiply(ci_slope[0, ...], f)
 
         else:
@@ -349,8 +342,6 @@ class Combine():
 
 
 if __name__ == "__main__":
-    from datetime import date
-
     base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
     pc_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm/pcdrs"
 #    output_dir = "/gpfs/exfel/exp/SPB/201701/p002012/scratch/user/kuhnm/tests"

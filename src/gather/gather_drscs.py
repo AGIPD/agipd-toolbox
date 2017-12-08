@@ -1,9 +1,6 @@
-import h5py
 import numpy as np
 import os
 import sys
-import time
-import glob
 
 from gather_base import AgipdGatherBase
 
@@ -18,7 +15,7 @@ SRC_PATH = os.path.join(BASE_PATH, "src")
 if SRC_PATH not in sys.path:
     sys.path.insert(0, SRC_PATH)
 
-import utils
+import utils  # noqa E402
 
 
 class AgipdGatherDrscs(AgipdGatherBase):
@@ -84,7 +81,7 @@ if __name__ == "__main__":
             process_list = []
             for j in range(number_of_runs):
                 for i in range(channels_per_run):
-                    cannel = j * channels_per_run + i
+                    channel = j * channels_per_run + i
                     in_file_name = ("RAW-R{run_number:04d}-" +
                                     "AGIPD{:02d}".format(channel) +
                                     "-S{part:05d}.h5")
@@ -126,12 +123,13 @@ if __name__ == "__main__":
 #        module = "M317_m2"
 #        runs = ["00001"]
 
-         # no frame loss
+        # no frame loss
         current = "itestc150"
-        in_subdir = "raw/315-304-309-314-316-306-307/temperature_m25C/drscs/{}".format(current)
+        in_subdir = ("raw/315-304-309-314-316-306-307/temperature_m25C/drscs/"
+                     "{}".format(current))
         module = "M304_m2"
         runs = ["col15_00019", "col26_00020", "col37_00021", "col48_00022"]
-        #asic = None # asic (None means full module)
+#        asic = None  # asic (None means full module)
         asic = 1
 
         max_part = False

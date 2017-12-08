@@ -5,11 +5,11 @@ import sys
 import datetime
 import time
 # import numpy as np
-from string import Template
+# from string import Template
 import glob
 
 import utils
-#from merge_drscs import ParallelMerge
+# from merge_drscs import ParallelMerge
 from correct import Correct
 from convert_format import ConvertFormat
 from join_constants import JoinConstants
@@ -25,6 +25,7 @@ if GATHER_PATH not in sys.path:
 
 if PROCESS_PATH not in sys.path:
     sys.path.insert(0, PROCESS_PATH)
+
 
 class Analyse():
     def __init__(self, run_type, meas_type, in_base_dir, out_base_dir,
@@ -128,15 +129,16 @@ class Analyse():
 
     def generate_gather_path(self, base_dir):
         if self.use_xfel_in_format:
-            # TODO: concider additing this into out_base_dir (joined) and create
-            #       subdirs for gathered files
+            # TODO: concider additing this into out_base_dir (joined) and
+            #       create subdirs for gathered files
             if self.meas_type == "pcdrs" or len(self.runs) == 1:
-                run_subdir = "r" + "-r".join(str(r).zfill(4) for r in self.runs)
+                run_subdir = "r" + "-r".join(str(r).zfill(4)
+                                             for r in self.runs)
 
                 fname = ("{}-AGIPD{:02}-gathered.h5"
                          .format(run_subdir.upper(), self.channel))
 
-            #TODO fill run_number + for what is this else (what cases)?
+            # TODO fill run_number + for what is this else (what cases)?
             else:
                 run_subdir = "r{run_number:04}"
 
@@ -156,7 +158,6 @@ class Analyse():
                                 self.meas_type,
                                 self.meas_spec,
                                 self.run_type)
-                                # "gather")
             # for testing
 #            out_base_dir = ("/gpfs/exfel/exp/SPB/201701/p002012/" +
 #                               "scratch/user/kuhnm")
@@ -178,7 +179,8 @@ class Analyse():
 
         return fdir, fname
 
-    def generate_process_path(self, base_dir, use_xfel_out_format, as_template=False):
+    def generate_process_path(self, base_dir, use_xfel_out_format,
+                              as_template=False):
         run_subdir = "r" + "-r".join(str(r).zfill(4) for r in self.runs)
 
         fdir = os.path.join(base_dir,
@@ -245,7 +247,6 @@ class Analyse():
 
         return fdir, fname
 
-
     def run_gather(self):
         if self.meas_type == "pcdrs":
             from gather.gather_pcdrs import AgipdGatherPcdrs as Gather
@@ -298,7 +299,6 @@ class Analyse():
         if self.meas_type == "pcdrs":
             # adjust list of runs
             run_list = ["r" + "-r".join(str(r).zfill(4) for r in self.runs)]
-#            run_list = ["r" + "-r".join(str(r).zfill(4) for r in runs) for runs in self.runs]
 
             # define out files
             # the in files for processing are the out ones from gather
@@ -355,13 +355,18 @@ class Analyse():
         print("convert format")
         print("output filename = {}".format(c_out_fname))
         if os.path.exists(c_out_fname):
-#            print("output filename = {}".format(c_out_fname))
             print("WARNING: output file already exist. Skipping convert.")
         else:
             if self.use_xfel_out_format:
-                c_obj = ConvertFormat(out_fname, c_out_fname, "agipd", self.channel)
+                c_obj = ConvertFormat(out_fname,
+                                      c_out_fname,
+                                      "agipd",
+                                      self.channel)
             else:
-                c_obj = ConvertFormat(out_fname, c_out_fname, "xfel", self.channel)
+                c_obj = ConvertFormat(out_fname,
+                                      c_out_fname,
+                                      "xfel",
+                                      self.channel)
 
             c_obj.run()
 
@@ -401,48 +406,48 @@ class Analyse():
         obj = JoinConstants(in_fname, out_fname)
         obj.run()
 
-    def run_merge_drscs(self):
-
-        base_path = self.in_base_dir
-        asic_list = self.asic_list
-
-        in_path = os.path.join(base_path,
-                               self.module,
-                               self.temperature,
-                               "drscs")
-        # substitute all except current and asic
-        in_template = (
-            Template("${p}/${c}/process/${m}_drscs_${c}_asic${a}_processed.h5")
-            .safe_substitute(p=in_path, m=self.module)
-        )
-        # make a template out of this string to let Merge set current and asic
-        in_template = Template(in_template)
-
-        out_dir = os.path.join(base_path,
-                               self.module,
-                               self.temperature,
-                               "drscs",
-                               "merged")
-        out_template = (
-            Template("${p}/${m}_drscs_asic${a}_merged.h5")
-            .safe_substitute(p=out_dir,
-                             m=self.module,
-                             t=self.temperature)
-        )
-        out_template = Template(out_template)
-
-        if os.path.exists(out_fname):
-            print("output filename = {}".format(out_fname))
-            print("WARNING: output file already exist. Skipping gather.")
-        else:
-
-            utils.create_dir(out_dir)
-
-            ParallelMerge(in_template,
-                          out_template,
-                          asic_list,
-                          self.n_processes,
-                          self.current_list)
+#    def run_merge_drscs(self):
+#
+#        base_path = self.in_base_dir
+#        asic_list = self.asic_list
+#
+#        in_path = os.path.join(base_path,
+#                               self.module,
+#                               self.temperature,
+#                               "drscs")
+#        # substitute all except current and asic
+#        in_template = (
+#            Template("${p}/${c}/process/${m}_drscs_${c}_asic${a}_processed.h5")
+#            .safe_substitute(p=in_path, m=self.module)
+#        )
+#        # make a template out of this string to let Merge set current and asic
+#        in_template = Template(in_template)
+#
+#        out_dir = os.path.join(base_path,
+#                               self.module,
+#                               self.temperature,
+#                               "drscs",
+#                               "merged")
+#        out_template = (
+#            Template("${p}/${m}_drscs_asic${a}_merged.h5")
+#            .safe_substitute(p=out_dir,
+#                             m=self.module,
+#                             t=self.temperature)
+#        )
+#        out_template = Template(out_template)
+#
+#        if os.path.exists(out_fname):
+#            print("output filename = {}".format(out_fname))
+#            print("WARNING: output file already exist. Skipping gather.")
+#        else:
+#
+#            utils.create_dir(out_dir)
+#
+#            ParallelMerge(in_template,
+#                          out_template,
+#                          asic_list,
+#                          self.n_processes,
+#                          self.current_list)
 
     def run_correct(self, run_number):
         data_fname_prefix = ("RAW-{}-AGIPD{}*"

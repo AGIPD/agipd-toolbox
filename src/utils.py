@@ -40,7 +40,7 @@ def get_channel_order():
 def get_asic_order():
     # how the asics are located on the module
     asic_order = [[16, 15, 14, 13, 12, 11, 10, 9],
-                  [1,   2,  3,  4,  5,  6,  7, 8]]
+                  [1, 2, 3, 4, 5, 6, 7, 8]]
 
     return asic_order
 
@@ -206,7 +206,7 @@ def calculate_mapped_asic(self, asic_order):
                     .format(self.asic, asic_order))
 
 
-def determine_asic_border(mapped_asic, asic_size):
+def determine_asic_border(mapped_asic, asic_size, asic_order=None):
     #       ____ ____ ____ ____ ____ ____ ____ ____
     # 0x64 |    |    |    |    |    |    |    |    |
     #      |  0 |  1 | 2  | 3  |  4 |  5 |  6 |  7 |
@@ -214,6 +214,10 @@ def determine_asic_border(mapped_asic, asic_size):
     #      |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
     # 2x64 |____|____|____|____|____|____|____|____|
     #      0*64 1x64 2x64 3x64 4x64 5x64 6x64 7x64 8x64
+
+    if asic_order is None:
+        asic_order = get_asic_order()
+    asics_per_module = [len(asic_order), len(asic_order[0])]
 
     row_progress = int(mapped_asic / asics_per_module[1])
     col_progress = int(mapped_asic % asics_per_module[1])
@@ -250,7 +254,7 @@ def concatenate_to_module(data, row_axis=2, col_axis=1):
     for asic in asic_row[1:]:
         data_upper = np.concatenate((data_upper,
                                      data[asic - 1]),
-                                     axis=row_axis)
+                                    axis=row_axis)
 
     # lower row
     asic_row = asic_order[1]
@@ -260,17 +264,17 @@ def concatenate_to_module(data, row_axis=2, col_axis=1):
     for asic in asic_row[1:]:
         data_lower = np.concatenate((data_lower,
                                      data[asic - 1]),
-                                     axis=row_axis)
+                                    axis=row_axis)
 
     # combine them
     result = np.concatenate((data_upper,
                              data_lower),
-                             axis=col_axis)
+                            axis=col_axis)
 
     return result
 
 
-# source: https://stackoverflow.com/questions/6027558/flatten-nested-python-dictionaries-compressing-keys
+# source: https://stackoverflow.com/questions/6027558/flatten-nested-python-dictionaries-compressing-keys  # noqa E725
 def flatten(d, parent_key='', sep='/'):
     # converts nested dictionary into flat one
     # e.g. {"a": {"n":1, "m":2}} -> {"a/n":1, "a/m":2}
@@ -283,6 +287,7 @@ def flatten(d, parent_key='', sep='/'):
         else:
             items.append((new_key, v))
     return dict(items)
+
 
 def setup_logging(name, level):
 

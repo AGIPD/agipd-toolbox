@@ -43,7 +43,7 @@ class AgipdProcessPcdrs(AgipdProcessBase):
         # reason: in run 488, ... the data shows 67 memory cells being written
         # although only 64 contain actual usefull data
         # TODO what happens if data is processed for all 67?
-        #self.n_memcells = 74
+#        self.n_memcells = 74
         self.n_memcells = 32
         print("n_memcell={}, n_ypixs={}, n_xpixs={}"
               .format(self.n_memcells, self.n_xpixs, self.n_ypixs))
@@ -83,8 +83,8 @@ class AgipdProcessPcdrs(AgipdProcessBase):
         }
 
     def determine_fit_intervals(self):
-        self.fit_interval = [[42,122], [402,552]]
-#        self.fit_interval = [[40,120], [400,550]]
+        self.fit_interval = [[42, 122], [402, 552]]
+#        self.fit_interval = [[40, 120], [400, 550]]
 
     def calculate(self):
         analog, digital = self.load_data(self.in_fname)

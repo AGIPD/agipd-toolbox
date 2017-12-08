@@ -134,13 +134,16 @@ class AgipdProcessBase():
         if type(self.runs[0]) == str:
             used_run_numbers = [run.encode('utf8') for run in self.runs]
         else:
-            used_run_numbers = ["r{:04d}".format(run).encode('utf8') for run in self.runs]
+            used_run_numbers = ["r{:04d}".format(run).encode('utf8')
+                                for run in self.runs]
 
         today = str(date.today())
         metadata_base_path = "collection"
 
-        f.create_dataset("{}/run_number".format(metadata_base_path), data=used_run_numbers)
-        f.create_dataset("{}/creation_date".format(metadata_base_path), data=today)
+        f.create_dataset("{}/run_number".format(metadata_base_path),
+                         data=used_run_numbers)
+        f.create_dataset("{}/creation_date".format(metadata_base_path),
+                         data=today)
 
         f.flush()
         f.close()

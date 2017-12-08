@@ -4,6 +4,14 @@ import numpy as np
 import time
 import os
 
+SRC_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+print("SRC_PATH", SRC_PATH)
+
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
+
+import utils  # noqa E402
+
 
 class Correct():
     def __init__(self, data_fname, dark_fname, gain_fname, output_fname,
@@ -177,14 +185,6 @@ if __name__ == "__main__":
     import multiprocessing
     import glob
 
-    SRC_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-    print("SRC_PATH", SRC_PATH)
-
-    if SRC_PATH not in sys.path:
-        sys.path.insert(0, SRC_PATH)
-
-    from utils import create_dir
-
     base_dir = "/gpfs/exfel/exp/SPB/201701/p002012/"
     data_dir = os.path.join(base_dir, "raw")
     dark_dir = os.path.join(base_dir,
@@ -244,7 +244,7 @@ if __name__ == "__main__":
 #                sys.exit(1)
 
             output_dir = os.path.join(output_dir, run_number)
-            create_dir(output_dir)
+            utils.create_dir(output_dir)
 
             fname = "corrected_AGIPD{}-S{:05d}.h5".format(module, part)
             output_fname = os.path.join(output_dir, fname)
