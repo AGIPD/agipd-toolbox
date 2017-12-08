@@ -16,20 +16,22 @@ data = None
 path_temp = None
 description = None
 
+
 def create_epilog():
     global description
 
     description = {
-        "test_n_seqs_equal": "Tests that all modules have the same number of \n"
-                             "sequences",
-        "test_n_train_equal": "Checks if number of trains is equal for all module\n"
-                              "(per seq)",
-        "test_dims_header": ("Checks if the first dimension is equal for all\n"
-                             "datasets contained in 'header' (per module and per seq)"),
-        "test_dims_image": ("Checks if the first dimension is equal for all datasets\n"
-                            "contained in 'image' (per module and per seq)"),
-        "test_dims_trailer": ("Checks if the first dimension is equal for all\n"
-                              "datasets contained in 'trailer' (per module and per seq)"),
+        # -------------------------------------------------------------------------------- #
+        "test_n_seqs_equal":   ("Tests that all modules have the same number of \n"
+                                "sequences"),
+        "test_n_train_equal":  ("Checks if number of trains is equal for all module\n"
+                                "(per seq)"),
+        "test_dims_header":    ("Checks if the first dimension is equal for all\n"
+                                "datasets contained in 'header' (per module and per seq)"),
+        "test_dims_image":     ("Checks if the first dimension is equal for all datasets\n"
+                                "contained in 'image' (per module and per seq)"),
+        "test_dims_trailer":   ("Checks if the first dimension is equal for all\n"
+                                "datasets contained in 'trailer' (per module and per seq)"),
         "test_train_id_shift": ("Checks if the first train id value is equal for all\n"
                                 "modules"),
         "test_train_id_equal": ("Checks if the train ids taken from detector, header\n"
@@ -226,13 +228,26 @@ class SanityChecks(unittest.TestCase):
             d = self._data[channel]["header_train_id"]
             res.append([len(d[seq]) for seq in range(self._n_sequences)])
 
+        assert_failed = False
+        msg = ""
         res = np.array(res)
         for seq in range(len(d)):
-            msg = ("Not all modules have the same number of trains for seq {}\n"
-                   "(n_trains={})".format(seq, res[:, seq]))
+#            msg = ("\nNot all modules have the same number of trains for seq {}\n"
+#                   "(n_trains={})".format(seq, res[:, seq]))
             unique = np.unique(res[:, seq])
 
-            self.assertEqual(len(unique), 1, msg)
+            try:
+                self.assertEqual(len(unique), 1)
+            except AssertionError:
+                # tried to use subtest for this but it broke the new lines
+                # in the check summary
+                assert_failed = True
+                msg += ("\nNot all modules have the same number of trains for seq {}\n"
+                       "(n_trains={})".format(seq, res[:, seq]))
+
+        # for clarity only print one error message for all sequences
+        if assert_failed:
+            self.fail(msg)
 
     def test_dims_header(self):
         """
@@ -240,6 +255,8 @@ class SanityChecks(unittest.TestCase):
         in 'header' (per module and per seq)
         """
 
+        assert_failed = False
+        msg = "Dimensions in header are not the same for:"
         for channel in range(self._n_channels):
             for seq in range(self._seq_start, self._seq_stop):
                 fname = self._file_raw_temp.format(channel, seq)
@@ -257,11 +274,18 @@ class SanityChecks(unittest.TestCase):
 
                 f.close()
 
-                dims = dict(zip(keys, res))
-                msg = ("Channel {}, sep {}: dimensions in header are not the same\n"
-                       "(dimensions are {})".format(channel, seq, dims))
                 unique = np.unique(res)
-                self.assertEqual(len(unique), 1, msg)
+                try:
+                    self.assertEqual(len(unique), 1)
+                except AssertionError:
+                    assert_failed = True
+                    dims = dict(zip(keys, res))
+                    msg += ("\nChannel {:02}, sep {} (dimensions are {})"
+                            .format(channel, seq, dims))
+
+        # for clarity only print one error message for all sequences
+        if assert_failed:
+            self.fail(msg)
 
     def test_dims_image(self):
         """
@@ -269,6 +293,8 @@ class SanityChecks(unittest.TestCase):
         in 'image' (per module and per seq)"
         """
 
+        assert_failed = False
+        msg = "Dimensions in image are not the same for: "
         for channel in range(self._n_channels):
             for seq in range(self._seq_start, self._seq_stop):
                 fname = self._file_raw_temp.format(channel, seq)
@@ -286,11 +312,18 @@ class SanityChecks(unittest.TestCase):
 
                 f.close()
 
-                dims = dict(zip(keys, res))
-                msg = ("Channel {}, sep {}: dimensions in header are not the same\n"
-                       "(dimensions are {})".format(channel, seq, dims))
                 unique = np.unique(res)
-                self.assertEqual(len(unique), 1, msg)
+                try:
+                    self.assertEqual(len(unique), 1)
+                except AssertionError:
+                    assert_failed = True
+                    dims = dict(zip(keys, res))
+                    msg += ("\nChannel {:02}, sep {} (dimensions are {})"
+                            .format(channel, seq, dims))
+
+        # for clarity only print one error message for all sequences
+        if assert_failed:
+            self.fail(msg)
 
     def test_dims_trailer(self):
         """
@@ -298,6 +331,8 @@ class SanityChecks(unittest.TestCase):
         'trailer' (per module and per seq)"
         """
 
+        assert_failed = False
+        msg = "Dimensions in trailer are not the same for:"
         for channel in range(self._n_channels):
             for seq in range(self._seq_start, self._seq_stop):
                 fname = self._file_raw_temp.format(channel, seq)
@@ -315,11 +350,18 @@ class SanityChecks(unittest.TestCase):
 
                 f.close()
 
-                dims = dict(zip(keys, res))
-                msg = ("Channel {}, sep {}: dimensions in header are not the same\n"
-                       "(dimensions are {})".format(channel, seq, dims))
                 unique = np.unique(res)
-                self.assertEqual(len(unique), 1, msg)
+                try:
+                    self.assertEqual(len(unique), 1)
+                except AssertionError:
+                    assert_failed = True
+                    dims = dict(zip(keys, res))
+                    msg = ("\nChannel {:02}, sep {} (dimensions are {})"
+                           .format(channel, seq, dims))
+
+        # for clarity only print one error message for all sequences
+        if assert_failed:
+            self.fail(msg)
 
     def test_train_id_shift(self):
         """
@@ -331,7 +373,7 @@ class SanityChecks(unittest.TestCase):
 
         diff_first_train = np.where(first_train_ids != train_id_start)[0]
 
-        msg = ("Channels with shifted first train id: {}\n".format(diff_first_train))
+        msg = ("\nChannels with shifted first train id: {}\n".format(diff_first_train))
         for i, train_id in enumerate(first_train_ids):
             msg += "channel {:02}: {}\n".format(i, train_id)
 
@@ -344,6 +386,8 @@ class SanityChecks(unittest.TestCase):
         equal (per module)
         """
 
+        assert_failed = False
+        msg = ""
         res = []
         for channel in np.arange(self._n_channels):
             for seq in range(self._n_sequences):
@@ -355,15 +399,21 @@ class SanityChecks(unittest.TestCase):
                 header_vs_trailer = (d_header == d_trailer).all()
                 res = np.logical_and( detector_vs_header, header_vs_trailer)
 
-                msg = ("train ids from detector, header and trailer do not "
-                       "match for channel {}, seq {}".format(channel, seq))
-                self.assertTrue(res, msg)
+                try:
+                    self.assertTrue(res)
+                except AssertionError:
+                    assert_failed = True
+                    msg = ("\nTrainIds from detector, header and trailer do not "
+                            "match for channel {:02}, seq {}".format(channel, seq))
 
     def test_dim_data(self):
         """
         Checks if the sum of the pulseCount entries is corresponding to the data)
         """
 
+        assert_failed = False
+        msg = ("\nPulseCount and data shape do not match for the following\n"
+               "channels and sequences (pulseCount sum vs data shape):")
         for channel in range(self._n_channels):
             for seq in range(self._n_sequences):
                 n_total_pulses = np.sum(self._data[channel]["pulse_count"][seq])
@@ -376,16 +426,25 @@ class SanityChecks(unittest.TestCase):
                 data_shape = f[group_name].shape
                 f.close()
 
-                msg = ("Channel {}, sequence {}: PulseCount and data shape do not match\n"
-                        "(pulseCount sum: {} vs data shape: {})"
-                       .format(channel, seq, n_total_pulses, data_shape[0]))
-                self.assertEqual(n_total_pulses, data_shape[0], msg)
+                try:
+                    self.assertEqual(n_total_pulses, data_shape[0])
+                except AssertionError:
+                    assert_failed = True
+                    msg += ("\nChannel {:02}, sequence {} ({} vs {})"
+                            .format(channel, seq, n_total_pulses, data_shape[0]))
+
+        # for clarity only print one error message for all channels and sequences
+        if assert_failed:
+            self.fail(msg)
 
     def test_diff_train_id(self):
         """
         Checks if the trainId is monotonically increasing
         """
 
+        assert_failed = False
+        msg = ("\nTrainId is not monotonically increasing for the following "
+               "channels and sequences")
         for channel in range(self._n_channels):
             for seq in range(self._n_sequences):
                 train_id = self._data[channel]["header_train_id"][seq]
