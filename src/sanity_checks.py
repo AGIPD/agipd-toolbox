@@ -1,3 +1,12 @@
+#!/usr/bin/python3
+
+"""
+Checks XFEL data for sanity
+(dimension checks, data versus metadata checks, ...)
+
+@author: Manuela Kuhn (manuela.kuhn@desy.de, DESY, FS-DS)
+"""
+
 import numpy as np
 import h5py
 # import utils
