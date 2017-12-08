@@ -14,40 +14,39 @@ file_raw_prefix_temp = None
 file_raw_temp = None
 data = None
 path_temp = None
-description = None
+
+description = {
+    # -------------------------------------------------------------------------------- #
+    "test_n_seqs_equal":   ("Tests that all modules have the same number of \n"
+                            "sequences"),
+    "test_n_train_equal":  ("Checks if number of trains is equal for all module\n"
+                            "(per seq)"),
+    "test_dims_header":    ("Checks if the first dimension is equal for all\n"
+                            "datasets contained in 'header' (per module and per seq)"),
+    "test_dims_image":     ("Checks if the first dimension is equal for all datasets\n"
+                            "contained in 'image' (per module and per seq)"),
+    "test_dims_trailer":   ("Checks if the first dimension is equal for all\n"
+                            "datasets contained in 'trailer' (per module and per seq)"),
+    "test_train_id_shift": ("Checks if the first train id value is equal for all\n"
+                            "modules"),
+    "test_train_id_equal": ("Checks if the train ids taken from detector, header\n"
+                            "and trailer are equal (per module)"),
+    "test_data_vs_pulsec": ("Checks if the sum of the pulseCount entries is\n"
+                            "corresponding to the data"),
+    "test_train_id_diff":  ("Checks if the trainId is monotonically increasing"),
+    "test_train_id_tzero": ("Checks number of placeholder in trainId and if they are\n"
+                            "always at the end"),
+    "test_train_id_zeros": ("Checks if trainId containes zeros which are not at the\n"
+                            "end"),
+    "test_train_loss":     ("Checks for missing entries in trainId"),
+    "test_data_tzeros":    ("Check if additional data entries are trailing zeros"),
+    "test_data_vs_tr_id":  ("Checks if the dimension of the image trainId is\n"
+                            "corresponding to the data)"),
+}
 
 
 def create_epilog():
     global description
-
-    description = {
-        # -------------------------------------------------------------------------------- #
-        "test_n_seqs_equal":   ("Tests that all modules have the same number of \n"
-                                "sequences"),
-        "test_n_train_equal":  ("Checks if number of trains is equal for all module\n"
-                                "(per seq)"),
-        "test_dims_header":    ("Checks if the first dimension is equal for all\n"
-                                "datasets contained in 'header' (per module and per seq)"),
-        "test_dims_image":     ("Checks if the first dimension is equal for all datasets\n"
-                                "contained in 'image' (per module and per seq)"),
-        "test_dims_trailer":   ("Checks if the first dimension is equal for all\n"
-                                "datasets contained in 'trailer' (per module and per seq)"),
-        "test_train_id_shift": ("Checks if the first train id value is equal for all\n"
-                                "modules"),
-        "test_train_id_equal": ("Checks if the train ids taken from detector, header\n"
-                                "and trailer are equal (per module)"),
-        "test_data_vs_pulsec": ("Checks if the sum of the pulseCount entries is\n"
-                                "corresponding to the data"),
-        "test_train_id_diff":  ("Checks if the trainId is monotonically increasing"),
-        "test_train_id_tzero": ("Checks number of placeholder in trainId and if they are\n"
-                                "always at the end"),
-        "test_train_id_zeros": ("Checks if trainId containes zeros which are not at the\n"
-                                "end"),
-        "test_train_loss":     ("Checks for missing entries in trainId"),
-        "test_data_tzeros":    ("Check if additional data entries are trailing zeros"),
-        "test_data_vs_tr_id":  ("Checks if the dimension of the image trainId is\n"
-                                "corresponding to the data)"),
-    }
 
     # determine how long the space for the keys should be
     max_key_len = 0
