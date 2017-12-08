@@ -2,7 +2,7 @@ import numpy as np
 import h5py
 import sys
 import os
-import utils
+#import utils
 import unittest
 import glob
 import argparse
@@ -14,6 +14,7 @@ file_raw_prefix_temp = None
 file_raw_temp = None
 data = None
 path_temp = None
+
 
 description = {
     # -------------------------------------------------------------------------------- #
@@ -122,8 +123,8 @@ def read_in_data(file_raw_temp, channel, dict_key, read_in_path, seq_start,
         read_in_data = f[read_in_path][()].astype("int")
         f.close()
 
-        if convert:
-            read_in_data = utils.convert_to_agipd_format(channel, read_in_data)
+#        if convert:
+#            read_in_data = utils.convert_to_agipd_format(channel, read_in_data)
 
         data[channel][dict_key].append(read_in_data)
 
