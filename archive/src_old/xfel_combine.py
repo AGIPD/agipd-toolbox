@@ -4,8 +4,9 @@ import h5py
 import time
 import numpy as np
 import os
+import sys
 from string import Template
-from utils import check_file_exists, convert_to_xfel_format, convert_to_agipd_format
+import utils
 
 
 class Combine():
@@ -22,7 +23,7 @@ class Combine():
         self.xray_input_fname = xray_input_fname
 
         self.output_fname = output_fname
-        #check_file_exists(self.output_fname)
+#        utils.check_file_exists(self.output_fname)
 
         self.use_xfel_format = use_xfel_format
         if self.use_xfel_format:
@@ -46,7 +47,7 @@ class Combine():
 
         # how the asics are located on the module
         self.asic_mapping = [[16, 15, 14, 13, 12, 11, 10, 9],
-                             [1,   2,  3,  4,  5,  6,  7, 8]]
+                             [1, 2, 3, 4, 5, 6, 7, 8]]
         self.n_asics = 16
 
         #                       [rows, columns]
@@ -135,17 +136,17 @@ class Combine():
 
         self.load_cs_data()
         self.concatenate_to_module()
-        #print(self.result["thresholds"])
+#        print(self.result["thresholds"])
 
         self.load_xray_data()
 
         self.calc_ratios()
 
         self.calc_gains()
-        #print(self.result["gain"])
+#        print(self.result["gain"])
 
         self.calc_offset_diffs()
-        #print(self.result["offset_diff"])
+#        print(self.result["offset_diff"])
 
         if self.use_xfel_format:
 
@@ -155,9 +156,9 @@ class Combine():
             for key in keys_to_convert:
                 data_to_convert.append(self.result[key])
 
-            converted_data, _ = convert_to_xfel_format(self.module,
-                                                       data_to_convert,
-                                                       [])
+            converted_data, _ = utils.convert_to_xfel_format(self.module,
+                                                             data_to_convert,
+                                                             [])
 
             for i, key in enumerate(keys_to_convert):
                 self.result[key] = converted_data[i]
@@ -166,8 +167,8 @@ class Combine():
 
     def load_cs_data(self):
         for asic in np.arange(self.n_asics):
-            input_fname = (self.cs_input_template
-                           .substitute(a=str(self.rev_mapped_asic[asic]).zfill(2)))
+            filled_up_asic = str(self.rev_mapped_asic[asic]).zfill(2)
+            input_fname = (self.cs_input_template.substitute(a=filled_up_asic))
             source_file = h5py.File(input_fname, "r")
 
             try:
@@ -181,7 +182,8 @@ class Combine():
         # upper row
         asic_row = self.asic_mapping[0]
 
-        cs_offset_upper = self.a_cs_offset[asic_row[0] - 1] # index goes from 0 to 15
+        # index goes from 0 to 15
+        cs_offset_upper = self.a_cs_offset[asic_row[0] - 1]
         cs_slope_upper = self.a_cs_slope[asic_row[0] - 1]
         thresholds_upper = self.a_thresholds[asic_row[0] - 1]
 
@@ -216,16 +218,17 @@ class Combine():
 
         # combine them
         self.cs_offset = np.concatenate((cs_offset_upper,
-                                        cs_offset_lower),
+                                         cs_offset_lower),
                                         axis=1)
         self.cs_slope = np.concatenate((cs_slope_upper,
-                                       cs_slope_lower),
+                                        cs_slope_lower),
                                        axis=1)
-        self.result["thresholds"] = np.concatenate((thresholds_upper,
-                                                   thresholds_lower),
-                                                   axis=1)[..., :self.n_memcells]
+        self.result["thresholds"] = (
+            np.concatenate((thresholds_upper, thresholds_lower),
+                           axis=1)[..., :self.n_memcells])
         # now shape = (3, 352, 128, 512)
-        self.result["thresholds"] = np.rollaxis(self.result["thresholds"], -1, 1)
+        self.result["thresholds"] = np.rollaxis(self.result["thresholds"],
+                                                -1, 1)
 
     def load_xray_data(self):
         source_file = h5py.File(self.xray_input_fname, "r")
@@ -248,14 +251,14 @@ class Combine():
 
     def calc_gains(self):
         # convert xray slope from ADU to ADU/keV
-        self.xray_slope = self.xray_slope / self.element_energy[self.probe_type]
+        self.xray_slope = (
+            self.xray_slope / self.element_energy[self.probe_type])
 
         # move memory cells index to front, makes calc easier
         if len(self.xray_slope.shape) > 2:
             # now shape = (1 or 352, 128, 512)
             self.xray_slope = np.rollaxis(self.xray_slope, -1, 0)
         print(self.xray_slope.shape)
-        #self.result["gain"] = np.rollaxis(self.result["gain"], -1, 1)
 
         if self.single_cell:
             # xray_gain_h175 / cs_gain_h175
@@ -265,8 +268,9 @@ class Combine():
             factor = np.divide(self.xray_slope, cs_slope)
 
             # xray_gain_h = cs_gain_h * xray_gain_h175 / cs_gain_h175
-            # np.newaxis is required to match shape, because we use same factor for all memcells
-            slope = self.cs_slope[..., :self.n_memcells]
+            # np.newaxis is required to match shape, because we use same factor
+            # for all memcells
+#            slope = self.cs_slope[..., :self.n_memcells]
             f = factor[np.newaxis, :, :]
             self.result["gain"][0, ...] = np.multiply(cs_slope[0, ...], f)
             # xray_gain_m = cs_gain_m * xray_gain_h175 / cs_gain_h175
@@ -278,13 +282,15 @@ class Combine():
             # xray gain info for all memory cells
             self.result["gain"][0, ...] = self.xray_slope
             # gain_m = (cs_m / cs_h) * xray
-            self.result["gain"][1, ...] = np.multiply(self.cs_mh_ratio, self.xray_slope)
+            self.result["gain"][1, ...] = np.multiply(self.cs_mh_ratio,
+                                                      self.xray_slope)
             # gain_l = (cs_l / cs_h) * xray
-            self.result["gain"][2, ...] = np.multiply(self.cs_lh_ratio, self.xray_slope)
+            self.result["gain"][2, ...] = np.multiply(self.cs_lh_ratio,
+                                                      self.xray_slope)
 
         # move memory cells index back to original position
-        #self.cs_slope = np.rollaxis(self.cs_slope, 1, 4)
-        #self.result["gain"] = np.rollaxis(self.result["gain"], 1, 4)
+#        self.cs_slope = np.rollaxis(self.cs_slope, 1, 4)
+#        self.result["gain"] = np.rollaxis(self.result["gain"], 1, 4)
 
     def calc_ratios(self):
         # now shape = (3, 352, 128, 512)
@@ -292,27 +298,23 @@ class Combine():
 
         s = self.cs_slope[:, :self.n_memcells, ...]
 
-        #idx = np.where(s[0] != 0)
-
-
         mask = (s[0] == 0)
 
         self.cs_mh_ratio = np.zeros(s[0].shape)
-        self.cs_mh_ratio[ mask] = 0
+        self.cs_mh_ratio[mask] = 0
         # cs_gain_m / cs_gain_h
         self.cs_mh_ratio[~mask] = np.divide(s[1, ...][~mask], s[0, ...][~mask])
 
         self.cs_lh_ratio = np.zeros(s[0].shape)
-        self.cs_lh_ratio[ mask] = 0
+        self.cs_lh_ratio[mask] = 0
         # cs_gain_l / cs_gain_h
         self.cs_lh_ratio[~mask] = np.divide(s[2, ...][~mask], s[0, ...][~mask])
 
-        #self.cs_mh_ratio = np.divide(s[1, ...], s[0, ...])
-        #self.cs_lh_ratio = np.divide(s[2, ...], s[0, ...])
+#        self.cs_mh_ratio = np.divide(s[1, ...], s[0, ...])
+#        self.cs_lh_ratio = np.divide(s[2, ...], s[0, ...])
 
         self.result["gain_ratio"][0, ...] = self.cs_mh_ratio
         self.result["gain_ratio"][1, ...] = self.cs_lh_ratio
-
 
     def calc_offset_diffs(self):
 
@@ -361,14 +363,14 @@ if __name__ == "__main__":
     from datetime import date
 
     base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"
-    output_dir =  "/gpfs/exfel/exp/SPB/201701/p002012/scratch/user/kuhnm/tests"
+    output_dir = "/gpfs/exfel/exp/SPB/201701/p002012/scratch/user/kuhnm/tests"
     module = "M215"
     module_pos = "m6"
     temperature = "temperature_m15C"
     probe_type = "Mo"
-    #single_cell = True
+#    single_cell = True
     n_memcells = 30
-    #n_memcells = 352
+#    n_memcells = 352
 
     module_mapping = {
         "M305": 0,
@@ -404,22 +406,24 @@ if __name__ == "__main__":
     # make a template out of this string to let Combine set current and asic
     cs_input_template = Template(cs_input_template)
 
+    xray_input_file_name = ("photonSpacing_{}_{}_xray_{}.h5"
+                            .format(module, module_pos, probe_type))
     xray_input_fname = os.path.join(base_dir,
                                     module,
                                     temperature,
                                     "xray",
-                                    "photonSpacing_{}_{}_xray_{}.h5".format(module, module_pos, probe_type))
-#    xray_input_fname = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/M302/temperature_m15C/xray/test_AGIPD00_s00000_processed.h5"
-    #output_fname = os.path.join(base_dir,
-    #                            module,
-    #                            temperature,
-    #                            "cal_output",
-    #                            ("{}_{}_combined_calibration_constants.h5"
-    #                             .format(module, temperature)))
+                                    xray_input_file_name)
+#    output_fname = os.path.join(base_dir,
+#                                module,
+#                                temperature,
+#                                "cal_output",
+#                                ("{}_{}_combined_calibration_constants.h5"
+#                                 .format(module, temperature)))
     output_fname = os.path.join(output_dir,
                                 ("gain_AGIPD{}_xfel_{}.h5"
                                  .format(module_mapping[module], today)))
 
     obj = Combine(cs_input_template, xray_input_fname, output_fname,
-                  probe_type, n_memcells, use_xfel_format, module_mapping[module])
+                  probe_type, n_memcells, use_xfel_format,
+                  module_mapping[module])
     obj.run()

@@ -355,8 +355,8 @@ class CreateColormaps():
 
         for key in self.colormap_matrix:
             self.colormap_matrix[key] = np.concatenate(
-                 (colormap_matrix_upper_row[key],
-                  colormap_matrix_lower_row[key]), axis=0)
+                (colormap_matrix_upper_row[key],
+                 colormap_matrix_lower_row[key]), axis=0)
 
     def create_row(self, asic_list):
         print("asic_list={}".format(asic_list))
@@ -379,10 +379,10 @@ class CreateColormaps():
 
             # calcurate matrix
             result_list.append(
-                self.pool.apply_async(
-                     create_matrix_individual, (input_fname,
-                                                self.gain_name,
-                                                self.matrix_type)))
+                self.pool.apply_async(create_matrix_individual,
+                                      (input_fname,
+                                       self.gain_name,
+                                       self.matrix_type)))
 
         # build matrix for whole module
         for i in range(asic_list.size):

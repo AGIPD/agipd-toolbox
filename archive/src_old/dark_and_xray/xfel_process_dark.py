@@ -27,7 +27,8 @@ class ProcessDark():
         self.module_order = [[12, 13, 14, 15, 8, 9, 10, 11],
                              [0, 1, 2, 3, 4, 5, 6, 7]]
 
-        self.module = int(self.input_fnames[0].rsplit("/", 1)[1].split("AGIPD")[1][:2])
+        fname = self.input_fnames[0].rsplit("/", 1)[1]
+        self.module = int(fname.split("AGIPD")[1][:2])
         if self.module in self.module_order[1]:
             print("in wing2 (module {})".format(self.module))
             self.in_wing2 = True
@@ -72,48 +73,50 @@ class ProcessDark():
 
             s = self.stddevs[i, ...]
             for cell in np.arange(self.n_memcells):
-                s[cell, ...] = np.std(analog[:, cell, :, :].astype("float"), axis=0)
+                s[cell, ...] = np.std(analog[:, cell, :, :].astype("float"),
+                                      axis=0)
             print("Done computing means and standard deviations")
 
         md = self.means_digital
         self.thresholds[0, ...] = (md[0, ...] + md[1, ...]) // 2
         self.thresholds[1, ...] = (md[1, ...] + md[2, ...]) // 2
-        #self.thresholds[0, ...] = np.mean([md[0, ...], md[1, ...]])
-        #self.thresholds[1, ...] = np.mean([md[1, ...], md[2, ...]])
-        #print("means_digital", self.means_digital[0, :3, :3, :3],  self.means_digital[1, :3, :3, :3])
-        #print("threshold", self.thresholds[0, :3, :3, :3])
+#        self.thresholds[0, ...] = np.mean([md[0, ...], md[1, ...]])
+#        self.thresholds[1, ...] = np.mean([md[1, ...], md[2, ...]])
+#        print("means_digital", self.means_digital[0, :3, :3, :3],
+#                               self.means_digital[1, :3, :3, :3])
+#        print("threshold", self.thresholds[0, :3, :3, :3])
 
         if self.use_xfel_format:
             self.convert_to_xfel_format()
 
-        save_file = h5py.File(self.output_fname, "w", libver="latest")
-        dset_offset = save_file.create_dataset("offset",
+        f = h5py.File(self.output_fname, "w", libver="latest")
+        dset_offset = f.create_dataset("offset",
+                                       shape=self.offsets_shape,
+                                       dtype=np.int16)
+        dset_gainlevel_mean = f.create_dataset("gainlevel_mean",
                                                shape=self.offsets_shape,
                                                dtype=np.int16)
-        dset_gainlevel_mean = save_file.create_dataset("gainlevel_mean",
-                                                       shape=self.offsets_shape,
-                                                       dtype=np.int16)
-        dset_thresholds = save_file.create_dataset("threshold",
-                                                   shape=self.thresholds_shape,
-                                                   dtype=np.int16)
-        dset_stddevs = save_file.create_dataset("stddev",
-                                                shape=self.offsets_shape,
-                                                dtype="float")
+        dset_thresholds = f.create_dataset("threshold",
+                                           shape=self.thresholds_shape,
+                                           dtype=np.int16)
+        dset_stddevs = f.create_dataset("stddev",
+                                        shape=self.offsets_shape,
+                                        dtype="float")
 
         # convert into unicode
         self.run_list = [run.encode('utf8') for run in self.run_list]
-        dset_run_number = save_file.create_dataset("run_number",
-                                                   data=self.run_list)
+        f.create_dataset("run_number", data=self.run_list)
 
         print("Start saving results at", self.output_fname)
         dset_offset[...] = self.means
         dset_gainlevel_mean[...] = self.means_digital
         dset_thresholds[...] = self.thresholds
         dset_stddevs[...] = self.stddevs
-        save_file.flush()
+
+        f.flush()
         print("Saving done")
 
-        save_file.close()
+        f.close()
 
         print('ProcessDark took time:  ', time.time() - total_time, '\n\n')
 
@@ -141,9 +144,7 @@ class ProcessDark():
             self.stddevs = self.stddevs[..., :, ::-1]
 
 
-
 if __name__ == "__main__":
-    import os
     import multiprocessing
     from datetime import date
 
@@ -153,31 +154,34 @@ if __name__ == "__main__":
     if SRC_PATH not in sys.path:
         sys.path.insert(0, SRC_PATH)
 
-    from utils import  create_dir
+    from utils import create_dir
 
     base_path = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/kuhnm"
     run_list = ["r0428", "r0429", "r0430"]
-    #use_xfel_format = False
+
+#    use_xfel_format = False
     use_xfel_format = True
 
     today = str(date.today())
 
-    #number_of_runs = 1
-    #modules_per_run = 1
+#    number_of_runs = 1
+#    modules_per_run = 1
     number_of_runs = 2
-    modules_per_run = 16//number_of_runs
+    modules_per_run = 16 // number_of_runs
     process_list = []
     for j in range(number_of_runs):
         for i in range(modules_per_run):
-            module = str(j*modules_per_run+i).zfill(2)
+            module = str(j * modules_per_run + i).zfill(2)
             print("module", module)
 
             input_fname_list = []
             for run_number in run_list:
+                input_file_name = ("{}-AGIPD{}-gathered.h5"
+                                   .format(run_number.upper(), module))
                 input_fname = os.path.join(base_path,
                                            run_number,
                                            "gather",
-                                           "{}-AGIPD{}-gathered.h5".format(run_number.upper(), module))
+                                           input_file_name)
                 input_fname_list.append(input_fname)
 
             target_dir = os.path.join(base_path, "dark")
@@ -190,9 +194,10 @@ if __name__ == "__main__":
 
             output_fname = os.path.join(target_dir, fname)
 
-            p = multiprocessing.Process(target=ProcessDark, args=(input_fname_list,
-                                                                  output_fname,
-                                                                  use_xfel_format))
+            p = multiprocessing.Process(target=ProcessDark,
+                                        args=(input_fname_list,
+                                              output_fname,
+                                              use_xfel_format))
             p.start()
             process_list.append(p)
 

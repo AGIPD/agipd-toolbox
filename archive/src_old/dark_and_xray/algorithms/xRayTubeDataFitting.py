@@ -2,14 +2,14 @@ import numpy as np
 from scipy.signal import convolve
 from scipy.optimize import curve_fit
 import peakutils
+# import matplotlib.pyplot as plt
 
 from .helperFunctions import orderFilterCourse
 
-import matplotlib.pyplot as plt
 
-
-# compute histogram and apply fast lowpass correction. For being fast, from the
-def getPhotonHistogramLowpassCorrected(analog, localityRadius, lowpassSamplePointsCount):
+# compute histogram and apply fast lowpass correction.
+def getPhotonHistogramLowpassCorrected(analog, localityRadius,
+                                       lowpassSamplePointsCount):
     data = analog
 
     # plt.plot(data,'.')
@@ -28,12 +28,17 @@ def getPhotonHistogramLowpassCorrected(analog, localityRadius, lowpassSamplePoin
 
     (localHistogram, _) = np.histogram(localData, localBinEdges)
     smoothWindowSize = 11
-    localHistogramSmooth = convolve(localHistogram, np.ones((smoothWindowSize,)), mode='same')
+    localHistogramSmooth = convolve(localHistogram,
+                                    np.ones((smoothWindowSize,)),
+                                    mode='same')
 
-    mostFrequentLocalValue = np.mean(localBinEdges[np.argmax(localHistogramSmooth)]).astype(int)
+    b = localBinEdges[np.argmax(localHistogramSmooth)]
+    mostFrequentLocalValue = np.mean(b).astype(int)
 
-    # set order to be the same order as the maximum of the histogram in the local data. Should be least affected by noise
-    order = (2 * localityRadius * np.mean(np.nonzero(np.sort(localData) == mostFrequentLocalValue)) / localData.size)
+    # set order to be the same order as the maximum of the histogram in the
+    # local data. Should be least affected by noise
+    a = np.nonzero(np.sort(localData) == mostFrequentLocalValue)
+    order = (2 * localityRadius * np.mean(a) / localData.size)
 
     if np.isnan(order):
         order = np.array(0.4 * 2 * localityRadius)
@@ -43,7 +48,8 @@ def getPhotonHistogramLowpassCorrected(analog, localityRadius, lowpassSamplePoin
     # plt.figure(1)
     # plt.plot(localBinEdges[0:-1], localHistogramSmooth)
 
-    lowPassData = orderFilterCourse(data, localityRadius, order, lowpassSamplePointsCount)
+    lowPassData = orderFilterCourse(data, localityRadius, order,
+                                    lowpassSamplePointsCount)
 
     # plt.figure(2)
     # plt.plot(lowPassData)
@@ -80,14 +86,14 @@ def manual_gaussian_fit(x, y):
         '''
 
     initial = [np.max(y), x[0], (x[1] - x[0]) * 5]
-    pcov = np.zeros((3,3))
+    pcov = np.zeros((3, 3))
     try:
         params, pcov = curve_fit(peakutils.peak.gaussian, x, y, initial)
     except:
         return (0, 0), pcov
 
-    #print("params: ", params)
-    #print("pcov: ", pcov)
+#    print("params: ", params)
+#    print("pcov: ", pcov)
 
     return (params[1], params[2]), pcov
 
@@ -116,7 +122,8 @@ def indexes_peakutilsManuallyAdjusted(y, thres=0.3, min_dist=1):
         Array containing the indexes of the peaks that were detected
 
     '''
-    if isinstance(y, np.ndarray) and np.issubdtype(y.dtype, np.unsignedinteger):
+    if (isinstance(y, np.ndarray) and
+            np.issubdtype(y.dtype, np.unsignedinteger)):
         raise ValueError("y must be signed")
 
     thres = thres * (np.max(y) - np.min(y)) + np.min(y)
@@ -124,7 +131,7 @@ def indexes_peakutilsManuallyAdjusted(y, thres=0.3, min_dist=1):
 
     # find the peaks by using the first order difference
     dy = np.diff(y)
-    peaks = np.where((np.hstack([dy, 0.]) <= 0.)  # Addition by yaroslav.gevorkov@desy.de: instead of <, here <=
+    peaks = np.where((np.hstack([dy, 0.]) <= 0.)
                      & (np.hstack([0., dy]) >= 0.)
                      & (y > thres))[0]
 
@@ -173,22 +180,24 @@ def interpolate_peakutilsManuallyAdjusted(x, y, ind, width, func):
     out = []
     pcov = []
     # Addition by yaroslav.gevorkov@desy.de: added border checking
-    for slice_ in (slice(max((0, i - width)), min((x.size, i + width))) for i in ind):
+    for slice_ in (slice(max((0, i - width)),
+                         min((x.size, i + width))) for i in ind):
         fit, pcov_slice = func(x[slice_], y[slice_])
-        #print("fit: ", fit)
-        #print("pcov_slice: ", pcov_slice)
+#        print("fit: ", fit)
+#        print("pcov_slice: ", pcov_slice)
         out.append(fit)
         pcov.append(pcov_slice)
 
-    #print("out: ", out)
-    #print("pcov2: ", pcov)
+#    print("out: ", out)
+#    print("pcov2: ", pcov)
 
     return np.array(out), np.array(pcov)
 
 
 # apply lowpass, if temperature drift available:
 #   localityRadius should be local enough to be assumed as homogenous
-#   lwopassSamplePointsCount < 2*localityRadius, is used to speed up computation by using only a subset of the samples
+#   lwopassSamplePointsCount < 2*localityRadius, is used to speed up
+#       computation by using only a subset of the samples
 def getOnePhotonAdcCountsXRayTubeData(analog,
                                       applyLowpass=True,
                                       localityRadius=801,
@@ -200,11 +209,16 @@ def getOnePhotonAdcCountsXRayTubeData(analog,
                                                lwopassSamplePointsCount))
 
     else:
-        photonHistogramBins = np.arange(np.min(analog), np.max(analog), 1, dtype='int16')
+        photonHistogramBins = np.arange(np.min(analog),
+                                        np.max(analog),
+                                        1,
+                                        dtype='int16')
         (photonHistoramValues, _) = np.histogram(analog, photonHistogramBins)
 
     smoothWindowSize = 11
-    photonHistogramValuesSmooth = convolve(photonHistoramValues, np.ones((smoothWindowSize,)), mode='same')
+    photonHistogramValuesSmooth = convolve(photonHistoramValues,
+                                           np.ones((smoothWindowSize,)),
+                                           mode='same')
     # plt.plot(photonHistogramBins[0:-1], photonHistogramValuesSmooth)
     # plt.show()
 
@@ -216,11 +230,15 @@ def getOnePhotonAdcCountsXRayTubeData(analog,
     minPeakDistance = 40
     x = np.arange(len(photonHistoramValues))
     y = photonHistogramValuesSmooth  # photonHistoramValues
-    roughPeakLocations = indexes_peakutilsManuallyAdjusted(y, thres=0.007, min_dist=minPeakDistance)
+    roughPeakLocations = (
+        indexes_peakutilsManuallyAdjusted(y,
+                                          thres=0.007,
+                                          min_dist=minPeakDistance))
 
-    # use regions around maxima to estimate the real peak positions by fitting a gaussian to them
+    # use regions around maxima to estimate the real peak positions by fitting
+    # a gaussian to them
     peakWidth = 31
-    pcov = np.zeros((3,3))
+    pcov = np.zeros((3, 3))
     try:
         interpolatedPeakParameters, pcov = (
             interpolate_peakutilsManuallyAdjusted(x, y,
@@ -228,28 +246,34 @@ def getOnePhotonAdcCountsXRayTubeData(analog,
                                                   width=peakWidth,
                                                   func=manual_gaussian_fit))
     except:
-        #print("interpolate peakutilsManuellyAdjusted (pixel{} {})".format(x, y))
+        # print("interpolate peakutilsManuellyAdjusted (pixel{} {})"
+        #       .format(x, y))
         return (0, 0, (0, 0), (0, 0), 0)
 
     if interpolatedPeakParameters.size < 2:
-        #print("interpolatedPeakParameters.size < 2 (size={})".format(interpolatedPeakParameters.size))
+        # print("interpolatedPeakParameters.size < 2 (size={})"
+        #       .format(interpolatedPeakParameters.size))
         return (0, 0, (0, 0), (0, 0), 0)
 
-    #print("interpolatedPeakParameters: ", interpolatedPeakParameters)
+#    print("interpolatedPeakParameters: ", interpolatedPeakParameters)
     (interpolatedPeakLocations, peakStdDev) = zip(*interpolatedPeakParameters)
 
-    peakLocations = np.clip(interpolatedPeakLocations, 0, len(photonHistoramValues) - 1)
+    peakLocations = np.clip(interpolatedPeakLocations,
+                            0,
+                            len(photonHistoramValues) - 1)
     peakStdDev = np.array(peakStdDev)
 
-    # peaks that are too far away from their maximum sample are assumed to be not real peaks
+    # peaks that are too far away from their maximum sample are assumed to be
+    # not real peaks
     maxPeakRelocation = 20
-    validIndices = np.abs(peakLocations - roughPeakLocations) <= maxPeakRelocation
+    peak = peakLocations - roughPeakLocations
+    validIndices = np.abs(peak) <= maxPeakRelocation
     peakLocations = peakLocations[validIndices]
     peakStdDev = peakStdDev[validIndices]
     realPeakPcov = pcov[validIndices]
 
     if peakLocations.size < 2:
-        #print("peakLocations.size < 2 (size: {})".format(peakLocations.size))
+        # print("peakLocations.size < 2 (size: {})".format(peakLocations.size))
         return (0, 0, (0, 0), (0, 0), 0)
 
     peakIndices = np.round(peakLocations).astype(int)
@@ -263,24 +287,29 @@ def getOnePhotonAdcCountsXRayTubeData(analog,
     sizeSortedPcov = realPeakPcov[sizeSortIndices]
     peakSizeSortedPeakStdDev = peakStdDev[sizeSortIndices]
 
-    #print("sizeSortedPcov: ", sizeSortedPcov)
+#    print("sizeSortedPcov: ", sizeSortedPcov)
 
     # take biggest peak and second biggest peak to compute the photon spacing
-    onePhotonAdcCounts = np.abs(sizeSortedPeakLocations[1] - sizeSortedPeakLocations[0])
-    #print("diag: ", np.diag(sizeSortedPcov[0]))
+    onePhotonAdcCounts = np.abs(
+        sizeSortedPeakLocations[1] - sizeSortedPeakLocations[0])
+#    print("diag: ", np.diag(sizeSortedPcov[0]))
     # errors for all peaks all parameters = sqrt( diag(cov. matrix) )
-    errors = (np.sqrt(np.diag(sizeSortedPcov[0])), np.sqrt(np.diag(sizeSortedPcov[1])))
-    #print("errors: ", errors)
+    errors = (np.sqrt(np.diag(sizeSortedPcov[0])),
+              np.sqrt(np.diag(sizeSortedPcov[1])))
+#    print("errors: ", errors)
     peakErrors = (errors[0][1], errors[1][1])
-    #print("peak errors: ", peakErrors)
+#    print("peak errors: ", peakErrors)
     spacingError = np.sqrt(peakErrors[0]**2 + peakErrors[1]**2)
-    #print("spacing error: ", spacingError)
+#    print("spacing error: ", spacingError)
     if onePhotonAdcCounts <= 20:
         return (0, 0, (0, 0), (0, 0), 0)
 
     indicesBetweenPeaks = np.sort(sizeSortedPeakIndices[0:2])
-    valleyDepthBetweenPeaks = sizeSortPeakSizes[1] - np.min(photonHistogramValuesSmooth[indicesBetweenPeaks[0]:indicesBetweenPeaks[1]])
+    idx = slice(indicesBetweenPeaks[0], indicesBetweenPeaks[1])
+    valleyDepthBetweenPeaks = (sizeSortPeakSizes[1] -
+                               np.min(photonHistogramValuesSmooth[idx]))
 
     photonPeaksStdDev = peakSizeSortedPeakStdDev[0:2]
 
-    return (onePhotonAdcCounts, valleyDepthBetweenPeaks, photonPeaksStdDev, peakErrors, spacingError)
+    return (onePhotonAdcCounts, valleyDepthBetweenPeaks, photonPeaksStdDev,
+            peakErrors, spacingError)
