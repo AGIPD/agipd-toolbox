@@ -355,101 +355,18 @@ class AgipdGatherBase():
                 excluded = [self.data_path]
                 file_content = utils.load_file_content(fname, excluded)
 
-                # currently the splitting in digital and analog does not work
-                # for XFEL
-                # -> all data is in the first entry of the analog/digital
-                #    dimension
+                # load data
                 if self.use_xfel_format:
-                    # load data
-                    f = None
-                    try:
-                        f = h5py.File(fname, "r")
-                        raw_data = f[self.data_path][()]
-                    finally:
-                        if f is not None:
-                            f.close()
-
-                    self.n_frames_per_file = int(raw_data.shape[0] //
-                                                 self.n_memcells)
-                    if self.use_interleaved:
-                        self.n_frames_per_file = self.n_frames_per_file // 2
-
-                    print("raw_data.shape", raw_data.shape)
-                    print("self.n_frames_per_file", self.n_frames_per_file)
-                    print("self.raw_shape", self.raw_shape)
-
-                    n_pulses = (file_content[self.pulse_count_path]
-                                .astype(np.int16))
-                    print("First 10 burst lengths: {} (min={}, max={})"
-                          .format(n_pulses[:10],
-                                  np.min(n_pulses),
-                                  np.max(n_pulses)))
-
-                    if self.use_interleaved:
-                        raw_data = raw_data[:, 0, ...]
-
-                    raw_data = utils.convert_to_agipd_format(self.channel,
-                                                             raw_data)
-
-                    source_offset = 0
-                    print("n_bursts", n_pulses.size)
-
-                    for burst in n_pulses:
-                        for index_set in self.pos_idxs:
-                            pos_idx_rows = index_set[0]
-                            pos_idx_cols = index_set[1]
-
-                            source_idx = (slice(source_offset,
-                                                source_offset + burst),
-                                          Ellipsis,
-                                          pos_idx_rows,
-                                          pos_idx_cols)
-                            target_idx = (slice(target_offset,
-                                                target_offset + burst),
-                                          Ellipsis,
-                                          pos_idx_rows,
-                                          pos_idx_cols)
-
-                            try:
-                                tmp_data[target_idx] = raw_data[source_idx]
-                            except:
-                                print("burst", burst)
-                                print("tmp_data.shape", tmp_data.shape)
-                                print("raw_data.shape", raw_data.shape)
-                                print("target_idx", target_idx)
-                                print("source_idx", source_idx)
-                                raise
-
-                        if burst == 0:
-                            print("burst == 0")
-
-                        source_offset += burst
-                        target_offset += self.max_pulses
-
+                    self.load_xfel(fname,
+                                   load_idx_rows, load_idx_cols,
+                                   file_content,
+                                   tmp_data,
+                                   target_offset)
                 else:
-                    # load data
-                    f = None
-                    try:
-                        f = h5py.File(fname, "r")
-                        idx = (Ellipsis, load_idx_rows, load_idx_cols)
-                        raw_data = f[self.data_path][idx]
-                    finally:
-                        if f is not None:
-                            f.close()
-
-                    self.n_frames_per_file = int(raw_data.shape[0] //
-                                                 self.n_memcells)
-                    if self.use_interleaved:
-                        self.n_frames_per_file = self.n_frames_per_file // 2
-
-                    print("raw_data.shape", raw_data.shape)
-                    print("self.n_frames_per_file", self.n_frames_per_file)
-                    print("self.raw_shape", self.raw_shape)
-                    self.get_seq_number(file_content[self.seq_number_path])
-                    self.get_frame_loss_indices()
-                    self.fillup_frame_loss(tmp_data,
-                                           raw_data,
-                                           self.target_index_full_size)
+                    self.load_cfel(fname,
+                                   load_idx_rows, load_idx_cols,
+                                   file_content,
+                                   tmp_data)
 
                 self.metadata[fname] = file_content
 
@@ -461,6 +378,97 @@ class AgipdGatherBase():
 
         self.analog = tmp_data[:, :, 0, ...]
         self.digital = tmp_data[:, :, 1, ...]
+
+    def load_xfel(self, fname, load_idx_rows, load_idx_cols,
+                  file_content, tmp_data, target_offset):
+        # load data
+        f = None
+        try:
+            f = h5py.File(fname, "r")
+            raw_data = f[self.data_path][()]
+        finally:
+            if f is not None:
+                f.close()
+
+        self.n_frames_per_file = int(raw_data.shape[0] // self.n_memcells)
+        if self.use_interleaved:
+            self.n_frames_per_file = self.n_frames_per_file // 2
+
+        print("raw_data.shape", raw_data.shape)
+        print("self.n_frames_per_file", self.n_frames_per_file)
+        print("self.raw_shape", self.raw_shape)
+
+        n_pulses = (file_content[self.pulse_count_path].astype(np.int16))
+        print("First 10 burst lengths: {} (min={}, max={})"
+              .format(n_pulses[:10], np.min(n_pulses), np.max(n_pulses)))
+
+        if self.use_interleaved:
+            # currently the splitting in digital and analog does not work
+            # for XFEL
+            # -> all data is in the first entry of the analog/digital
+            #    dimension
+            raw_data = raw_data[:, 0, ...]
+
+        raw_data = utils.convert_to_agipd_format(self.channel, raw_data)
+
+        source_offset = 0
+        print("n_bursts", n_pulses.size)
+
+        for burst in n_pulses:
+            for index_set in self.pos_idxs:
+                pos_idx_rows = index_set[0]
+                pos_idx_cols = index_set[1]
+
+                source_idx = (slice(source_offset, source_offset + burst),
+                              Ellipsis,
+                              pos_idx_rows,
+                              pos_idx_cols)
+                target_idx = (slice(target_offset, target_offset + burst),
+                              Ellipsis,
+                              pos_idx_rows,
+                              pos_idx_cols)
+
+                try:
+                    tmp_data[target_idx] = raw_data[source_idx]
+                except:
+                    print("burst", burst)
+                    print("tmp_data.shape", tmp_data.shape)
+                    print("raw_data.shape", raw_data.shape)
+                    print("target_idx", target_idx)
+                    print("source_idx", source_idx)
+                    raise
+
+            if burst == 0:
+                print("burst == 0")
+
+            source_offset += burst
+            target_offset += self.max_pulses
+
+    def load_cfel(self, fname, load_idx_rows, load_idx_cols,
+                  file_content, tmp_data):
+        # load data
+        f = None
+        try:
+            f = h5py.File(fname, "r")
+            idx = (Ellipsis, load_idx_rows, load_idx_cols)
+            raw_data = f[self.data_path][idx]
+        finally:
+            if f is not None:
+                f.close()
+
+        self.n_frames_per_file = int(raw_data.shape[0] //
+                                     self.n_memcells)
+        if self.use_interleaved:
+            self.n_frames_per_file = self.n_frames_per_file // 2
+
+        print("raw_data.shape", raw_data.shape)
+        print("self.n_frames_per_file", self.n_frames_per_file)
+        print("self.raw_shape", self.raw_shape)
+        self.get_seq_number(file_content[self.seq_number_path])
+        self.get_frame_loss_indices()
+        self.fillup_frame_loss(tmp_data,
+                               raw_data,
+                               self.target_index_full_size)
 
     def set_pos_indices(self, run_idx):
         pos_idx_rows = slice(None)
@@ -587,8 +595,8 @@ if __name__ == "__main__":
         "M305": "00",
     }
 
-#    use_xfel_format = True
-    use_xfel_format = False
+    use_xfel_format = True
+#    use_xfel_format = False
 
     if use_xfel_format:
         base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
@@ -600,7 +608,7 @@ if __name__ == "__main__":
 #        base_path = "/gpfs/exfel/exp/SPB/201701/p002012"
 #        run_list = [["0007"]]
 
-        subdir = "scratch/user/kuhnm"
+        subdir = "scratch/user/kuhnm/tmp"
 
 #        number_of_runs = 1
 #        channeld_per_run = 1
