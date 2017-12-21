@@ -39,7 +39,6 @@ class AgipdGatherBase():
 
         self.raw_shape = None
         self.tmp_shape = None
-        self.n_frames_per_file = None
         self.n_frames = None
         self.target_shape = None
 
@@ -117,96 +116,11 @@ class AgipdGatherBase():
 
     def intiate(self):
         if self.use_xfel_format:
-            data_path_prefix = "INSTRUMENT/SPB_DET_AGIPD1M-1/DET"
-            data_path_postfix = "image/data"
-            pulse_count_postfix = "header/pulseCount"
-
-            # use part number 0 to get the information from
-            run_number = self.runs[0]
-            fname = self.in_fname.format(run_number=run_number, part=0)
-
-            f = None
-            try:
-                f = h5py.File(fname, "r")
-
-                # xfel uses the channel index inside the data path
-                # automatically detect the path
-                k = list(f[data_path_prefix].keys())[0]
-                base_path = os.path.join(data_path_prefix, k)
-
-                self.data_path = os.path.join(base_path, data_path_postfix)
-                self.pulse_count_path = os.path.join(base_path,
-                                                     pulse_count_postfix)
-
-                raw_data_shape = f[self.data_path].shape
-            except:
-                print("Problems when reading file {}".format(fname))
-                if f is not None:
-                    f.close()
-                    f = None
-
-            self.get_number_of_frames()
-            print("n_frames", self.n_frames)
-            print("n_frames_total", self.n_frames_total)
-
-            self.n_memcells = self.max_pulses
-            if self.use_interleaved:
-                self.n_memcells = self.n_memcells // 2
-            print("Number of memory cells found", self.n_memcells)
-
-            # xfel format has swapped rows and cols
-            if self.use_interleaved:
-                self.raw_shape = (self.n_memcells, 2, 2,
-                                  self.n_cols, self.n_rows)
-            else:
-                self.raw_shape = (self.n_memcells, 2,
-                                  self.n_cols, self.n_rows)
-
-            self.channel = int(k.split("CH")[0])
-            self.in_wing2 = utils.located_in_wing2(self.channel)
-
+            self.init_xfel()
         else:
-            self.data_path = "entry/instrument/detector/data"
-            self.digital_data_path = "entry/instrument/detector/data_digital"
-
-            self.collection_path = "entry/instrument/detector/collection"
-            self.seq_number_path = "entry/instrument/detector/sequence_number"
-            self.total_lost_frames_path = ("{}/total_loss_frames"
-                                           .format(self.collection_path))
-            self.error_code_path = "{}/error_code".format(self.collection_path)
-            self.frame_number_path = ("{}/frame_numbers"
-                                      .format(self.collection_path))
-
-            run_number = self.runs[0]
-            fname = self.in_fname.format(run_number=run_number, part=0)
-
-            f = None
-            try:
-                f = h5py.File(fname, "r")
-                raw_data_shape = f[self.data_path].shape
-            finally:
-                if f is not None:
-                    f.close()
-
-            # dark
-            self.max_pulses = 704
-            self.n_memcells = 352
-            # xray
-#            self.max_pulses = 2
-#            self.n_memcells = 1
-
-            self.get_number_of_frames()
-            print("n_frames {}".format(self.n_frames))
-            print("n_frames_total {}".format(self.n_frames_total))
-
-            self.raw_shape = (self.n_memcells, 2, self.n_rows, self.n_cols)
+            self.init_cfel()
 
         self.define_needed_data_paths()
-
-        self.n_frames_per_file = int(raw_data_shape[0] // self.n_memcells)
-        if self.use_interleaved:
-            self.n_frames_per_file = self._n_frames_per_file // 2
-        print("n_frames_per_file", self.n_frames_per_file)
 
         # tmp data is already converted into agipd format
         if self.use_interleaved:
@@ -220,6 +134,91 @@ class AgipdGatherBase():
 
         self.target_shape = (-1, self.n_memcells, self.n_rows, self.n_cols)
         print("target shape:", self.target_shape)
+
+    def init_xfel(self):
+        data_path_prefix = "INSTRUMENT/SPB_DET_AGIPD1M-1/DET"
+        data_path_postfix = "image/data"
+        pulse_count_postfix = "header/pulseCount"
+
+        # use part number 0 to get the information from
+        run_number = self.runs[0]
+        fname = self.in_fname.format(run_number=run_number, part=0)
+
+        f = None
+        try:
+            f = h5py.File(fname, "r")
+
+            # xfel uses the channel index inside the data path
+            # automatically detect the path
+            k = list(f[data_path_prefix].keys())[0]
+            base_path = os.path.join(data_path_prefix, k)
+
+            self.data_path = os.path.join(base_path, data_path_postfix)
+            self.pulse_count_path = os.path.join(base_path,
+                                                 pulse_count_postfix)
+
+            raw_data_shape = f[self.data_path].shape
+        except:
+            print("Problems when reading file {}".format(fname))
+            if f is not None:
+                f.close()
+                f = None
+
+        self.get_number_of_frames()
+        print("n_frames", self.n_frames)
+        print("n_frames_total", self.n_frames_total)
+
+        self.n_memcells = self.max_pulses
+        if self.use_interleaved:
+            self.n_memcells = self.n_memcells // 2
+        print("Number of memory cells found", self.n_memcells)
+
+        # xfel format has swapped rows and cols
+        if self.use_interleaved:
+            self.raw_shape = (self.n_memcells, 2, 2,
+                              self.n_cols, self.n_rows)
+        else:
+            self.raw_shape = (self.n_memcells, 2,
+                              self.n_cols, self.n_rows)
+
+        self.channel = int(k.split("CH")[0])
+        self.in_wing2 = utils.located_in_wing2(self.channel)
+
+    def init_cfel(self):
+        self.data_path = "entry/instrument/detector/data"
+        self.digital_data_path = "entry/instrument/detector/data_digital"
+
+        self.collection_path = "entry/instrument/detector/collection"
+        self.seq_number_path = "entry/instrument/detector/sequence_number"
+        self.total_lost_frames_path = ("{}/total_loss_frames"
+                                       .format(self.collection_path))
+        self.error_code_path = "{}/error_code".format(self.collection_path)
+        self.frame_number_path = ("{}/frame_numbers"
+                                  .format(self.collection_path))
+
+        run_number = self.runs[0]
+        fname = self.in_fname.format(run_number=run_number, part=0)
+
+        f = None
+        try:
+            f = h5py.File(fname, "r")
+            raw_data_shape = f[self.data_path].shape
+        finally:
+            if f is not None:
+                f.close()
+
+        # dark
+        self.max_pulses = 704
+        self.n_memcells = 352
+        # xray
+#            self.max_pulses = 2
+#            self.n_memcells = 1
+
+        self.get_number_of_frames()
+        print("n_frames {}".format(self.n_frames))
+        print("n_frames_total {}".format(self.n_frames_total))
+
+        self.raw_shape = (self.n_memcells, 2, self.n_rows, self.n_cols)
 
     # to give classes which inherite from this class the possibility to define
     # file internal paths they need
@@ -390,12 +389,7 @@ class AgipdGatherBase():
             if f is not None:
                 f.close()
 
-        self.n_frames_per_file = int(raw_data.shape[0] // self.n_memcells)
-        if self.use_interleaved:
-            self.n_frames_per_file = self.n_frames_per_file // 2
-
         print("raw_data.shape", raw_data.shape)
-        print("self.n_frames_per_file", self.n_frames_per_file)
         print("self.raw_shape", self.raw_shape)
 
         n_pulses = (file_content[self.pulse_count_path].astype(np.int16))
@@ -456,13 +450,7 @@ class AgipdGatherBase():
             if f is not None:
                 f.close()
 
-        self.n_frames_per_file = int(raw_data.shape[0] //
-                                     self.n_memcells)
-        if self.use_interleaved:
-            self.n_frames_per_file = self.n_frames_per_file // 2
-
         print("raw_data.shape", raw_data.shape)
-        print("self.n_frames_per_file", self.n_frames_per_file)
         print("self.raw_shape", self.raw_shape)
         self.get_seq_number(file_content[self.seq_number_path])
         self.get_frame_loss_indices()
