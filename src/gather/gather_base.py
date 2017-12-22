@@ -4,6 +4,7 @@ import os
 import sys
 import time
 import glob
+import configparser
 
 try:
     CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -17,14 +18,24 @@ if SRC_PATH not in sys.path:
     sys.path.insert(0, SRC_PATH)
 
 import utils  # noqa E402
+import cfel_optarg  # noqa E402
 
 
 class AgipdGatherBase():
-    def __init__(self, in_fname, out_fname, runs, max_part=False,
-                 asic=None, use_xfel_format=False, backing_store=True):
+    def __init__(self,
+                 in_fname,
+                 out_fname,
+                 runs,
+                 preproc_fname=None,
+                 max_part=False,
+                 asic=None,
+                 use_xfel_format=False,
+                 backing_store=True):
 
         self.in_fname = in_fname
         self.out_fname = out_fname
+        self.preprocessing_fname = preproc_fname
+
         self.runs = [int(r) for r in runs]
 
         self.max_part = max_part
@@ -39,7 +50,6 @@ class AgipdGatherBase():
 
         self.raw_shape = None
         self.tmp_shape = None
-        self.n_frames = None
         self.target_shape = None
 
         self.target_index = None
@@ -55,6 +65,8 @@ class AgipdGatherBase():
 
         self.n_rows_total = 128
         self.n_cols_total = 512
+
+        self.asic_size = 64
 
         self.a_row_start = None
         self.a_row_stop = None
@@ -135,38 +147,33 @@ class AgipdGatherBase():
         self.target_shape = (-1, self.n_memcells, self.n_rows, self.n_cols)
         print("target shape:", self.target_shape)
 
+    def get_preproc_res(self):
+        if self.preprocessing_fname is None:
+            return {}
+        else:
+            config = configparser.RawConfigParser()
+            config.read(self.preprocessing_fname)
+
+            return cfel_optarg.parse_parameters(config)
+
     def init_xfel(self):
-        data_path_prefix = "INSTRUMENT/SPB_DET_AGIPD1M-1/DET"
         data_path_postfix = "image/data"
-        pulse_count_postfix = "header/pulseCount"
 
-        # use part number 0 to get the information from
-        run_number = self.runs[0]
-        fname = self.in_fname.format(run_number=run_number, part=0)
+        status_path_temp = "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/status"
+        image_first_path_temp = "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/first"
+        image_last_path_temp = "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/last"
+        pulse_count_path_temp = "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header/pulseCount"
+        cellid_path_temp = "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/cellId"
+        data_path_temp = "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/data"
 
-        f = None
-        try:
-            f = h5py.File(fname, "r")
+        self.preproc = self.get_preproc_res()
 
-            # xfel uses the channel index inside the data path
-            # automatically detect the path
-            k = list(f[data_path_prefix].keys())[0]
-            base_path = os.path.join(data_path_prefix, k)
-
-            self.data_path = os.path.join(base_path, data_path_postfix)
-            self.pulse_count_path = os.path.join(base_path,
-                                                 pulse_count_postfix)
-
-            raw_data_shape = f[self.data_path].shape
-        except:
-            print("Problems when reading file {}".format(fname))
-            if f is not None:
-                f.close()
-                f = None
-
-        self.get_number_of_frames()
-        print("n_frames", self.n_frames)
-        print("n_frames_total", self.n_frames_total)
+        self.max_pulses = self.preproc['general']['n_memcells']
+        # TODO: should this go into the preprocessing?
+        # max_pulses has to be an odd number because every memory cell
+        # need analog and digital data
+        if self.use_interleaved and self.max_pulses % 2 != 0:
+            self.max_pulses += 1
 
         self.n_memcells = self.max_pulses
         if self.use_interleaved:
@@ -181,8 +188,23 @@ class AgipdGatherBase():
             self.raw_shape = (self.n_memcells, 2,
                               self.n_cols, self.n_rows)
 
-        self.channel = int(k.split("CH")[0])
+        print("in_fname", self.in_fname)
+        split_tmp = self.in_fname.split("-")
+        self.channel = int(split_tmp[-2].split("AGIPD")[1])
+        print("channel", self.channel)
+
         self.in_wing2 = utils.located_in_wing2(self.channel)
+
+        self.n_frames_total = self.preproc['general']['n_trains_total'] * self.n_memcells
+        self.train_pos = self.preproc['channel{:02}'.format(self.channel)]['train_pos']
+        print("n_frames_total", self.n_frames_total)
+
+        self.status_path = status_path_temp.format(self.channel)
+        self.image_first_path = image_first_path_temp.format(self.channel)
+        self.image_last_path = image_last_path_temp.format(self.channel)
+        self.pulse_count_path = pulse_count_path_temp.format(self.channel)
+        self.cellid_path = cellid_path_temp.format(self.channel)
+        self.data_path = data_path_temp.format(self.channel)
 
     def init_cfel(self):
         self.data_path = "entry/instrument/detector/data"
@@ -211,11 +233,10 @@ class AgipdGatherBase():
         self.max_pulses = 704
         self.n_memcells = 352
         # xray
-#            self.max_pulses = 2
-#            self.n_memcells = 1
+#        self.max_pulses = 2
+#        self.n_memcells = 1
 
         self.get_number_of_frames()
-        print("n_frames {}".format(self.n_frames))
         print("n_frames_total {}".format(self.n_frames_total))
 
         self.raw_shape = (self.n_memcells, 2, self.n_rows, self.n_cols)
@@ -231,62 +252,33 @@ class AgipdGatherBase():
         # take first run and asume that the others have as many frames
         # TODO check this
         run_number = self.runs[0]
-        self.n_frames = 0
         self.max_pulses = 0
         n_trains = 0
 
-        if self.use_xfel_format:
-            for i in range(self.n_parts):
-                fname = self.in_fname.format(run_number=run_number, part=i)
-                try:
-                    f = h5py.File(fname, "r")
-                    pulse_count = f[self.pulse_count_path][()]
-                finally:
-                    if f is not None:
-                        f.close()
+        try:
+            fname = self.in_fname.format(run_number=run_number, part=0)
+            f = h5py.File(fname, "r", libver="latest", drivers="core")
 
-                self.max_pulses = int(np.max((np.max(pulse_count),
-                                              self.max_pulses)))
+            # TODO: verify that the shape is always right and not
+            #       dependant on frame loss
+            source_shape = f[self.data_path].shape
+            exp_total_frames = f[self.frame_number_path][0]
 
-                # max_pulses has to be an odd number because every memory cell
-                # need analog and digital data
-                if self.use_interleaved and self.max_pulses % 2 != 0:
-                    self.max_pulses += 1
+        except:
+            print("Error when getting shape")
+            raise
+        finally:
+            if f is not None:
+                f.close()
 
-                n_trains += pulse_count.size
+        if (source_shape[1] != self.n_rows_total and
+                source_shape[2] != self.n_cols_total):
+            msg = "Shape of file {} ".format(fname)
+            msg += "does not match requirements\n"
+            msg += "source_shape = {}".format(source_shape)
+            raise RuntimeError(msg)
 
-            print("pulse_count.size", pulse_count.size)
-            print("n_trains", n_trains)
-
-            self.n_frames = n_trains
-            self.n_frames_total = self.max_pulses * n_trains
-
-        else:
-            try:
-                fname = self.in_fname.format(run_number=run_number, part=0)
-                f = h5py.File(fname, "r", libver="latest", drivers="core")
-
-                # TODO: verify that the shape is always right and not
-                #       dependant on frame loss
-                source_shape = f[self.data_path].shape
-                exp_total_frames = f[self.frame_number_path][0]
-
-            except:
-                print("Error when getting shape")
-                raise
-            finally:
-                if f is not None:
-                    f.close()
-
-            if (source_shape[1] != self.n_rows_total and
-                    source_shape[2] != self.n_cols_total):
-                msg = "Shape of file {} ".format(fname)
-                msg += "does not match requirements\n"
-                msg += "source_shape = {}".format(source_shape)
-                raise RuntimeError(msg)
-
-            self.n_frames_total = int(exp_total_frames)
-            self.n_frames = int(exp_total_frames // 2 // self.n_memcells)
+        self.n_frames_total = int(exp_total_frames)
 
     def run(self):
 
@@ -357,10 +349,10 @@ class AgipdGatherBase():
                 # load data
                 if self.use_xfel_format:
                     self.load_xfel(fname,
+                                   i,
                                    load_idx_rows, load_idx_cols,
                                    file_content,
-                                   tmp_data,
-                                   target_offset)
+                                   tmp_data)
                 else:
                     self.load_cfel(fname,
                                    load_idx_rows, load_idx_cols,
@@ -378,13 +370,31 @@ class AgipdGatherBase():
         self.analog = tmp_data[:, :, 0, ...]
         self.digital = tmp_data[:, :, 1, ...]
 
-    def load_xfel(self, fname, load_idx_rows, load_idx_cols,
-                  file_content, tmp_data, target_offset):
-        # load data
+    def set_pos_indices(self, run_idx):
+        pos_idx_rows = slice(None)
+        pos_idx_cols = slice(None)
+
+        # retuns a list of row/col indixes to give the possibility to
+        # define subgroups
+        # e.g. top half should use these cols and bottom half those ones
+        return [[pos_idx_rows, pos_idx_cols]]
+
+    def load_xfel(self,
+                  fname,
+                  seq,
+                  load_idx_rows,
+                  load_idx_cols,
+                  file_content,
+                  tmp_data):
         f = None
         try:
             f = h5py.File(fname, "r")
             raw_data = f[self.data_path][()]
+
+            status = np.squeeze(f[self.status_path][()]).astype(np.int)
+            first = np.squeeze(f[self.image_first_path][()]).astype(np.int)
+            last = np.squeeze(f[self.image_last_path][()]).astype(np.int)
+            cellid = np.squeeze(f[self.cellid_path][()]).astype(np.int)
         finally:
             if f is not None:
                 f.close()
@@ -395,6 +405,7 @@ class AgipdGatherBase():
         n_pulses = (file_content[self.pulse_count_path].astype(np.int16))
         print("First 10 burst lengths: {} (min={}, max={})"
               .format(n_pulses[:10], np.min(n_pulses), np.max(n_pulses)))
+        print("n_bursts", n_pulses.size)
 
         if self.use_interleaved:
             # currently the splitting in digital and analog does not work
@@ -405,41 +416,62 @@ class AgipdGatherBase():
 
         raw_data = utils.convert_to_agipd_format(self.channel, raw_data)
 
-        source_offset = 0
-        print("n_bursts", n_pulses.size)
+        last_index = np.squeeze(np.where(status != 0))[-1]
+        print("last_index", last_index)
 
-        for burst in n_pulses:
-            for index_set in self.pos_idxs:
-                pos_idx_rows = index_set[0]
-                pos_idx_cols = index_set[1]
+        for i, source_fidx in enumerate(first[:last_index + 1]):
+            source_lidx = last[i] + 1
 
-                source_idx = (slice(source_offset, source_offset + burst),
-                              Ellipsis,
-                              pos_idx_rows,
-                              pos_idx_cols)
-                target_idx = (slice(target_offset, target_offset + burst),
-                              Ellipsis,
-                              pos_idx_rows,
-                              pos_idx_cols)
+            # Get train position (taken care of train loss)
+            target_fidx = self.train_pos[seq][i] * self.n_memcells
 
-                try:
-                    tmp_data[target_idx] = raw_data[source_idx]
-                except:
-                    print("burst", burst)
-                    print("tmp_data.shape", tmp_data.shape)
-                    print("raw_data.shape", raw_data.shape)
-                    print("target_idx", target_idx)
-                    print("source_idx", source_idx)
-                    raise
+            # Detect pulse loss
+            diff = np.diff(cellid[source_fidx:source_lidx])
+            cell_loss = np.squeeze(np.where(diff != 1))
+            if cell_loss.size != 0:
+                print("cell_loss", cell_loss)
 
-            if burst == 0:
-                print("burst == 0")
+            # Fill up pulse loss
+            source_interval = [source_fidx, source_fidx]
+            for cidx in np.concatenate((cell_loss, [source_lidx])):
+                source_interval[1] = cidx
 
-            source_offset += burst
-            target_offset += self.max_pulses
+                t_start = target_fidx + cellid[source_interval[0]]
+                t_stop = target_fidx + cellid[source_interval[1] - 1] + 1
+                target_interval = [t_start, t_stop]
 
-    def load_cfel(self, fname, load_idx_rows, load_idx_cols,
-                  file_content, tmp_data):
+#                print("intervals", source_interval, target_interval)
+
+                for index_set in self.pos_idxs:
+                    pos_idx_rows = index_set[0]
+                    pos_idx_cols = index_set[1]
+
+                    source_idx = (slice(*source_interval),
+                                  Ellipsis,
+                                  pos_idx_rows,
+                                  pos_idx_cols)
+                    target_idx = (slice(*target_interval),
+                                  Ellipsis,
+                                  pos_idx_rows,
+                                  pos_idx_cols)
+
+                    try:
+                        tmp_data[target_idx] = raw_data[source_idx]
+                    except:
+                        print("tmp_data.shape", tmp_data.shape)
+                        print("raw_data.shape", raw_data.shape)
+                        print("target_idx", target_idx)
+                        print("source_idx", source_idx)
+                        raise
+
+                source_interval[0] = source_interval[1]
+
+    def load_cfel(self,
+                  fname,
+                  load_idx_rows,
+                  load_idx_cols,
+                  file_content,
+                  tmp_data):
         # load data
         f = None
         try:
@@ -457,15 +489,6 @@ class AgipdGatherBase():
         self.fillup_frame_loss(tmp_data,
                                raw_data,
                                self.target_index_full_size)
-
-    def set_pos_indices(self, run_idx):
-        pos_idx_rows = slice(None)
-        pos_idx_cols = slice(None)
-
-        # retuns a list of row/col indixes to give the possibility to
-        # define subgroups
-        # e.g. top half should use these cols and bottom half those ones
-        return [[pos_idx_rows, pos_idx_cols]]
 
     def get_seq_number(self, source_seq_number):
         # if there is frame loss this is recognizable by a missing
@@ -587,10 +610,11 @@ if __name__ == "__main__":
 #    use_xfel_format = False
 
     if use_xfel_format:
-        base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
-        run_list = [["0428"], ["0429"], ["0430"]]
-
 #        base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
+#        run_list = [["0428"], ["0429"], ["0430"]]
+
+        base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
+        run_list = [["0709"]]
 #        run_list = [["0488"]]
 
 #        base_path = "/gpfs/exfel/exp/SPB/201701/p002012"
@@ -598,21 +622,22 @@ if __name__ == "__main__":
 
         subdir = "scratch/user/kuhnm/tmp"
 
-#        number_of_runs = 1
-#        channeld_per_run = 1
-        number_of_runs = 2
-        channels_per_run = 16 // number_of_runs
+        number_of_runs = 1
+        channels_per_run = 1
+#        number_of_runs = 2
+#        channels_per_run = 16 // number_of_runs
         for runs in run_list:
             process_list = []
             for j in range(number_of_runs):
                 for i in range(channels_per_run):
-                    channel = str(j * channels_per_run + i).zfill(2)
-                    in_file_name = ("RAW-R{run_number}-" +
-                                    "AGIPD{}".format(channel) +
+                    channel = 1
+                    #channel = j * channels_per_run + i
+                    in_file_name = ("RAW-R{run_number:04}-" +
+                                    "AGIPD{:02}".format(channel) +
                                     "-S{part:05d}.h5")
                     in_fname = os.path.join(base_path,
                                             "raw",
-                                            "r{run_number}",
+                                            "r{run_number:04}",
                                             in_file_name)
 
                     run_subdir = "r" + "-r".join(runs)
@@ -622,7 +647,13 @@ if __name__ == "__main__":
                                            "gather")
                     utils.create_dir(out_dir)
 
-                    out_file_name = ("{}-AGIPD{}-gathered.h5"
+                    preproc_fname = os.path.join(base_path,
+                                                 subdir,
+                                                 run_subdir,
+                                                 "{}-preprocessing.result"
+                                                 .format(run_subdir.upper()))
+
+                    out_file_name = ("{}-AGIPD{:02}-gathered.h5"
                                      .format(run_subdir.upper(), channel))
                     out_fname = os.path.join(out_dir,
                                              out_file_name)
@@ -631,9 +662,11 @@ if __name__ == "__main__":
                                                 args=(in_fname,
                                                       out_fname,
                                                       runs,
+                                                      preproc_fname,
                                                       False,  # max_part
-                                                      True,  # split_asics
+                                                      None,  # asic
                                                       use_xfel_format))
+
                     p.start()
                     process_list.append(p)
 

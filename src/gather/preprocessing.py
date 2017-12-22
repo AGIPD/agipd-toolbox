@@ -164,7 +164,9 @@ class PreprocessingXfel():
 
             n_trains.append(n_tr)
 
-            self.prop["general"]["n_total_trains"] = sum(n_trains) + self.prop["general"]["max_shifting"]
+            self.prop["general"]["n_trains_total"] = (
+                sum(n_trains) + self.prop["general"]["max_shifting"]
+            )
 
         print("shifting:", self.prop["general"]["shifting"])
         print("max_shifting", self.prop["general"]["max_shifting"])
