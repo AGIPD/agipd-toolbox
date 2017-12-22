@@ -2,9 +2,6 @@ import h5py
 import numpy as np
 import os
 import sys
-import time
-import glob
-import configparser
 
 try:
     CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -49,16 +46,16 @@ class CfelLayout():
         self.frame_number_path = ("{}/frame_numbers"
                                   .format(self.collection_path))
 
-        run_number = self.runs[0]
-        fname = self.in_fname.format(run_number=run_number, part=0)
+#        run_number = self.runs[0]
+#        fname = self.in_fname.format(run_number=run_number, part=0)
 
-        f = None
-        try:
-            f = h5py.File(fname, "r")
-            raw_data_shape = f[self.data_path].shape
-        finally:
-            if f is not None:
-                f.close()
+#        f = None
+#        try:
+#            f = h5py.File(fname, "r")
+#            raw_data_shape = f[self.data_path].shape
+#        finally:
+#            if f is not None:
+#                f.close()
 
         # dark
         self.max_pulses = 704
@@ -72,6 +69,11 @@ class CfelLayout():
 
         self.raw_shape = (self.n_memcells, 2, self.n_rows, self.n_cols)
 
+        return (self.n_memcells,
+                self.n_frames_total,
+                self.raw_shape,
+                self.data_path)
+
     def get_number_of_frames(self):
         f = None
 
@@ -79,7 +81,6 @@ class CfelLayout():
         # TODO check this
         run_number = self.runs[0]
         self.max_pulses = 0
-        n_trains = 0
 
         try:
             fname = self.in_fname.format(run_number=run_number, part=0)

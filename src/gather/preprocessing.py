@@ -2,8 +2,6 @@ import h5py
 import numpy as np
 import os
 import sys
-import time
-import glob
 import configparser
 
 try:
@@ -27,9 +25,14 @@ class PreprocessingXfel():
         self.out_fname = out_fname
 
         self.n_channels = 16
-        self.status_path_temp = "/INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/status"
-        self.pulse_count_path_temp = "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header/pulseCount"
-        self.header_trainid_path_temp = "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header/trainId"
+        self.path_temp = {
+            'status': ("INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
+                       "image/status"),
+            'pulse_count': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
+                            "header/pulseCount"),
+            'header_trainid': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
+                               "header/trainId")
+        }
 
         self.prop = {}
 
@@ -60,7 +63,7 @@ class PreprocessingXfel():
         channel = 0
 
         fname = self.in_fname.format(channel, seq)
-        read_in_path = self.pulse_count_path_temp.format(channel)
+        read_in_path = self.path_temp['pulse_count'].format(channel)
 
         f = h5py.File(fname, "r")
         in_data = f[read_in_path][()].astype(np.int)
@@ -84,12 +87,12 @@ class PreprocessingXfel():
             for ch in range(self.n_channels):
                 fname = self.in_fname.format(ch, seq)
 
-                status_path = self.status_path_temp.format(ch)
-                trainid_path = self.header_trainid_path_temp.format(ch)
+                status_path = self.path_temp['status'].format(ch)
+                trainid_path = self.path_temp['header_trainid'].format(ch)
 
                 f = h5py.File(fname, "r")
 
-                # number of trains actually stored for this channel and sequence
+                # number of trains actually stored for this channel + sequence
                 s = f[status_path][()].astype(np.int)
                 n_tr = len(np.squeeze(np.where(s != 0)))
 
@@ -105,15 +108,18 @@ class PreprocessingXfel():
             trainid_start = np.min(first_trainids)
 
             # find the channels which start with a different trainid
-            diff_first_train = np.squeeze(np.where(first_trainids != trainid_start))
-            correct_first_train = np.array([i for i in range(len(first_trainids))
-                                            if i not in diff_first_train ])
+            cond = first_trainids != trainid_start
+            diff_first_train = np.squeeze(np.where(cond))
+            corr_first_train = np.array(
+                [i for i in range(len(first_trainids))
+                 if i not in diff_first_train]
+            )
 
             if seq == 0:
                 # determine shifting
                 shifting = self.prop["general"]["shifting"]
                 for i in diff_first_train:
-                    cond = trainids[correct_first_train[0]] == first_trainids[i]
+                    cond = trainids[corr_first_train[0]] == first_trainids[i]
                     idx = np.squeeze(np.where(cond))
 
                     if idx.size != 1:
@@ -127,15 +133,16 @@ class PreprocessingXfel():
             else:
                 # check transition between sequences for train loss
                 first_trainid = [tr[0] for tr in trainids]
-#                print("last_trainid", prev_last_trainid)
-#                print("first_trainid", first_trainid)
-                seq_step = np.array(first_trainid) - np.array(prev_last_trainid)
+                seq_step = (np.array(first_trainid) -
+                            np.array(prev_last_trainid))  # noqa F821
 
-                seq_offset = [self.prop["channel{:02}".format(ch)]["train_pos"][-1][-1]
-                              + seq_step[ch]
-                              for ch in range(self.n_channels)]
+                seq_offset = [
+                    self.prop["channel{:02}".format(ch)]["train_pos"][-1][-1]
+                    + seq_step[ch]
+                    for ch in range(self.n_channels)
+                ]
 
-            prev_last_trainid = [tr[-1] for tr in trainids]
+            prev_last_trainid = [tr[-1] for tr in trainids]  # noqa F841
 
             for ch in range(self.n_channels):
                 p = self.prop["channel{:02}".format(ch)]

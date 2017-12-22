@@ -137,7 +137,6 @@ class AgipdGatherBase():
 
     def intiate(self):
         (self.n_memcells,
-         self.channel,
          self.n_frames_total,
          self.raw_shape,
          self.data_path) = self.layout.initiate(self.n_rows, self.n_cols)
@@ -229,7 +228,6 @@ class AgipdGatherBase():
             print("load idx: {}, {}".format(load_idx_rows, load_idx_cols))
 
             self.source_seq_number = [0]
-            target_offset = 0
             for i in range(self.n_parts):
                 fname = self.in_fname.format(run_number=run_number, part=i)
                 print("loading file {}".format(fname))
@@ -266,30 +264,24 @@ class AgipdGatherBase():
         return [[pos_idx_rows, pos_idx_cols]]
 
 if __name__ == "__main__":
-    import multiprocessing
-
-    module_mapping = {
-        "M305": "00",
-    }
 
     use_xfel_format = True
-#    use_xfel_format = False
+    # use_xfel_format = False
 
     if use_xfel_format:
-#        base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
-#        run_list = [["0428"], ["0429"], ["0430"]]
+        # base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
+        # run_list = [["0428"], ["0429"], ["0430"]]
 
         base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
         run_list = [["0709"]]
-#        run_list = [["0488"]]
+        # run_list = [["0488"]]
 
-#        base_path = "/gpfs/exfel/exp/SPB/201701/p002012"
-#        run_list = [["0007"]]
+        # base_path = "/gpfs/exfel/exp/SPB/201701/p002012"
+        # run_list = [["0007"]]
 
         subdir = "scratch/user/kuhnm/tmp"
 
         channel = 1
-        #channel = j * channels_per_run + i
         in_file_name = ("RAW-R{run_number:04}-" +
                         "AGIPD{:02}".format(channel) +
                         "-S{part:05d}.h5")

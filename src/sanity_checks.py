@@ -24,7 +24,7 @@ path_temp = None
 
 
 description = {
-    # ----------------------i-------------------------------------------------------- #   # noqa E501
+    # ------------------------------------------------------------------------------- #   # noqa E501
     "test_n_seqs_equal":   ("Tests that all modules have the same number of \n"           # noqa E241
                             "sequences"),
     "test_n_train_equal":  ("Checks if number of trains is equal for all module\n"        # noqa E241

@@ -37,12 +37,13 @@ class XfelLayout():
 
         self.path_temp = {
             'status': "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/status",
-            'image_first': "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/first",
+            'image_first': ("INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
+                            "image/first"),
             'image_last': "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/last",
 
-            'pulse_count': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header/pulseCount",
-            'cellid': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/cellId",
-            'data': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/data"
+            'data': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/data",
+            'cellid': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
+                       "image/cellId"),
 
         }
 
@@ -96,7 +97,6 @@ class XfelLayout():
             self.path[key] = self.path_temp[key].format(self.channel)
 
         return (self.n_memcells,
-                self.channel,
                 self.n_frames_total,
                 self.raw_shape,
                 self.path['data'])
