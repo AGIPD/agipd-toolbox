@@ -50,6 +50,10 @@ description = {
     "test_data_tzeros":    ("Check if additional data entries are trailing zeros"),       # noqa E241
     "test_data_vs_tr_id":  ("Checks if the dimension of the image trainId is\n"           # noqa E241
                             "corresponding to the data)"),
+    "test_dim_first_last": ("Checks if the dimensions of the arrays providing the\n"
+                            "information about the start and end of the train are of\n"
+                            "the same dimensions")
+
 }
 
 
@@ -180,17 +184,19 @@ def setUpModule():
     file_raw_temp = file_raw_prefix_temp + "{:05d}.h5"
 
     path_temp = {
-        "header": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header",
-        "image": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image",
-        "trailer": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/trailer",
-        "detector_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/detector/trainId",  # noqa E501
-        "header_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header/trainId",  # noqa E501
-        "image_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/trainId",  # noqa E501
-        "trailer_train_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/trailer/trainId",  # noqa E501
-        "pulse_count": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header/pulseCount",  # noqa E501
-        "cell_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/cellId",
-        "pulse_id": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/pulseId",  # noqa E501
-        "data": "/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/data"
+        'image_first': "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/first",
+        'image_last': "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/last",
+        'header': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header",
+        'image': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image",
+        'trailer': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/trailer",
+        'detector_train_id': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/detector/trainId",  # noqa E501
+        'header_train_id': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header/trainId",  # noqa E501
+        'image_train_id': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/trainId",  # noqa E501
+        'trailer_train_id': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/trailer/trainId",  # noqa E501
+        'pulse_count': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header/pulseCount",  # noqa E501
+        'cell_id': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/cellId",
+        'pulse_id': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/pulseId",  # noqa E501
+        'data': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/data"
     }
 
     seq_start = 0
@@ -198,10 +204,12 @@ def setUpModule():
 
     data = [{} for i in range(16)]
 
-    keys_to_read_in = ["detector_train_id",
-                       "header_train_id",
-                       "trailer_train_id",
-                       "pulse_count"]
+    keys_to_read_in = ['detector_train_id',
+                       'header_train_id',
+                       'trailer_train_id',
+                       'pulse_count',
+                       'image_first',
+                       'image_last']
 
     for dict_key in keys_to_read_in:
         for channel in np.arange(16):
@@ -236,7 +244,7 @@ class SanityChecks(unittest.TestCase):
 
         cls._seq_start = 0
         cls._seq_stop = 3
-        cls._n_sequences = len(data[0]["header_train_id"])
+        cls._n_sequences = len(data[0]['header_train_id'])
         cls._n_channels = 16
 
         cls._usable_start = 2
@@ -268,7 +276,7 @@ class SanityChecks(unittest.TestCase):
 
         res = []
         for channel in np.arange(self._n_channels):
-            d = self._data[channel]["header_train_id"]
+            d = self._data[channel]['header_train_id']
             res.append([len(d[seq]) for seq in range(self._n_sequences)])
 
         assert_failed = False
@@ -303,7 +311,7 @@ class SanityChecks(unittest.TestCase):
             for seq in range(self._seq_start, self._seq_stop):
                 fname = self._file_raw_temp.format(channel, seq)
 
-                group_name = self._path["header"].format(channel)
+                group_name = self._path['header'].format(channel)
 
                 f = h5py.File(fname, "r")
                 keys = list(f[group_name].keys())
@@ -340,7 +348,7 @@ class SanityChecks(unittest.TestCase):
             for seq in range(self._seq_start, self._seq_stop):
                 fname = self._file_raw_temp.format(channel, seq)
 
-                group_name = self._path["image"].format(channel)
+                group_name = self._path['image'].format(channel)
 
                 f = h5py.File(fname, "r")
                 keys = list(f[group_name].keys())
@@ -377,7 +385,7 @@ class SanityChecks(unittest.TestCase):
             for seq in range(self._seq_start, self._seq_stop):
                 fname = self._file_raw_temp.format(channel, seq)
 
-                group_name = self._path["trailer"].format(channel)
+                group_name = self._path['trailer'].format(channel)
 
                 f = h5py.File(fname, "r")
                 keys = list(f[group_name].keys())
@@ -407,7 +415,7 @@ class SanityChecks(unittest.TestCase):
         Checks if the first train id value is equal for all modules
         """
 
-        first_train_ids = [d["header_train_id"][0][self._usable_start + 0]
+        first_train_ids = [d['header_train_id'][0][self._usable_start + 0]
                            for d in data]
         train_id_start = np.min(first_train_ids)
 
@@ -432,9 +440,9 @@ class SanityChecks(unittest.TestCase):
         res = []
         for channel in np.arange(self._n_channels):
             for seq in range(self._n_sequences):
-                d_detector = self._data[channel]["detector_train_id"][seq]
-                d_header = self._data[channel]["header_train_id"][seq]
-                d_trailer = self._data[channel]["trailer_train_id"][seq]
+                d_detector = self._data[channel]['detector_train_id'][seq]
+                d_header = self._data[channel]['header_train_id'][seq]
+                d_trailer = self._data[channel]['trailer_train_id'][seq]
 
                 detector_vs_header = (d_detector == d_header).all()
                 header_vs_trailer = (d_header == d_trailer).all()
@@ -463,11 +471,11 @@ class SanityChecks(unittest.TestCase):
                "channels and sequences (pulseCount sum vs data shape):")
         for channel in range(self._n_channels):
             for seq in range(self._n_sequences):
-                d = self._data[channel]["pulse_count"][seq]
+                d = self._data[channel]['pulse_count'][seq]
                 n_total_pulses = np.sum(d)
 
                 fname = self._file_raw_temp.format(channel, seq)
-                group_name = self._path["data"].format(channel)
+                group_name = self._path['data'].format(channel)
 
                 f = h5py.File(fname, "r")
                 data_shape = f[group_name].shape
@@ -496,7 +504,7 @@ class SanityChecks(unittest.TestCase):
                "channels and sequences")
         for channel in range(self._n_channels):
             for seq in range(self._n_sequences):
-                train_id = self._data[channel]["header_train_id"][seq]
+                train_id = self._data[channel]['header_train_id'][seq]
 
                 # remove placeholders
                 train_id = np.where(train_id != 0)
@@ -555,7 +563,7 @@ class SanityChecks(unittest.TestCase):
         msg = ("\nTrainid contains zeros which are not at the end for "
                "following channels and sequences:")
         for ch, _ in enumerate(data):
-            d = data[ch]["header_train_id"]
+            d = data[ch]['header_train_id']
 
             for seq in range(len(d)):
 
@@ -584,7 +592,7 @@ class SanityChecks(unittest.TestCase):
         last_seq = None
         for ch, _ in enumerate(data):
             for seq in range(self._n_sequences):
-                d = data[ch]["header_train_id"][seq]
+                d = data[ch]['header_train_id'][seq]
 
                 if seq == 0:
                     d = d[self._usable_start:]
@@ -643,11 +651,11 @@ class SanityChecks(unittest.TestCase):
         msg = "\nData containes extra data which is not zero for:"
         for channel in range(self._n_channels):
             for seq in range(self._n_sequences):
-                d = self._data[channel]["pulse_count"][seq]
+                d = self._data[channel]['pulse_count'][seq]
                 n_total_pulses = np.sum(d)
 
                 fname = self._file_raw_temp.format(channel, seq)
-                group_name = self._path["data"].format(channel)
+                group_name = self._path['data'].format(channel)
 
                 f = h5py.File(fname, "r")
                 data_shape = f[group_name].shape
@@ -684,8 +692,8 @@ class SanityChecks(unittest.TestCase):
             for seq in range(self._n_sequences):
                 fname = self._file_raw_temp.format(channel, seq)
 
-                group_name = self._path["image_train_id"].format(channel)
-                data_name = self._path["data"].format(channel)
+                group_name = self._path['image_train_id'].format(channel)
+                data_name = self._path['data'].format(channel)
 
                 f = h5py.File(fname, "r")
                 train_id_shape = f[group_name].shape
@@ -699,6 +707,33 @@ class SanityChecks(unittest.TestCase):
                     msg += ("Channel {:02}, sequence {} ({} vs {})\n"
                             .format(channel, seq, train_id_shape[0],
                                     data_shape[0]))
+
+        # for clarity only print one error message for all channels and
+        # sequences
+        if assert_failed:
+            self.fail(msg)
+
+    def test_dim_first_last(self):
+        """
+        Checks if the dimensions of the arrays providing the information about
+        the start and end of the train are of the same dimensions
+        """
+
+        assert_failed = False
+        msg = ""
+        msg = ("\nNumber of train start and train end indices do not match "
+               "for:")
+        for channel in range(self._n_channels):
+            for seq in range(self._n_sequences):
+                len_first = len(self._data[channel]['image_first'][seq])
+                len_last = len(self._data[channel]['image_last'][seq])
+
+                try:
+                    self.assertEqual(len_first, len_last)
+                except AssertionError:
+                    assert_failed = True
+                    msg += ("Channel {:02}, sequence {} ({} vs {})\n"
+                            .format(channel, seq, len_first, len_last))
 
         # for clarity only print one error message for all channels and
         # sequences
