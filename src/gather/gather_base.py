@@ -309,13 +309,13 @@ if __name__ == "__main__":
             out_fname = os.path.join(out_dir,
                                      out_file_name)
 
-            obj = AgipdGatherBase(in_fname,
-                                  out_fname,
-                                  runs,
-                                  preproc_fname,
-                                  False,  # max_part
-                                  None,  # asic
-                                  use_xfel_format)
+            obj = AgipdGatherBase(in_fname=in_fname,
+                                  out_fname=out_fname,
+                                  runs=runs,
+                                  preproc_fname=preproc_fname,
+                                  max_part=False,
+                                  asic=None,
+                                  use_xfel_format=use_xfel_format)
             obj.run()
 
     else:
@@ -368,10 +368,10 @@ if __name__ == "__main__":
                                      asic))
         out_fname = os.path.join(out_dir, out_file_name)
 
-        obj = AgipdGatherBase(in_fname,
-                              out_fname,
-                              runs,
-                              max_part,
-                              asic,
-                              use_xfel_format)
+        obj = AgipdGatherBase(in_fname=in_fname,
+                              out_fname=out_fname,
+                              runs=runs,
+                              max_part=max_part,
+                              asic=asic,
+                              use_xfel_format=use_xfel_format)
         obj.run()

@@ -48,7 +48,7 @@ def get_arguments():
 
     parser.add_argument("--run_type",
                         type=str,
-                        choices=["gather", "process", "merge", "join", "all"],
+                        choices=["preprocess", "gather", "process", "merge", "join", "all"],
                         help="Run type of the analysis")
     parser.add_argument("--no_slurm",
                         action="store_true",
@@ -107,9 +107,14 @@ class SubmitJobs():
         self.run_list = args.run_list or self.config["general"]["run_list"]
 
         if self.use_xfel:
-            # convert str into list
-            self.module_list = self.config["general"]["channel"].split(" ")
+            if self.run_type == "preprocess":
+                self.module_list = ["0"]
+            else:
+                # convert str into list
+                self.module_list = self.config["general"]["channel"].split(" ")
             self.temperature = None
+
+            self.run_type_list = ["preprocess"] + self.run_type_list
         else:
             self.module_list = self.config["general"]["module"].split(" ")
             self.temperature = self.config["general"]["temperature"]
@@ -149,8 +154,10 @@ class SubmitJobs():
         self.input_dir["gather"] = args.input_dir or self.input_dir["gather"]
 
         for run_type in self.run_type_list:
-            if run_type != "gather" and args.output_dir is not None:
+            if (run_type not in ["preprocess", "gather"] and
+                    args.output_dir is not None):
                 self.input_dir[run_type] = args.output_dir
+
             self.output_dir[run_type] = (args.output_dir or
                                          self.output_dir[run_type])
 
@@ -234,6 +241,8 @@ class SubmitJobs():
 
             jobnums_type = []
             for run_type in self.run_type_list_per_module:
+#                if run_type == "preprocess":
+#                    run_list = self.run_list
                 if run_type == "gather" and self.measurement == "dark":
                     run_list = self.run_list
                 else:

@@ -3,6 +3,7 @@ import numpy as np
 import os
 import sys
 import configparser
+import glob
 
 try:
     CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -18,7 +19,7 @@ if SRC_PATH not in sys.path:
 import utils  # noqa E402
 
 
-class PreprocessingXfel():
+class PreprocessXfel():
     def __init__(self, in_fname, out_fname):
 
         self.in_fname = in_fname
@@ -56,13 +57,19 @@ class PreprocessingXfel():
         self.write()
 
     def get_n_seqs(self):
-        return 3
+        split = self.in_fname.rsplit("-AGIPD", 1)
+        regex = split[0] + "-AGIPD00*"
+
+        parts = len(glob.glob(regex))
+
+        print("parts/sequences", parts)
+        return parts
 
     def get_n_memcells(self):
         seq = 0
         channel = 0
 
-        fname = self.in_fname.format(channel, seq)
+        fname = self.in_fname.format(channel, part=seq)
         read_in_path = self.path_temp['pulse_count'].format(channel)
 
         f = h5py.File(fname, "r")
@@ -85,7 +92,7 @@ class PreprocessingXfel():
 
             trainids = []
             for ch in range(self.n_channels):
-                fname = self.in_fname.format(ch, seq)
+                fname = self.in_fname.format(ch, part=seq)
 
                 status_path = self.path_temp['status'].format(ch)
                 trainid_path = self.path_temp['header_trainid'].format(ch)
@@ -202,11 +209,22 @@ if __name__ == "__main__":
     run = 709
     beamtime = "201730/p900009"
 
-    file_raw_temp = ("/gpfs/exfel/exp/SPB/{}/raw/r{:04d}/RAW-R{:04d}-"
+    base_path = "/gpfs/exfel/exp/SPB"
+    subdir = "scratch/user/kuhnm/tmp"
+    run_subdir = "r{:04}".format(run)
+
+    file_raw_temp = ("/gpfs/exfel/exp/SPB/{}/raw/r{:04}/RAW-R{:04}-"
                      .format(beamtime, run, run) +
-                     "AGIPD{:02d}-S{:05d}.h5")
+                     "AGIPD{:02}-S{part:05}.h5")
 
-    preprocessing_file = os.path.join(BASE_PATH, "preprocessing.result")
+    preprocessing_file = os.path.join(base_path,
+                                      beamtime,
+                                      subdir,
+                                      run_subdir,
+                                      "{}-preprocessing.result"
+                                      .format(run_subdir.upper()))
+#    preprocessing_file = os.path.join(BASE_PATH, "preprocessing.result")
+    print("preprocessing_file", preprocessing_file)
 
-    p = PreprocessingXfel(file_raw_temp, preprocessing_file)
+    p = PreprocessXfel(file_raw_temp, preprocessing_file)
     p.run()

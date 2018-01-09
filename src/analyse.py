@@ -7,6 +7,7 @@ import time
 # import numpy as np
 # from string import Template
 import glob
+import string
 
 import utils
 # from merge_drscs import ParallelMerge
@@ -28,10 +29,24 @@ if PROCESS_PATH not in sys.path:
 
 
 class Analyse():
-    def __init__(self, run_type, meas_type, in_base_dir, out_base_dir,
-                 n_processes, module, temperature, meas_spec, asic, asic_list,
-                 safety_factor, runs, max_part, current_list=None,
-                 use_xfel_in_format=True, use_xfel_out_format=False):
+    def __init__(self,
+                 run_type,
+                 meas_type,
+                 in_base_dir,
+                 out_base_dir,
+                 n_processes,
+                 module,
+                 temperature,
+                 meas_spec,
+                 asic,
+                 asic_list,
+                 safety_factor,
+                 runs,
+                 max_part,
+                 current_list=None,
+                 use_xfel_in_format=True,
+                 use_xfel_out_format=False):
+
         print("started Analyse")
 
         self.run_type = run_type
@@ -83,7 +98,9 @@ class Analyse():
         print("\nStarted at", str(datetime.datetime.now()))
         t = time.time()
 
-        if self.run_type == "gather":
+        if self.run_type == "preprocess":
+            self.run_preprocess()
+        elif self.run_type == "gather":
             self.run_gather()
         elif self.run_type == "process":
             self.run_process()
@@ -97,15 +114,24 @@ class Analyse():
         print("\nFinished at", str(datetime.datetime.now()))
         print("took time: ", time.time() - t)
 
-    def generate_raw_path(self, base_dir):
+    ########################################
+    ##           generate paths           ##
+    ########################################
+
+    def generate_raw_path(self, base_dir, as_template=False):
         if self.use_xfel_in_format:
+            if as_template:
+                channel = "{:02}"
+            else:
+                channel = str(self.channel).zfill(2)
+
             # define in files
             fdir = os.path.join(base_dir,
                                 "raw",
                                 "r{run_number:04}")
 
             fname = ("RAW-R{run_number:04}-" +
-                     "AGIPD{:02}".format(self.channel) +
+                     "AGIPD{}".format(channel) +
                      "-S{part:05}.h5")
 
         else:
@@ -127,6 +153,29 @@ class Analyse():
 
         return fdir, fname
 
+    def generate_preproc_path(self, base_dir):
+        if self.use_xfel_in_format:
+            if self.meas_type == "pcdrs" or len(self.runs) == 1:
+                run_subdir = "r" + "-r".join(str(r).zfill(4)
+                                             for r in self.runs)
+
+            else:
+                print("WARNING: generate_preproc_path is running in 'else'. Why?")
+                print("self.runs={}".format(self.runs))
+                run_subdir = "r{:04}".fomrat(self.runs[0])
+
+            fdir = os.path.join(base_dir,
+                                self.meas_type,
+                                run_subdir)
+
+            fname = "R{:04}-preprocessing.result".format(self.runs[0])
+
+        else:
+            print("Preprocessing not implemented for CFEL layout")
+            return None, None
+
+        return fdir, fname
+
     def generate_gather_path(self, base_dir):
         if self.use_xfel_in_format:
             # TODO: concider additing this into out_base_dir (joined) and
@@ -138,7 +187,7 @@ class Analyse():
                 fname = ("{}-AGIPD{:02}-gathered.h5"
                          .format(run_subdir.upper(), self.channel))
 
-            # TODO fill run_number + for what is this else (what cases)?
+            # TODO fill run_number + for what is this 'else' (what cases)?
             else:
                 run_subdir = "r{run_number:04}"
 
@@ -247,6 +296,41 @@ class Analyse():
 
         return fdir, fname
 
+    ########################################
+    ##                run                 ##
+    ########################################
+
+    def run_preprocess(self):
+        from gather.preprocess import PreprocessXfel as Preprocess
+
+        if len(self.runs) != 1:
+            raise Exception("Preprocessing can only be done per run")
+
+        # define in files
+        in_dir, in_file_name = self.generate_raw_path(self.in_base_dir,
+                                                      as_template=True)
+        in_fname = os.path.join(in_dir, in_file_name)
+        # partially substitute the string
+        split = in_fname.rsplit("-AGIPD", 1)
+        in_fname = split[0].format(run_number=self.runs[0]) + "-AGIPD" + split[1]
+
+        # define out files
+        out_dir, out_file_name = self.generate_preproc_path(self.out_base_dir)
+        out_fname = os.path.join(out_dir, out_file_name)
+
+        if os.path.exists(out_fname):
+            print("output filename = {}".format(out_fname))
+            print("WARNING: output file already exist. "
+                  "Skipping preprocessing.")
+        else:
+            utils.create_dir(out_dir)
+
+            print("in_fname=", in_fname)
+            print("out_fname=", out_fname)
+            print()
+            obj = Preprocess(in_fname, out_fname)
+            obj.run()
+
     def run_gather(self):
         if self.meas_type == "pcdrs":
             from gather.gather_pcdrs import AgipdGatherPcdrs as Gather
@@ -262,6 +346,15 @@ class Analyse():
         in_dir, in_file_name = self.generate_raw_path(self.in_base_dir)
         in_fname = os.path.join(in_dir, in_file_name)
 
+        # define preprocess files
+        preproc_dir, preproc_file_name = (
+            self.generate_preproc_path(self.out_base_dir)
+        )
+        if preproc_dir is not None:
+            preproc_fname = os.path.join(preproc_dir, preproc_file_name)
+        else:
+            preproc_fname = None
+
         # define out files
         out_dir, out_file_name = self.generate_gather_path(self.out_base_dir)
         out_fname = os.path.join(out_dir, out_file_name)
@@ -275,16 +368,19 @@ class Analyse():
             print("in_fname=", in_fname)
             print("out_fname=", out_fname)
             print("runs=", self.runs)
+            print("preproc_fname", preproc_fname)
             print("max_part=", self.max_part)
             print("asic=", self.asic)
             print("use_xfel_in_format=", self.use_xfel_in_format)
             print()
-            Gather(in_fname,
-                   out_fname,
-                   self.runs,
-                   self.max_part,
-                   self.asic,
-                   self.use_xfel_in_format)
+            obj = Gather(in_fname=in_fname,
+                         out_fname=out_fname,
+                         runs=self.runs,
+                         preproc_fname=preproc_fname,
+                         max_part=self.max_part,
+                         asic=self.asic,
+                         use_xfel_format=self.use_xfel_in_format)
+            obj.run()
 
     def run_process(self):
 
@@ -417,11 +513,11 @@ class Analyse():
 #                               "drscs")
 #        # substitute all except current and asic
 #        in_template = (
-#            Template("${p}/${c}/process/${m}_drscs_${c}_asic${a}_processed.h5")
+#            string.Template("${p}/${c}/process/${m}_drscs_${c}_asic${a}_processed.h5")
 #            .safe_substitute(p=in_path, m=self.module)
 #        )
 #        # make a template out of this string to let Merge set current and asic
-#        in_template = Template(in_template)
+#        in_template = string.Template(in_template)
 #
 #        out_dir = os.path.join(base_path,
 #                               self.module,
@@ -429,12 +525,12 @@ class Analyse():
 #                               "drscs",
 #                               "merged")
 #        out_template = (
-#            Template("${p}/${m}_drscs_asic${a}_merged.h5")
+#            string.Template("${p}/${m}_drscs_asic${a}_merged.h5")
 #            .safe_substitute(p=out_dir,
 #                             m=self.module,
 #                             t=self.temperature)
 #        )
-#        out_template = Template(out_template)
+#        out_template = string.Template(out_template)
 #
 #        if os.path.exists(out_fname):
 #            print("output filename = {}".format(out_fname))
