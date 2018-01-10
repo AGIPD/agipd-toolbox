@@ -53,8 +53,8 @@ description = {
                             "corresponding to the data)"),
     'test_dim_first_last': ("Checks if the dimensions of the arrays providing the\n"
                             "information about the start and end of the train are of\n"
-                            "the same dimensions")
-
+                            "the same dimensions"),
+    'test_pulse_loss':     ("Checks if all trains have the same number of pulses")
 }
 
 
@@ -801,6 +801,34 @@ class SanityChecks(unittest.TestCase):
         if assert_failed:
             self.fail(msg)
 
+    def test_pulse_loss(self):
+        """
+        Checks if all trains have the same number of pulses
+        """
+        assert_failed = False
+        msg = ""
+        msg = ("\nPulse loss found for:\n")
+        for channel in range(self._n_channels):
+            pulses = []
+            for seq in range(self._n_sequences):
+                p = list(np.unique(self._data[channel]['pulse_count'][seq]))
+                pulses += p
+
+            # TODO access pulses where status != 0
+            n_pulses = np.unique(pulses[pulses != 0])
+            n_pulses_lost = max(n_pulses) - min(n_pulses)
+
+            try:
+                self.assertEqual(n_pulses_lost, 0)
+            except AssertionError:
+                assert_failed = True
+                msg += ("Channel {:02}: {}\n".format(channel, n_pulses_lost))
+
+        # for clarity only print one error message for all channels and
+        # sequences
+        if assert_failed:
+            self.fail(msg)
+
     # per test
     def tearDown(self):
         pass
@@ -879,10 +907,10 @@ def get_info(instrument_cycle, beamtime, run):
             print("Channel {:02}: {}".format(channel, data_shape[channel]))
 
     if None not in n_trains:
-        print("Number of trains:", np.sum(n_trains))
+        print("Number of trains: {}".format(np.sum(n_trains)))
     else:
         not_none = [t for t in n_trains if t is not None]
-        print("Number of trains more than:", np.sum(not_none))
+        print("Number of trains: >{}".format(np.sum(not_none)))
     print("Number of trains per sequence:", n_trains)
 
     print("Number of pulses:", n_pulses)
