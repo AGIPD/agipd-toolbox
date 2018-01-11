@@ -327,13 +327,13 @@ class SanityChecks(unittest.TestCase):
                 # in the check summary
                 assert_failed = True
                 msg += ("\nNot all modules have the same number of trains "
-                        "for seq {}\n"
-                        "(n_trains={})".format(seq, res[:, seq]))
+                        "for seq {}".format(seq))
+                for ch in range(self._n_channels):
+                    msg += "\nChannel {:02}: {}".format(ch, res[ch, seq])
 
         # for clarity only print one error message for all sequences
         if assert_failed:
             self.fail(msg)
-
 
     def test_dims_header(self):
         """
@@ -622,12 +622,17 @@ class SanityChecks(unittest.TestCase):
         """
         Checks for missing entries in trainId
         """
+        # If there is massive train loss this gives the option to investigate
+        # the train loss indices
+        # but by default the trainIDs are not displayed (for massive train loss)
+        show_idx_in_short_msg = False
 
         assert_failed = False
         msg = ""
         last_seq = None
         n_trains_lost = {}
         n_trains_lost_total = 0
+        msg_tmp = ["" for ch in range(self._n_channels)]
         for ch, _ in enumerate(data):
             n_trains_lost[ch] = 0
             for seq in range(self._n_sequences):
@@ -653,14 +658,34 @@ class SanityChecks(unittest.TestCase):
                     self.assertEqual(train_loss_idx.size, 0, msg)
                 except AssertionError:
                     assert_failed = True
-                    msg += ("\nChannel {:02}, seq {}: Train loss found at "
-                            "indices:".format(ch, seq))
+                    msg += (
+                        "\nChannel {:02}, seq {}: Train loss found at indices:"
+                        .format(ch, seq)
+                    )
 
-                    for idx in train_loss_idx:
+                    if show_idx_in_short_msg:
+                        msg_tmp[ch] += (
+                            "\nseq {}: Train loss found at indices:"
+                            .format(seq)
+                        )
+
+                    for i, idx in enumerate(train_loss_idx):
                         idx_o = idx_no_zeros[idx]
-                        msg += ("\nidx {}: ... {} ..."
-                                .format(idx_o,
-                                        str(d[idx_o - 1:idx_o + 3])[1:-1]))
+
+                        if idx_o > 0:
+                            start = idx_o - 1
+                        else:
+                            start = idx_o
+                        stop = idx_o + 3
+
+                        m = ("\nidx {}: ... {} ..."
+                             .format(idx_o, str(d[start:stop])[1:-1]))
+
+                        msg += m
+
+                        if show_idx_in_short_msg and i < 3:
+                            msg_tmp[ch] += m
+
                         n_trains_lost[ch] += diff[idx] - 1
 
                 # check transition between two sequences
@@ -686,17 +711,27 @@ class SanityChecks(unittest.TestCase):
         # sequences
         if assert_failed:
             if n_trains_lost_total > 5:
-                short_msg = "Train loss found for:"
+                # This overwrites msg
+                short_msg = ""
+
+                if show_idx_in_short_msg:
+                    for ch in range(self._n_channels):
+                        short_msg += ("\nChannel {:02}:".format(ch))
+                        short_msg += msg_tmp[ch]
+
+                    short_msg += "\n\n"
+
+                short_msg += "Train loss found for:"
                 for ch in n_trains_lost:
                     short_msg += ("\nChannel {:02}: {}"
                                   .format(ch, n_trains_lost[ch]))
 
-                short_msg += ("\nNumber of total trains lost: {}"
+                short_msg += ("\nTotal number of trains lost: {}"
                               .format(n_trains_lost_total))
 
                 self.fail(short_msg)
             else:
-                msg += "\n\nTotal number of trains loss: {}".format(n_trains_lost_total)
+                msg += "\n\nTotal number of trains lost: {}".format(n_trains_lost_total)
                 for ch in n_trains_lost:
                     if n_trains_lost[ch]:
                         msg += "\nChannel {:02}: {}".format(ch, n_trains_lost[ch])
