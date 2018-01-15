@@ -307,9 +307,19 @@ class SanityChecks(unittest.TestCase):
         """
 
         res = []
+        msg_trainid = []
         for channel in np.arange(self._n_channels):
             d = self._data[channel]['header_train_id']
             res.append([len(d[seq]) for seq in range(self._n_sequences)])
+
+            #msg_temp = ["\n(trainId: {} ... {}"
+            #msg_temp.append(",\n" + " "*10 +
+            msg_temp = ["{} ... {}"
+                        .format(d[0][self._usable_start], d[0][-1])]
+            for seq in range(1, self._n_sequences):
+                msg_temp.append("{} ... {}".format(d[seq][0], d[seq][-1]))
+
+            msg_trainid.append(msg_temp)
 
         assert_failed = False
         msg = ""
@@ -330,6 +340,10 @@ class SanityChecks(unittest.TestCase):
                         "for seq {}".format(seq))
                 for ch in range(self._n_channels):
                     msg += "\nChannel {:02}: {}".format(ch, res[ch, seq])
+
+                    msg += "\t(trainid: "
+                    msg += msg_trainid[ch][seq]
+                    msg += ")"
 
         # for clarity only print one error message for all sequences
         if assert_failed:
