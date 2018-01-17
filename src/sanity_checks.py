@@ -17,6 +17,7 @@ import argparse
 
 beamtime = None
 run = None
+detail_level = None
 file_raw_prefix_temp = None
 file_raw_temp = None
 data = None
@@ -118,6 +119,14 @@ def get_arguments():
                         type=int,
                         required=True,
                         help="The run to check")
+
+    parser.add_argument('--detail_level',
+                        type=int,
+                        choices=[0, 1, 2],
+                        default=1,
+                        help=("Defines the detail level of the output if the "
+                              "test failes (0: no output, 1: general "
+                              "information, 2: more detailed information"))
 
     parser.add_argument('--show_info',
                         action='store_true',
@@ -263,6 +272,7 @@ class SanityChecks(unittest.TestCase):
         global data
         global path_temp
         global run_information
+        global detail_level
 
         cls._file_raw_prefix_temp = file_raw_prefix_temp
         cls._file_raw_temp = file_raw_temp
@@ -274,6 +284,8 @@ class SanityChecks(unittest.TestCase):
         cls._n_sequences = run_information['n_sequences']
 
         cls._usable_start = run_information['usable_start']
+
+        cls._detail_level = detail_level
 
         cls._n_trains = None
         cls._n_pulses = None
@@ -307,19 +319,9 @@ class SanityChecks(unittest.TestCase):
         """
 
         res = []
-        msg_trainid = []
         for channel in np.arange(self._n_channels):
             d = self._data[channel]['header_train_id']
             res.append([len(d[seq]) for seq in range(self._n_sequences)])
-
-            #msg_temp = ["\n(trainId: {} ... {}"
-            #msg_temp.append(",\n" + " "*10 +
-            msg_temp = ["{} ... {}"
-                        .format(d[0][self._usable_start], d[0][-1])]
-            for seq in range(1, self._n_sequences):
-                msg_temp.append("{} ... {}".format(d[seq][0], d[seq][-1]))
-
-            msg_trainid.append(msg_temp)
 
         assert_failed = False
         msg = ""
@@ -338,12 +340,19 @@ class SanityChecks(unittest.TestCase):
                 assert_failed = True
                 msg += ("\nNot all modules have the same number of trains "
                         "for seq {}".format(seq))
-                for ch in range(self._n_channels):
-                    msg += "\nChannel {:02}: {}".format(ch, res[ch, seq])
 
-                    msg += "\t(trainid: "
-                    msg += msg_trainid[ch][seq]
-                    msg += ")"
+                if self._detail_level == 1:
+                    for ch in range(self._n_channels):
+                        d = self._data[channel]['header_train_id']
+                        msg += "\nChannel {:02}: {}".format(ch, res[ch, seq])
+
+                        msg += "\t(trainid: "
+                        if seq == 0:
+                            msg += ("{} ... {}"
+                                    .format(d[0][self._usable_start], d[0][-1]))
+                        else:
+                            msg += "{} ... {}".format(d[seq][0], d[seq][-1])
+                        msg += ")"
 
         # for clarity only print one error message for all sequences
         if assert_failed:
@@ -355,8 +364,10 @@ class SanityChecks(unittest.TestCase):
         in 'header' (per module and per seq)
         """
 
+        if self._detail_level == 1:
+            msg = "Dimensions in header are not the same for:"
+
         assert_failed = False
-        msg = "Dimensions in header are not the same for:"
         for channel in range(self._n_channels):
             for seq in range(self._n_sequences):
                 fname = self._file_raw_temp.format(channel, seq)
@@ -378,9 +389,11 @@ class SanityChecks(unittest.TestCase):
                     self.assertEqual(len(unique), 1)
                 except AssertionError:
                     assert_failed = True
-                    dims = dict(zip(keys, res))
-                    msg += ("\nChannel {:02}, sep {} (dimensions are {})"
-                            .format(channel, seq, dims))
+
+                    if self._detail_level == 1:
+                        dims = dict(zip(keys, res))
+                        msg += ("\nChannel {:02}, sep {} (dimensions are {})"
+                                .format(channel, seq, dims))
 
         # for clarity only print one error message for all sequences
         if assert_failed:
@@ -392,8 +405,10 @@ class SanityChecks(unittest.TestCase):
         in 'image' (per module and per seq)"
         """
 
+        if self._detail_level == 1:
+            msg = "Dimensions in image are not the same for: "
+
         assert_failed = False
-        msg = "Dimensions in image are not the same for: "
         for channel in range(self._n_channels):
             for seq in range(self._n_sequences):
                 fname = self._file_raw_temp.format(channel, seq)
@@ -415,9 +430,11 @@ class SanityChecks(unittest.TestCase):
                     self.assertEqual(len(unique), 1)
                 except AssertionError:
                     assert_failed = True
-                    dims = dict(zip(keys, res))
-                    msg += ("\nChannel {:02}, sep {} (dimensions are {})"
-                            .format(channel, seq, dims))
+
+                    if self._detail_level == 1:
+                        dims = dict(zip(keys, res))
+                        msg += ("\nChannel {:02}, sep {} (dimensions are {})"
+                                .format(channel, seq, dims))
 
         # for clarity only print one error message for all sequences
         if assert_failed:
@@ -429,8 +446,10 @@ class SanityChecks(unittest.TestCase):
         'trailer' (per module and per seq)"
         """
 
+        if self._detail_level == 1:
+            msg = "Dimensions in trailer are not the same for:"
+
         assert_failed = False
-        msg = "Dimensions in trailer are not the same for:"
         for channel in range(self._n_channels):
             for seq in range(self._n_sequences):
                 fname = self._file_raw_temp.format(channel, seq)
@@ -452,9 +471,11 @@ class SanityChecks(unittest.TestCase):
                     self.assertEqual(len(unique), 1)
                 except AssertionError:
                     assert_failed = True
-                    dims = dict(zip(keys, res))
-                    msg = ("\nChannel {:02}, sep {} (dimensions are {})"
-                           .format(channel, seq, dims))
+
+                    if self._detail_level == 1:
+                        dims = dict(zip(keys, res))
+                        msg = ("\nChannel {:02}, sep {} (dimensions are {})"
+                               .format(channel, seq, dims))
 
         # for clarity only print one error message for all sequences
         if assert_failed:
@@ -464,6 +485,7 @@ class SanityChecks(unittest.TestCase):
         """
         Checks if the first train id value is equal for all modules
         """
+        msg = ""
 
         first_train_ids = [d['header_train_id'][0][self._usable_start + 0]
                            for d in data]
@@ -471,10 +493,11 @@ class SanityChecks(unittest.TestCase):
 
         diff_first_train = np.where(first_train_ids != train_id_start)[0]
 
-        msg = ("\nChannels with shifted first train id: {}\n"
-               .format(diff_first_train))
-        for i, train_id in enumerate(first_train_ids):
-            msg += "channel {:02}: {}\n".format(i, train_id)
+        if self._detail_level == 1:
+            msg = ("\nChannels with shifted first train id: {}\n"
+                   .format(diff_first_train))
+            for i, train_id in enumerate(first_train_ids):
+                msg += "channel {:02}: {}\n".format(i, train_id)
 
         unique = np.unique(first_train_ids)
         self.assertEqual(len(unique), 1, msg)
@@ -502,9 +525,11 @@ class SanityChecks(unittest.TestCase):
                     self.assertTrue(res)
                 except AssertionError:
                     assert_failed = True
-                    msg = ("\nTrainIds from detector, header and trailer do "
-                           "not match for channel {:02}, seq {}"
-                           .format(channel, seq))
+
+                    if self._detail_level == 1:
+                        msg = ("\nTrainIds from detector, header and trailer "
+                               "do not match for channel {:02}, seq {}"
+                               .format(channel, seq))
 
         # for clarity only print one error message for all sequences
         if assert_failed:
@@ -516,9 +541,11 @@ class SanityChecks(unittest.TestCase):
         data
         """
 
+        if self._detail_level == 1:
+            msg = ("\nPulseCount and data shape do not match for the following\n"
+                   "channels and sequences (pulseCount sum vs data shape):")
+
         assert_failed = False
-        msg = ("\nPulseCount and data shape do not match for the following\n"
-               "channels and sequences (pulseCount sum vs data shape):")
         for channel in range(self._n_channels):
             for seq in range(self._n_sequences):
                 d = self._data[channel]['pulse_count'][seq]
@@ -535,9 +562,11 @@ class SanityChecks(unittest.TestCase):
                     self.assertEqual(n_total_pulses, data_shape[0])
                 except AssertionError:
                     assert_failed = True
-                    msg += ("\nChannel {:02}, sequence {} ({} vs {})"
-                            .format(channel, seq, n_total_pulses,
-                                    data_shape[0]))
+
+                    if self._detail_level == 1:
+                        msg += ("\nChannel {:02}, sequence {} ({} vs {})"
+                                .format(channel, seq, n_total_pulses,
+                                        data_shape[0]))
 
         # for clarity only print one error message for all channels and
         # sequences
@@ -549,9 +578,11 @@ class SanityChecks(unittest.TestCase):
         Checks if the trainId is monotonically increasing
         """
 
+        if self._detail_level == 1:
+            msg = ("\nTrainId is not monotonically increasing for the "
+                   "following channels and sequences")
+
         assert_failed = False
-        msg = ("\nTrainId is not monotonically increasing for the following "
-               "channels and sequences")
         for channel in range(self._n_channels):
             for seq in range(self._n_sequences):
                 train_id = self._data[channel]['header_train_id'][seq]
@@ -565,8 +596,10 @@ class SanityChecks(unittest.TestCase):
                     self.assertTrue(np.all(diff > 0))
                 except AssertionError:
                     assert_failed = True
-                    msg += ("\nChannel {:02}, sequence {}"
-                            .format(channel, seq))
+
+                    if self._detail_level == 1:
+                        msg += ("\nChannel {:02}, sequence {}"
+                                .format(channel, seq))
 
         # for clarity only print one error message for all channels and
         # sequences
@@ -597,8 +630,10 @@ class SanityChecks(unittest.TestCase):
                 self.assertEqual(len(unique), 1)
             except AssertionError:
                 assert_failed = True
-                msg += ("\nSequence {} has not the same number of trailing "
-                        "zeros for all channels\n({})".format(seq, r))
+
+                if self._detail_level == 1:
+                    msg += ("\nSequence {} has not the same number of trailing "
+                            "zeros for all channels\n({})".format(seq, r))
 
         # for clarity only print one error message for all sequences
         if assert_failed:
@@ -609,9 +644,11 @@ class SanityChecks(unittest.TestCase):
         Checks if trainId contains zeros which are not at the end
         """
 
+        if self._detail_level == 1:
+            msg = ("\nTrainid contains zeros which are not at the end for "
+                   "following channels and sequences:")
+
         assert_failed = False
-        msg = ("\nTrainid contains zeros which are not at the end for "
-               "following channels and sequences:")
         for ch, _ in enumerate(data):
             d = data[ch]['header_train_id']
 
@@ -625,7 +662,9 @@ class SanityChecks(unittest.TestCase):
                     self.assertEqual(non_consecutive_idx.size, 0)
                 except AssertionError:
                     assert_failed = True
-                    msg += ("\nChannel {:02}, seq {}".format(ch, seq))
+
+                    if self._detail_level == 1:
+                        msg += ("\nChannel {:02}, seq {}".format(ch, seq))
 
         # for clarity only print one error message for all channels and
         # sequences
@@ -639,7 +678,10 @@ class SanityChecks(unittest.TestCase):
         # If there is massive train loss this gives the option to investigate
         # the train loss indices
         # but by default the trainIDs are not displayed (for massive train loss)
-        show_idx_in_short_msg = False
+        if self._detail_level == 2:
+            show_idx_in_short_msg = True
+        else:
+            show_idx_in_short_msg = False
 
         assert_failed = False
         msg = ""
@@ -672,12 +714,14 @@ class SanityChecks(unittest.TestCase):
                     self.assertEqual(train_loss_idx.size, 0, msg)
                 except AssertionError:
                     assert_failed = True
-                    msg += (
-                        "\nChannel {:02}, seq {}: Train loss found at indices:"
-                        .format(ch, seq)
-                    )
 
-                    if show_idx_in_short_msg:
+                    if self._detail_level == 1:
+                        msg += (
+                            "\nChannel {:02}, seq {}: Train loss found at indices:"
+                            .format(ch, seq)
+                        )
+
+                    elif self._detail_level == 2:
                         msg_tmp[ch] += (
                             "\nseq {}: Train loss found at indices:"
                             .format(seq)
@@ -699,9 +743,9 @@ class SanityChecks(unittest.TestCase):
                             m = ("\nidx {}: ... {} ..."
                                  .format(idx_o, str(d[start:stop])[1:-1]))
 
-                        msg += m
-
-                        if show_idx_in_short_msg and i < 3:
+                        if self._detail_level == 1:
+                            msg += m
+                        elif self._detail_level == 2 and i < 3:
                             msg_tmp[ch] += m
 
                         n_trains_lost[ch] += diff[idx] - 1
@@ -712,11 +756,13 @@ class SanityChecks(unittest.TestCase):
                         self.assertEqual(last_seq + 1, d_no_zeros[0])
                     except AssertionError:
                         assert_failed = True
-                        msg += ("\nChannel {:02}: Train loss found between "
-                               "sequences {} and {}\n"
-                               .format(ch, seq - 1, seq))
-                        msg += ("(end of seq {}: {}, start of seq {}: {})"
-                                .format(seq - 1, last_seq, seq, d_no_zeros[0]))
+
+                        if sefl._detail_level == 1:
+                            msg += ("\nChannel {:02}: Train loss found between "
+                                   "sequences {} and {}\n"
+                                   .format(ch, seq - 1, seq))
+                            msg += ("(end of seq {}: {}, start of seq {}: {})"
+                                    .format(seq - 1, last_seq, seq, d_no_zeros[0]))
 
                         n_trains_lost[ch] += d_no_zeros[0] - last_seq - 1
 
@@ -732,7 +778,7 @@ class SanityChecks(unittest.TestCase):
                 # This overwrites msg
                 short_msg = ""
 
-                if show_idx_in_short_msg:
+                if self._detail_level == 2:
                     for ch in range(self._n_channels):
                         short_msg += ("\nChannel {:02}:".format(ch))
                         if msg_tmp[ch]:
@@ -742,20 +788,23 @@ class SanityChecks(unittest.TestCase):
 
                     short_msg += "\n\n"
 
-                short_msg += "Train loss found for:"
-                for ch in n_trains_lost:
-                    short_msg += ("\nChannel {:02}: {}"
-                                  .format(ch, n_trains_lost[ch]))
+                if self._detail_level != 0:
+                    short_msg += "Train loss found for:"
+                    for ch in n_trains_lost:
+                        short_msg += ("\nChannel {:02}: {}"
+                                      .format(ch, n_trains_lost[ch]))
 
-                short_msg += ("\nTotal number of trains lost: {}"
-                              .format(n_trains_lost_total))
+                    short_msg += ("\nTotal number of trains lost: {}"
+                                  .format(n_trains_lost_total))
 
                 self.fail(short_msg)
             else:
-                msg += "\n\nTotal number of trains lost: {}".format(n_trains_lost_total)
-                for ch in n_trains_lost:
-                    if n_trains_lost[ch]:
-                        msg += "\nChannel {:02}: {}".format(ch, n_trains_lost[ch])
+                if self._detail_level != 0:
+                    msg += ("\n\nTotal number of trains lost: {}"
+                            .format(n_trains_lost_total))
+                    for ch in n_trains_lost:
+                        if n_trains_lost[ch]:
+                            msg += "\nChannel {:02}: {}".format(ch, n_trains_lost[ch])
 
                 self.fail(msg)
 
@@ -764,8 +813,10 @@ class SanityChecks(unittest.TestCase):
         Check if extra data entries are trailing zeros
         """
 
+        if self._detail_level == 1:
+            msg = "\nData containes extra data which is not zero for:"
+
         assert_failed = False
-        msg = "\nData containes extra data which is not zero for:"
         for channel in range(self._n_channels):
             for seq in range(self._n_sequences):
                 d = self._data[channel]['pulse_count'][seq]
@@ -788,8 +839,10 @@ class SanityChecks(unittest.TestCase):
                     self.assertTrue(not np.any(extra_data))
                 except AssertionError:
                     assert_failed = True
-                    msg += ("\nChannel {:02}, seq{} (number of zeros {})"
-                            .format(channel, seq, extra_data.shape[0]))
+
+                    if self._detail_level == 1:
+                        msg += ("\nChannel {:02}, seq{} (number of zeros {})"
+                                .format(channel, seq, extra_data.shape[0]))
 
         # for clarity only print one error message for all channels and
         # sequences
@@ -802,9 +855,10 @@ class SanityChecks(unittest.TestCase):
         data
         """
 
+        if self._detail_level == 1:
+            msg = "\nTrainId and data shape do not match for:"
+
         assert_failed = False
-        msg = ""
-        msg = ("\nTrainId and data shape do not match for:")
         for channel in range(self._n_channels):
             for seq in range(self._n_sequences):
                 fname = self._file_raw_temp.format(channel, seq)
@@ -821,9 +875,11 @@ class SanityChecks(unittest.TestCase):
                     self.assertEqual(train_id_shape[0], data_shape[0])
                 except AssertionError:
                     assert_failed = True
-                    msg += ("Channel {:02}, sequence {} ({} vs {})\n"
-                            .format(channel, seq, train_id_shape[0],
-                                    data_shape[0]))
+
+                    if self._detail_level == 1:
+                        msg += ("Channel {:02}, sequence {} ({} vs {})\n"
+                                .format(channel, seq, train_id_shape[0],
+                                        data_shape[0]))
 
         # for clarity only print one error message for all channels and
         # sequences
@@ -836,10 +892,11 @@ class SanityChecks(unittest.TestCase):
         the start and end of the train are of the same dimensions
         """
 
+        if self._detail_level == 1:
+            msg = ("\nNumber of train start and train end indices do not match "
+                   "for:")
+
         assert_failed = False
-        msg = ""
-        msg = ("\nNumber of train start and train end indices do not match "
-               "for:")
         for channel in range(self._n_channels):
             for seq in range(self._n_sequences):
                 len_first = len(self._data[channel]['image_first'][seq])
@@ -849,8 +906,10 @@ class SanityChecks(unittest.TestCase):
                     self.assertEqual(len_first, len_last)
                 except AssertionError:
                     assert_failed = True
-                    msg += ("Channel {:02}, sequence {} ({} vs {})\n"
-                            .format(channel, seq, len_first, len_last))
+
+                    if self._detail_level == 1:
+                        msg += ("Channel {:02}, sequence {} ({} vs {})\n"
+                                .format(channel, seq, len_first, len_last))
 
         # for clarity only print one error message for all channels and
         # sequences
@@ -861,9 +920,11 @@ class SanityChecks(unittest.TestCase):
         """
         Checks if all trains have the same number of pulses
         """
+
+        if self._detail_level == 1:
+            msg = "\nPulse loss found for:\n"
+
         assert_failed = False
-        msg = ""
-        msg = ("\nPulse loss found for:\n")
         for channel in range(self._n_channels):
             pulses = []
             for seq in range(self._n_sequences):
@@ -878,7 +939,9 @@ class SanityChecks(unittest.TestCase):
                 self.assertEqual(n_pulses_lost, 0)
             except AssertionError:
                 assert_failed = True
-                msg += ("Channel {:02}: {}\n".format(channel, n_pulses_lost))
+
+                if self._detail_level == 1:
+                    msg += "Channel {:02}: {}\n".format(channel, n_pulses_lost)
 
         # for clarity only print one error message for all channels and
         # sequences
@@ -985,6 +1048,7 @@ if __name__ == "__main__":
 
     beamtime = "{}/{}".format(instrument_cycle, bt)
     run = args.run
+    detail_level = args.detail_level
 
 #    itersuite = unittest.TestLoader().loadTestsFromTestCase(SanityChecks)
     itersuite = suite()
