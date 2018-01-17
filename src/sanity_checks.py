@@ -692,8 +692,12 @@ class SanityChecks(unittest.TestCase):
                             start = idx_o
                         stop = idx_o + 3
 
-                        m = ("\nidx {}: ... {} ..."
-                             .format(idx_o, str(d[start:stop])[1:-1]))
+                        if seq == 0:
+                            m = ("\nidx {}: ... {} ..."
+                                 .format(idx_o + self._usable_start, str(d[start:stop])[1:-1]))
+                        else:
+                            m = ("\nidx {}: ... {} ..."
+                                 .format(idx_o, str(d[start:stop])[1:-1]))
 
                         msg += m
 
@@ -731,7 +735,10 @@ class SanityChecks(unittest.TestCase):
                 if show_idx_in_short_msg:
                     for ch in range(self._n_channels):
                         short_msg += ("\nChannel {:02}:".format(ch))
-                        short_msg += msg_tmp[ch]
+                        if msg_tmp[ch]:
+                            short_msg += msg_tmp[ch]
+                        else:
+                            short_msg += " None"
 
                     short_msg += "\n\n"
 
