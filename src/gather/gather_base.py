@@ -53,12 +53,15 @@ class AgipdGatherBase():
             layout = XfelLayout
         else:
             layout = CfelLayout
-        self.layout = layout(self.in_fname,
-                             self.runs,
-                             self.use_interleaved,
-                             self.preprocessing_fname,
-                             self.max_part,
-                             self.asic)
+
+        self.layout = layout(
+            in_fname=self.in_fname,
+            runs=self.runs,
+            use_interleaved=self.use_interleaved,
+            preproc_fname=self.preprocessing_fname,
+            max_part=self.max_part,
+            asic=self.asic
+        )
 
         self.analog = None
         self.digital = None
@@ -139,7 +142,8 @@ class AgipdGatherBase():
         (self.n_memcells,
          self.n_frames_total,
          self.raw_shape,
-         self.data_path) = self.layout.initiate(self.n_rows, self.n_cols)
+         self.data_path) = self.layout.initiate(n_rows=self.n_rows,
+                                                n_cols=self.n_cols)
 
         self.define_needed_data_paths()
 
@@ -155,15 +159,6 @@ class AgipdGatherBase():
 
         self.target_shape = (-1, self.n_memcells, self.n_rows, self.n_cols)
         print("target shape:", self.target_shape)
-
-    def get_preproc_res(self):
-        if self.preprocessing_fname is None:
-            return {}
-        else:
-            config = configparser.RawConfigParser()
-            config.read(self.preprocessing_fname)
-
-            return cfel_optarg.parse_parameters(config)
 
     # to give classes which inherite from this class the possibility to define
     # file internal paths they need
@@ -235,13 +230,13 @@ class AgipdGatherBase():
                 excluded = [self.data_path]
                 file_content = utils.load_file_content(fname, excluded)
 
-                self.layout.load(fname,
-                                 i,
-                                 load_idx_rows,
-                                 load_idx_cols,
-                                 file_content,
-                                 tmp_data,
-                                 self.pos_idxs)
+                self.layout.load(fname=fname,
+                                 seq=i,
+                                 load_idx_rows=load_idx_rows,
+                                 load_idx_cols=load_idx_cols,
+                                 file_content=file_content,
+                                 tmp_data=tmp_data,
+                                 pos_idxs=self.pos_idxs)
 
                 self.metadata[fname] = file_content
 
