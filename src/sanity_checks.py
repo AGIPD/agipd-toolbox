@@ -328,14 +328,15 @@ class SanityChecks(unittest.TestCase):
             tmp = []
             lidx_tmp =[]
             for seq in range(self._n_sequences):
+                # instead of getting the length of d (without the trailing
+                # zeros) just getting the index of the last entry with content
                 last_idx = np.squeeze(np.where(d[seq] != 0))[-1]
 
                 lidx_tmp.append(last_idx)
-                tmp.append(len(d[seq][:last_idx]))
+                tmp.append(last_idx + 1)
 
             last_idxs.append(lidx_tmp)
             res.append(tmp)
-#            res.append([len(d[seq]) for seq in range(self._n_sequences)])
 
         assert_failed = False
         msg = ""
