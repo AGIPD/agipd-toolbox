@@ -153,7 +153,7 @@ class Analyse():
 
         return fdir, fname
 
-    def generate_preproc_path(self, base_dir):
+    def generate_preproc_path(self, base_dir, as_template=False):
         if self.use_xfel_in_format:
             if self.meas_type == "pcdrs" or len(self.runs) == 1:
                 run_subdir = "r" + "-r".join(str(r).zfill(4)
@@ -162,13 +162,20 @@ class Analyse():
             else:
                 print("WARNING: generate_preproc_path is running in 'else'. Why?")
                 print("self.runs={}".format(self.runs))
-                run_subdir = "r{:04}".fomrat(self.runs[0])
+                run_subdir = "r{:04}".format(self.runs[0])
 
-            fdir = os.path.join(base_dir,
-                                self.meas_type,
-                                run_subdir)
+            if as_template:
+                fdir = os.path.join(base_dir,
+                                    self.meas_type,
+                                    "r{run:04}")
 
-            fname = "R{:04}-preprocessing.result".format(self.runs[0])
+                fname = "R{run:04}-preprocessing.result"
+            else:
+                fdir = os.path.join(base_dir,
+                                    self.meas_type,
+                                    run_subdir)
+
+                fname = "R{:04}-preprocessing.result".format(self.runs[0])
 
         else:
             print("Preprocessing not implemented for CFEL layout")
@@ -348,7 +355,7 @@ class Analyse():
 
         # define preprocess files
         preproc_dir, preproc_file_name = (
-            self.generate_preproc_path(self.out_base_dir)
+            self.generate_preproc_path(self.out_base_dir, as_template=True)
         )
         if preproc_dir is not None:
             preproc_fname = os.path.join(preproc_dir, preproc_file_name)

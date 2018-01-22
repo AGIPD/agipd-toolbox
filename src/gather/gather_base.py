@@ -231,6 +231,7 @@ class AgipdGatherBase():
                 file_content = utils.load_file_content(fname, excluded)
 
                 self.layout.load(fname=fname,
+                                 run_idx=run_idx,
                                  seq=i,
                                  load_idx_rows=load_idx_rows,
                                  load_idx_cols=load_idx_cols,
@@ -285,6 +286,11 @@ if __name__ == "__main__":
                                 "r{run_number:04}",
                                 in_file_name)
 
+        preproc_fname = os.path.join(base_path,
+                                     subdir,
+                                     run_subdir,
+                                     "R{}-preprocessing.result")
+
         for runs in run_list:
             run_subdir = "r" + "-r".join(runs)
             out_dir = os.path.join(base_path,
@@ -292,12 +298,6 @@ if __name__ == "__main__":
                                    run_subdir,
                                    "gather")
             utils.create_dir(out_dir)
-
-            preproc_fname = os.path.join(base_path,
-                                         subdir,
-                                         run_subdir,
-                                         "{}-preprocessing.result"
-                                         .format(run_subdir.upper()))
 
             out_file_name = ("{}-AGIPD{:02}-gathered.h5"
                              .format(run_subdir.upper(), channel))

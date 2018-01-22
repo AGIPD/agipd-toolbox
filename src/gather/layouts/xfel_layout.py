@@ -28,14 +28,14 @@ class XfelLayout():
                  max_part=False,
                  asic=None):
 
-        self.in_fname = in_fname
-        self.runs = runs
-        self.use_interleaved = use_interleaved
-        self.preprocessing_fname = preproc_fname
-        self.max_part = max_part
-        self.asic = asic
+        self._in_fname = in_fname
+        self._runs = runs
+        self._use_interleaved = use_interleaved
+        self._preprocessing_fname = preproc_fname
+        self._max_part = max_part
+        self._asic = asic
 
-        self.path_temp = {
+        self._path_temp = {
             'status': "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/status",
             'image_first': ("INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
                             "image/first"),
@@ -47,93 +47,132 @@ class XfelLayout():
 
         }
 
-        self.path = {}
+        self._path = {}
 
-    def get_preproc_res(self):
-        if self.preprocessing_fname is None:
+        self._channel = None
+
+        self._train_pos_per_run = [[] for i in range(len(self._runs))]
+
+        self._n_memcells = None
+        self._raw_shape = None
+
+    def get_preproc_res(self, run):
+
+
+        if self._preprocessing_fname is None:
             return {}
         else:
+            fname = self._preprocessing_fname.format(run=run)
+
             config = configparser.RawConfigParser()
-            config.read(self.preprocessing_fname)
+            config.read(fname)
 
             return cfel_optarg.parse_parameters(config)
 
     def initiate(self, n_rows, n_cols):
+        """
 
-        self.preproc = self.get_preproc_res()
+        Keyword arguments:
+        n_rows -- number of rows of the detector
+        n_cols -- number of columns of the detector
+        """
 
-        self.n_memcells = self.preproc['general']['n_memcells']
-        if self.use_interleaved:
+        print("in_fname", self._in_fname)
+        split_tmp = self._in_fname.split("-")
+        self._channel = int(split_tmp[-2].split("AGIPD")[1])
+        print("channel", self._channel)
+
+        n_memcells_per_run = [[] for i in range(len(self._runs))]
+        n_trains_per_run = [[] for i in range(len(self._runs))]
+        for i, run in enumerate(self._runs):
+            preproc = self.get_preproc_res(run)
+
+            n_memcells_per_run[i] = preproc['general']['n_memcells']
+            n_trains_per_run[i] = preproc['general']['n_trains_total']
+
+            ch = 'channel{:02}'.format(self._channel)
+            self._train_pos_per_run[i] = preproc[ch]['train_pos']
+
+        self._n_memcells = max(n_memcells_per_run)
+        if self._use_interleaved:
             # TODO: should this go into the preprocessing?
-            # n_memcells has to be an odd number because every memory cell
+            # _n_memcells has to be an odd number because every memory cell
             # need analog and digital data
-            if self.n_memcells % 2 != 0:
-                self.n_memcells += 1
+            if self._n_memcells % 2 != 0:
+                self._n_memcells += 1
 
-            self.n_memcells = self.n_memcells // 2
+            self._n_memcells = self._n_memcells // 2
 
             # xfel format has swapped rows and cols
-            self.raw_shape = (self.n_memcells, 2, 2,
-                              n_cols, n_rows)
+            self._raw_shape = (self._n_memcells, 2, 2,
+                               n_cols, n_rows)
         else:
-            self.raw_shape = (self.n_memcells, 2,
-                              n_cols, n_rows)
+            self._raw_shape = (self._n_memcells, 2,
+                               n_cols, n_rows)
+        print("Number of memory cells found", self._n_memcells)
 
-        print("in_fname", self.in_fname)
-        print("Number of memory cells found", self.n_memcells)
+        n_frames_total = max(n_trains_per_run) * self._n_memcells
+        print("n_frames_total", n_frames_total)
 
-        split_tmp = self.in_fname.split("-")
-        self.channel = int(split_tmp[-2].split("AGIPD")[1])
-        print("channel", self.channel)
+        for key in self._path_temp:
+            self._path[key] = self._path_temp[key].format(self._channel)
 
-        self.n_frames_total = (self.preproc['general']['n_trains_total'] *
-                               self.n_memcells)
-        print("n_frames_total", self.n_frames_total)
-
-        ch = 'channel{:02}'.format(self.channel)
-        self.train_pos = self.preproc[ch]['train_pos']
-
-        for key in self.path_temp:
-            self.path[key] = self.path_temp[key].format(self.channel)
-
-        return (self.n_memcells,
-                self.n_frames_total,
-                self.raw_shape,
-                self.path['data'])
+        return (self._n_memcells,
+                n_frames_total,
+                self._raw_shape,
+                self._path['data'])
 
     def load(self,
              fname,
+             run_idx,
              seq,
              load_idx_rows,
              load_idx_cols,
              file_content,
              tmp_data,
              pos_idxs):
+        """Load the data.
+
+        Keyword arguments:
+        fname -- the name of the file containing the data to be loaded
+        run_idx -- the run currently looked at (not the actual run number but
+                   the index in the overall run list). This is needed to get
+                   the corresponding preprocessing information
+        seq -- the sequence number to be loaded
+        load_idx_rows --
+        load_idx_cols --
+        file_content -- all metadata in corresponding to the data
+        tmp_data -- array where the data is stored into
+        pos_idxs -- which data parts should be loaded (shich columns and rows),
+                    load and store positions are the same
+        """
+
+        train_pos = self._train_pos_per_run[run_idx]
 
         f = None
         try:
             f = h5py.File(fname, "r")
-            raw_data = f[self.path['data']][()]
+            raw_data = f[self._path['data']][()]
 
-            status = np.squeeze(f[self.path['status']][()]).astype(np.int)
-            first = np.squeeze(f[self.path['image_first']][()]).astype(np.int)
-            last = np.squeeze(f[self.path['image_last']][()]).astype(np.int)
-            cellid = np.squeeze(f[self.path['cellid']][()]).astype(np.int)
+            status = np.squeeze(f[self._path['status']][()]).astype(np.int)
+            first = np.squeeze(f[self._path['image_first']][()]).astype(np.int)
+            last = np.squeeze(f[self._path['image_last']][()]).astype(np.int)
+            cellid = np.squeeze(f[self._path['cellid']][()]).astype(np.int)
         finally:
             if f is not None:
                 f.close()
 
         print("raw_data.shape", raw_data.shape)
-        print("self.raw_shape", self.raw_shape)
+        print("self._raw_shape", self._raw_shape)
 
-        if self.use_interleaved:
+        if self._use_interleaved:
             # currently the splitting in digital and analog does not work
             # for XFEL
             # -> all data is in the first entry of the analog/digital
             #    dimension
             raw_data = raw_data[:, 0, ...]
 
-        raw_data = utils.convert_to_agipd_format(self.channel, raw_data)
+        raw_data = utils.convert_to_agipd_format(self._channel, raw_data)
 
         last_index = np.squeeze(np.where(status != 0))[-1]
         print("last_index", last_index)
@@ -142,7 +181,7 @@ class XfelLayout():
             source_lidx = last[i] + 1
 
             # Get train position (taken care of train loss)
-            target_fidx = self.train_pos[seq][i] * self.n_memcells
+            target_fidx = train_pos[seq][i] * self._n_memcells
 
             # Detect pulse loss
             diff = np.diff(cellid[source_fidx:source_lidx])
@@ -158,8 +197,7 @@ class XfelLayout():
                 t_start = target_fidx + cellid[source_interval[0]]
                 t_stop = target_fidx + cellid[source_interval[1] - 1] + 1
                 target_interval = [t_start, t_stop]
-
-#                print("intervals", source_interval, target_interval)
+                #print(train_pos[seq][i], "interval", source_interval, "-", target_interval)
 
                 for index_set in pos_idxs:
                     pos_idx_rows = index_set[0]
