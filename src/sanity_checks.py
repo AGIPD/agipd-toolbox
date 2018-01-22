@@ -210,6 +210,7 @@ def setUpModule():
     path_temp = {
         'image_first': "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/first",
         'image_last': "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/last",
+#        'status': "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/status",
         'header': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header",
         'image': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image",
         'trailer': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/trailer",
@@ -236,6 +237,7 @@ def setUpModule():
                        'pulse_count',
                        'image_first',
                        'image_last']
+#                       'status']
 
     for dict_key in keys_to_read_in:
         for channel in np.arange(n_channels):
@@ -319,9 +321,21 @@ class SanityChecks(unittest.TestCase):
         """
 
         res = []
+        last_idxs = []
         for channel in np.arange(self._n_channels):
             d = self._data[channel]['header_train_id']
-            res.append([len(d[seq]) for seq in range(self._n_sequences)])
+
+            tmp = []
+            lidx_tmp =[]
+            for seq in range(self._n_sequences):
+                last_idx = np.squeeze(np.where(d[seq] != 0))[-1]
+
+                lidx_tmp.append(last_idx)
+                tmp.append(len(d[seq][:last_idx]))
+
+            last_idxs.append(lidx_tmp)
+            res.append(tmp)
+#            res.append([len(d[seq]) for seq in range(self._n_sequences)])
 
         assert_failed = False
         msg = ""
@@ -343,15 +357,16 @@ class SanityChecks(unittest.TestCase):
 
                 if self._detail_level == 1:
                     for ch in range(self._n_channels):
-                        d = self._data[channel]['header_train_id']
+                        d = self._data[ch]['header_train_id']
                         msg += "\nChannel {:02}: {}".format(ch, res[ch, seq])
 
                         msg += "\t(trainid: "
+                        last_idx = last_idxs[ch][seq]
                         if seq == 0:
                             msg += ("{} ... {}"
-                                    .format(d[0][self._usable_start], d[0][-1]))
+                                    .format(d[0][self._usable_start], d[0][last_idx]))
                         else:
-                            msg += "{} ... {}".format(d[seq][0], d[seq][-1])
+                            msg += "{} ... {}".format(d[seq][0], d[seq][last_idx])
                         msg += ")"
 
         # for clarity only print one error message for all sequences
