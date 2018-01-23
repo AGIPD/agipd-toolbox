@@ -52,10 +52,10 @@ description = {
     'test_data_tzeros':    ("Check if additional data entries are trailing zeros"),       # noqa E241
     'test_data_vs_tr_id':  ("Checks if the dimension of the image trainId is\n"           # noqa E241
                             "corresponding to the data)"),
-    'test_dim_first_last': ("Checks if the dimensions of the arrays providing the\n"
-                            "information about the start and end of the train are of\n"
+    'test_dim_first_last': ("Checks if the dimensions of the arrays providing the\n"      # noqa E241
+                            "information about the start and end of the train are of\n"   # noqa E241
                             "the same dimensions"),
-    'test_pulse_loss':     ("Checks if all trains have the same number of pulses")
+    'test_pulse_loss':     ("Checks if all trains have the same number of pulses")        # noqa E241
 }
 
 
@@ -151,7 +151,7 @@ def read_in_data(file_raw_temp,
     for seq in range(seq_start, seq_stop):
         fname = file_raw_temp.format(channel, seq)
 
-        f = h5py.File(fname, 'r')#, driver='core')
+        f = h5py.File(fname, 'r')
         read_in_data = f[read_in_path][()].astype(np.int)
         f.close()
 
@@ -258,6 +258,7 @@ def setUpModule():
         'n_pulses': None,
     }
 
+
 # for the whole module
 def tearDownModule():
     pass
@@ -326,7 +327,7 @@ class SanityChecks(unittest.TestCase):
             d = self._data[channel]['header_train_id']
 
             tmp = []
-            lidx_tmp =[]
+            lidx_tmp = []
             for seq in range(self._n_sequences):
                 # instead of getting the length of d (without the trailing
                 # zeros) just getting the index of the last entry with content
@@ -365,9 +366,11 @@ class SanityChecks(unittest.TestCase):
                         last_idx = last_idxs[ch][seq]
                         if seq == 0:
                             msg += ("{} ... {}"
-                                    .format(d[0][self._usable_start], d[0][last_idx]))
+                                    .format(d[0][self._usable_start],
+                                            d[0][last_idx]))
                         else:
-                            msg += "{} ... {}".format(d[seq][0], d[seq][last_idx])
+                            msg += "{} ... {}".format(d[seq][0],
+                                                      d[seq][last_idx])
                         msg += ")"
 
         # for clarity only print one error message for all sequences
@@ -558,8 +561,9 @@ class SanityChecks(unittest.TestCase):
         """
 
         if self._detail_level == 1:
-            msg = ("\nPulseCount and data shape do not match for the following\n"
-                   "channels and sequences (pulseCount sum vs data shape):")
+            msg = ("\nPulseCount and data shape do not match for the "
+                   "following\nchannels and sequences "
+                   "(pulseCount sum vs data shape):")
 
         assert_failed = False
         for channel in range(self._n_channels):
@@ -648,8 +652,9 @@ class SanityChecks(unittest.TestCase):
                 assert_failed = True
 
                 if self._detail_level == 1:
-                    msg += ("\nSequence {} has not the same number of trailing "
-                            "zeros for all channels\n({})".format(seq, r))
+                    msg += ("\nSequence {} has not the same number of "
+                            "trailing zeros for all channels\n({})"
+                            .format(seq, r))
 
         # for clarity only print one error message for all sequences
         if assert_failed:
@@ -691,13 +696,6 @@ class SanityChecks(unittest.TestCase):
         """
         Checks for missing entries in trainId
         """
-        # If there is massive train loss this gives the option to investigate
-        # the train loss indices
-        # but by default the trainIDs are not displayed (for massive train loss)
-        if self._detail_level == 2:
-            show_idx_in_short_msg = True
-        else:
-            show_idx_in_short_msg = False
 
         assert_failed = False
         msg = ""
@@ -732,11 +730,11 @@ class SanityChecks(unittest.TestCase):
                     assert_failed = True
 
                     if self._detail_level == 1:
-                        msg += (
-                            "\nChannel {:02}, seq {}: Train loss found at indices:"
-                            .format(ch, seq)
-                        )
+                        msg += ("\nChannel {:02}, seq {}: Train loss found at "
+                                "indices:".format(ch, seq))
 
+                    # If there is massive train loss this gives the option to
+                    # investigate the train loss indices
                     elif self._detail_level == 2:
                         msg_tmp[ch] += (
                             "\nseq {}: Train loss found at indices:"
@@ -754,7 +752,8 @@ class SanityChecks(unittest.TestCase):
 
                         if seq == 0:
                             m = ("\nidx {}: ... {} ..."
-                                 .format(idx_o + self._usable_start, str(d[start:stop])[1:-1]))
+                                 .format(idx_o + self._usable_start,
+                                         str(d[start:stop])[1:-1]))
                         else:
                             m = ("\nidx {}: ... {} ..."
                                  .format(idx_o, str(d[start:stop])[1:-1]))
@@ -773,12 +772,13 @@ class SanityChecks(unittest.TestCase):
                     except AssertionError:
                         assert_failed = True
 
-                        if sefl._detail_level == 1:
-                            msg += ("\nChannel {:02}: Train loss found between "
-                                   "sequences {} and {}\n"
-                                   .format(ch, seq - 1, seq))
+                        if self._detail_level == 1:
+                            msg += ("\nChannel {:02}: Train loss found "
+                                    "between sequences {} and {}\n"
+                                    .format(ch, seq - 1, seq))
                             msg += ("(end of seq {}: {}, start of seq {}: {})"
-                                    .format(seq - 1, last_seq, seq, d_no_zeros[0]))
+                                    .format(seq - 1, last_seq,
+                                            seq, d_no_zeros[0]))
 
                         n_trains_lost[ch] += d_no_zeros[0] - last_seq - 1
 
@@ -820,7 +820,8 @@ class SanityChecks(unittest.TestCase):
                             .format(n_trains_lost_total))
                     for ch in n_trains_lost:
                         if n_trains_lost[ch]:
-                            msg += "\nChannel {:02}: {}".format(ch, n_trains_lost[ch])
+                            msg += ("\nChannel {:02}: {}"
+                                    .format(ch, n_trains_lost[ch]))
 
                 self.fail(msg)
 
@@ -909,8 +910,8 @@ class SanityChecks(unittest.TestCase):
         """
 
         if self._detail_level == 1:
-            msg = ("\nNumber of train start and train end indices do not match "
-                   "for:")
+            msg = ("\nNumber of train start and train end indices do not "
+                   "match for:")
 
         assert_failed = False
         for channel in range(self._n_channels):
@@ -1073,4 +1074,3 @@ if __name__ == "__main__":
 
     if show_info:
         get_info(instrument_cycle, bt, run)
-
