@@ -51,7 +51,7 @@ class AgipdProcessBase():
         self.channel = int(in_fname.rsplit("/", 1)[1].split("AGIPD")[1][:2])
         self.in_wing2 = utils.located_in_wing2(self.channel)
 
-        print("\n\n\nStart process_dark")
+        print("\n\n\nStart process")
         print("in_fname = ", self.in_fname)
         print("out_fname = ", self.out_fname, "\n")
 
@@ -81,12 +81,47 @@ class AgipdProcessBase():
 
         self.write_data()
 
-        print('ProcessDark took time:  ', time.time() - total_time, '\n\n')
+        print('Process took time:  ', time.time() - total_time, '\n\n')
+
+    def get_mask(self, analog, digital):
+
+        # find out if the col was effected by frame loss
+        return (analog == 0)
+
+    def mask_out_problems(self, analog, digital, mask=None):
+
+        if mask is None:
+            mask = self.get_mask(analog, digital)
+
+        # remove the ones with frameloss
+        m_analog = np.ma.masked_array(data=analog, mask=mask)
+        m_digital = np.ma.masked_array(data=digital, mask=mask)
+
+        return m_analog, m_digital
 
     def calculate(self):
         pass
 
-    def fit_linear(self, x, y):
+    def fit_linear(self, x, y, mask=None):
+        if mask is None:
+            y_masked = y
+            x_masked = x
+        else:
+            y_masked = y[~mask]
+            x_masked = x[~mask]
+
+        number_of_points = len(x)
+        A = np.vstack([x_masked, np.ones(number_of_points)]).T
+
+        # lstsq returns: Least-squares solution (i.e. slope and offset),
+        #                residuals,
+        #                rank,
+        #                singular values
+        res = np.linalg.lstsq(A, y_masked)
+
+        return res
+
+    def fit_linear_old(self, x, y):
         # find out if the col was effected by frame loss
         lost_frames = np.where(y == 0)
         y[lost_frames] = np.NAN

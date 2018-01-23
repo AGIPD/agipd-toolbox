@@ -89,23 +89,35 @@ class AgipdProcessPcdrs(AgipdProcessBase):
     def calculate(self):
         analog, digital = self.load_data(self.in_fname)
 
+        mask = self.get_mask(analog=analog, digital=digital)
+
         self.determine_fit_intervals()
+        print("==0", np.where(analog[:, 0, 7, 0] == 0))
+        print("==0", np.where(analog[slice(*self.fit_interval[0]), 0, 7, 0] == 0))
+        print("==0", np.where(analog[slice(*self.fit_interval[1]), 0, 7, 0] == 0))
 
         print("Start fitting")
         for i in range(self.n_offsets):
+            fit_interval = self.fit_interval[i]
+            x = np.arange(*fit_interval)
+
             for mc in range(self.n_memcells):
                 print("gain stage {}, memcell {}".format(i, mc))
                 for ypix in range(self.n_ypixs):
                     for xpix in range(self.n_xpixs):
-                        try:
-                            x = np.arange(*self.fit_interval[i])
-                            y = analog[slice(*self.fit_interval[i]),
-                                       mc, ypix, xpix].astype(np.float)
-                            res = self.fit_linear(x, y)
 
-                            gain_mean = np.mean(
-                                digital[slice(*self.fit_interval[i]),
-                                        mc, ypix, xpix])
+                        try:
+                            y = analog[slice(*fit_interval),
+                                       mc, ypix, xpix]
+
+                            # mask out lost frames,...
+                            missing = mask[slice(*fit_interval),
+                                           mc, ypix, xpix]
+
+                            res = self.fit_linear(x, y, missing)
+
+                            gain_mean = np.mean(digital[slice(*fit_interval),
+                                                        mc, ypix, xpix])
 
                             result = self.result
                             idx = (i, mc, ypix, xpix)
