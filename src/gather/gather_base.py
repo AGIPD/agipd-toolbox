@@ -6,8 +6,6 @@ import time
 import glob
 import configparser
 
-from layouts.xfel_layout import XfelLayout
-from layouts.cfel_layout import CfelLayout
 
 try:
     CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -45,14 +43,16 @@ class AgipdGatherBase():
         self.asic = asic
         self.backing_store = backing_store
 
-        # to use the interleaved or not interleaved format
-        # self.use_interleaved = True
-        self.use_interleaved = False
-
         if use_xfel_format:
-            layout = XfelLayout
+            from layouts.xfel_layout import XfelLayout as layout
+
+            # to use the interleaved or not interleaved format
+            #self.use_interleaved = True
+            self.use_interleaved = False
+
         else:
-            layout = CfelLayout
+            from layouts.cfel_layout import CfelLayout as layout
+            self.use_interleaved = True
 
         self.layout = layout(
             in_fname=self.in_fname,
@@ -127,7 +127,7 @@ class AgipdGatherBase():
         # remove extension
         prefix = self.in_fname.rsplit(".", 1)[0]
         # removet the part section
-        prefix = prefix[:-10]
+        prefix = prefix[:-9]
         # use the first run number to determine number of parts
         run_number = self.runs[0]
         prefix = prefix.format(run_number=run_number)
@@ -261,15 +261,16 @@ class AgipdGatherBase():
 
 if __name__ == "__main__":
 
-    use_xfel_format = True
-    # use_xfel_format = False
+#    use_xfel_format = True
+    use_xfel_format = False
 
     if use_xfel_format:
         # base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
         # run_list = [["0428"], ["0429"], ["0430"]]
 
         base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
-        run_list = [["0709"]]
+        run_list = [["0819"]]
+        run_type = "dark"
         # run_list = [["0488"]]
 
         # base_path = "/gpfs/exfel/exp/SPB/201701/p002012"
@@ -280,29 +281,34 @@ if __name__ == "__main__":
         channel = 1
         in_file_name = ("RAW-R{run_number:04}-" +
                         "AGIPD{:02}".format(channel) +
-                        "-S{part:05d}.h5")
+                        "-S{part:05}.h5")
         in_fname = os.path.join(base_path,
                                 "raw",
                                 "r{run_number:04}",
                                 in_file_name)
-
-        preproc_fname = os.path.join(base_path,
-                                     subdir,
-                                     run_subdir,
-                                     "R{}-preprocessing.result")
+        print("in_fname", in_fname)
 
         for runs in run_list:
             run_subdir = "r" + "-r".join(runs)
             out_dir = os.path.join(base_path,
                                    subdir,
+                                   run_type,
                                    run_subdir,
                                    "gather")
             utils.create_dir(out_dir)
+
+            preproc_fname = os.path.join(base_path,
+                                         subdir,
+                                         run_type,
+                                         "r{run:04}",
+                                         "R{run:04}-preprocessing.result")
+            print("preproc_fname", preproc_fname)
 
             out_file_name = ("{}-AGIPD{:02}-gathered.h5"
                              .format(run_subdir.upper(), channel))
             out_fname = os.path.join(out_dir,
                                      out_file_name)
+            print("out_fname", out_fname)
 
             obj = AgipdGatherBase(in_fname=in_fname,
                                   out_fname=out_fname,
@@ -325,12 +331,12 @@ if __name__ == "__main__":
         in_subdir = "raw/315-304-309-314-316-306-307/temperature_m25C/dark"
         module = "M304_m2"
         runs = ["00012"]
-#        asic = None  # asic (None means full module)
-        asic = 1
+        asic = None  # asic (None means full module)
+#        asic = 1
 
         max_part = False
         out_base_path = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm"
-        out_subdir = "tmp"
+        out_subdir = "tmp/cfel"
         meas_type = "dark"
         meas_spec = {
             "dark": "tint150ns",
@@ -340,7 +346,7 @@ if __name__ == "__main__":
                         .format(module,
                                 meas_type,
                                 meas_spec[meas_type]) +
-                        "{run_number}_part{part:05d}.nxs")
+                        "{run_number:05}_part{part:05}.nxs")
         in_fname = os.path.join(in_base_path,
                                 in_subdir,
                                 in_file_name)
@@ -356,7 +362,7 @@ if __name__ == "__main__":
                                      meas_type,
                                      meas_spec[meas_type]))
         else:
-            out_file_name = ("{}_{}_{}_asic{:02d}.h5"
+            out_file_name = ("{}_{}_{}_asic{:02}.h5"
                              .format(module.split("_")[0],
                                      meas_type,
                                      meas_spec[meas_type],

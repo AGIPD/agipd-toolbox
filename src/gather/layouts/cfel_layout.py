@@ -29,12 +29,12 @@ class CfelLayout():
 
         self.in_fname = in_fname
         self.runs = runs
-        self.use_interleaved
+        self.use_interleaved = use_interleaved
         self.preprocessing_fname = preproc_fname
         self.max_part = max_part
         self.asic = asic
 
-    def initiate(self):
+    def initiate(self, n_rows, n_cols):
         self.data_path = "entry/instrument/detector/data"
         self.digital_data_path = "entry/instrument/detector/data_digital"
 
@@ -45,6 +45,9 @@ class CfelLayout():
         self.error_code_path = "{}/error_code".format(self.collection_path)
         self.frame_number_path = ("{}/frame_numbers"
                                   .format(self.collection_path))
+
+        self.n_rows = n_rows
+        self.n_cols = n_cols
 
 #        run_number = self.runs[0]
 #        fname = self.in_fname.format(run_number=run_number, part=0)
@@ -63,6 +66,11 @@ class CfelLayout():
         # xray
 #        self.max_pulses = 2
 #        self.n_memcells = 1
+
+        self.n_rows_total = 128
+        self.n_cols_total = 512
+
+        self.source_seq_number = [0]
 
         self.get_number_of_frames()
         print("n_frames_total {}".format(self.n_frames_total))
@@ -84,7 +92,7 @@ class CfelLayout():
 
         try:
             fname = self.in_fname.format(run_number=run_number, part=0)
-            f = h5py.File(fname, "r", libver="latest", drivers="core")
+            f = h5py.File(fname, "r", libver="latest", driver="core")
 
             # TODO: verify that the shape is always right and not
             #       dependant on frame loss
@@ -109,11 +117,16 @@ class CfelLayout():
 
     def load(self,
              fname,
+             run_idx,
              seq,
              load_idx_rows,
              load_idx_cols,
              file_content,
-             tmp_data):
+             tmp_data,
+             pos_idxs):
+
+        self.pos_idxs = pos_idxs
+
         # load data
         f = None
         try:
@@ -133,23 +146,25 @@ class CfelLayout():
                                self.target_index_full_size)
 
     def get_seq_number(self, source_seq_number):
+
         # if there is frame loss this is recognizable by a missing
         # entry in seq_number. seq_number should be loaded before
         # doing operations on it due to performance benefits
         seq_number_last_entry_previous_file = self.source_seq_number[-1]
-        self.source_seq_number = source_seq_number
 
         print("seq_number_last_entry_previous_file={}"
               .format(seq_number_last_entry_previous_file))
         print("seq_number before modifying: {}"
-              .format(self.source_seq_number))
-        self.seq_number = (self.source_seq_number
+              .format(source_seq_number))
+        self.seq_number = (source_seq_number
                            # seq_number starts counting with 1
                            - 1
                            # the seq_number refers to the whole run
                            # not one file
                            - seq_number_last_entry_previous_file)
         print("seq_number: {}".format(self.seq_number))
+
+        self.source_seq_number = source_seq_number
 
     def get_frame_loss_indices(self):
         # The borders (regarding the expected shape) of

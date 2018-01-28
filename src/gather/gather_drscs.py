@@ -73,7 +73,7 @@ if __name__ == "__main__":
         base_path = "/gpfs/exfel/exp/SPB/201730/p900009"
         run_list = [[488, 489, 490, 491, 492, 493, 494, 495]]
 
-        subdir = "scratch/user/kuhnm"
+        subdir = "scratch/user/kuhnm/tmp"
 
         number_of_runs = 1
         channels_per_run = 1
@@ -167,9 +167,9 @@ if __name__ == "__main__":
                                      asic))
         out_fname = os.path.join(out_dir, out_file_name)
 
-        AgipdGatherDrscs(in_fname,
-                         out_fname,
-                         runs,
-                         max_part,
-                         asic,
-                         use_xfel_format)
+        AgipdGatherDrscs(in_fname=in_fname,
+                         out_fname=out_fname,
+                         runs=runs,
+                         max_part=max_part,
+                         asic=asic,
+                         use_xfel_format=use_xfel_format)
