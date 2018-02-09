@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-
-export PYTHONPATH=${AGIPDCALIBRATION_INSTALLATION_DIR}
-
-
-
-
-
