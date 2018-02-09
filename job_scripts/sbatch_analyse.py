@@ -48,7 +48,12 @@ def get_arguments():
 
     parser.add_argument("--run_type",
                         type=str,
-                        choices=["gather", "process", "merge", "join", "all"],
+                        choices=["preprocess",
+                                 "gather",
+                                 "process",
+                                 "merge",
+                                 "join",
+                                 "all"],
                         help="Run type of the analysis")
     parser.add_argument("--no_slurm",
                         action="store_true",
@@ -60,7 +65,7 @@ def get_arguments():
     return args
 
 
-class SubmitJobs():
+class SubmitJobs(object):
     def __init__(self):
         global conf_dir
 
@@ -107,9 +112,14 @@ class SubmitJobs():
         self.run_list = args.run_list or self.config["general"]["run_list"]
 
         if self.use_xfel:
-            # convert str into list
-            self.module_list = self.config["general"]["channel"].split(" ")
+            if self.run_type == "preprocess":
+                self.module_list = ["0"]
+            else:
+                # convert str into list
+                self.module_list = self.config["general"]["channel"].split(" ")
             self.temperature = None
+
+            self.run_type_list = ["preprocess"] + self.run_type_list
         else:
             self.module_list = self.config["general"]["module"].split(" ")
             self.temperature = self.config["general"]["temperature"]
@@ -149,8 +159,10 @@ class SubmitJobs():
         self.input_dir["gather"] = args.input_dir or self.input_dir["gather"]
 
         for run_type in self.run_type_list:
-            if run_type != "gather" and args.output_dir is not None:
+            if (run_type not in ["preprocess", "gather"] and
+                    args.output_dir is not None):
                 self.input_dir[run_type] = args.output_dir
+
             self.output_dir[run_type] = (args.output_dir or
                                          self.output_dir[run_type])
 
@@ -234,6 +246,8 @@ class SubmitJobs():
 
             jobnums_type = []
             for run_type in self.run_type_list_per_module:
+                # if run_type == "preprocess":
+                #     run_list = self.run_list
                 if run_type == "gather" and self.measurement == "dark":
                     run_list = self.run_list
                 else:
@@ -241,16 +255,20 @@ class SubmitJobs():
 
                 dep_overview[module][run_type] = {}
 
+                print("run_type", run_type)
+                print("jobnums_type", jobnums_type)
                 dep_jobs = ":".join(jobnums_type)
                 for runs in run_list:
 
                     jn = self.create_job(run_type, runs, dep_jobs)
-                    jobnums_type.append(jn)
+                    if jn is not None:
+                        jobnums_type.append(jn)
 
                     if type(runs) == list:
                         runs_string = "-".join(list(map(str, runs)))
                     else:
                         runs_string = str(runs)
+
                     d_o = dep_overview[module][run_type]
                     d_o[runs_string] = {}
                     d_o[runs_string]["jobnum"] = jn
@@ -383,7 +401,7 @@ class SubmitJobs():
 
         elif self.measurement == "drscs":
             # comma seperated string into into list
-            current_list = [c.split()[0] for c in current.split(",")]
+            current_list = [c.split()[0] for c in self.meas_spec.split(",")]
 
             for current in current_list:
                 self.meas_spec = current
@@ -502,6 +520,7 @@ class SubmitJobs():
                     raise
 
             return jobnum
+
 
 if __name__ == "__main__":
     obj = SubmitJobs()

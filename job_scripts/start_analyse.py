@@ -65,7 +65,11 @@ def get_arguments():
     parser.add_argument("--run_type",
                         type=str,
                         required=True,
-                        choices=["gather", "process", "merge", "join"],
+                        choices=["preprocess",
+                                 "gather",
+                                 "process",
+                                 "merge",
+                                 "join"],
                         help="What type of run should be started")
     parser.add_argument("--type",
                         type=str,
@@ -171,7 +175,7 @@ def get_arguments():
     return args
 
 
-class StartAnalyse():
+class StartAnalyse(object):
     def __init__(self):
         args = get_arguments()
 
@@ -233,6 +237,35 @@ class StartAnalyse():
                     self.current_list,
                     self.use_xfel_in_format,
                     self.use_xfel_out_format)
+
+        elif self.run_type == "preprocess":
+            for run in self.run_list:
+                print("Starting script for run {}\n".format(run))
+
+                p = multiprocessing.Process(
+                    target=Analyse,
+                    args=(self.run_type,
+                          self.meas_type,
+                          self.in_base_dir,
+                          self.out_base_dir,
+                          self.n_processes,
+                          self.module,
+                          self.temperature,
+                          self.meas_spec,
+                          0,
+                          self.asic_list,
+                          self.safety_factor,
+                          [run],
+                          self.max_part,
+                          self.current_list,  # = None
+                          self.use_xfel_in_format,
+                          self.use_xfel_out_format)
+                )
+                jobs.append(p)
+                p.start()
+
+            for job in jobs:
+                job.join()
         else:
             for m in self.module:
                 for asic in self.asic_list:

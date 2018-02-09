@@ -36,23 +36,22 @@ def get_arguments():
     return args
 
 
-class ConvertFormat():
-    def __init__(self, input_fname, output_fname, output_format, channel,
+class ConvertFormat(object):
+    def __init__(self,
+                 input_fname,
+                 output_fname,
+                 output_format,
+                 channel,
                  key_list=None):
+
         self.input_fname = input_fname
         self.output_fname = output_fname
         self.output_format = output_format
         self.channel = channel
 
         if key_list is None:
-            f = None
-            try:
-                f = h5py.File(self.input_fname, "r")
-
+            with h5py.File(self.input_fname, "r") as f:
                 key_list = list(f.keys())
-            finally:
-                if f is not None:
-                    f.close()
 
             key_list.remove("collection")
             self.keys_to_convert = key_list
@@ -105,5 +104,8 @@ if __name__ == "__main__":
     output_fname = os.path.join(base_dir,
                                 output_filename.format(channel, output_format))
 
-    obj = ConvertFormat(input_fname, output_fname, output_format, channel)
+    obj = ConvertFormat(input_fname=input_fname,
+                        output_fname=output_fname,
+                        output_format=output_format,
+                        channel=channel)
     obj.run()

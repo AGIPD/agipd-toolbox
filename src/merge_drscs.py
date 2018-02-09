@@ -10,7 +10,7 @@ from parallel_process import integrate_result
 from multiprocessing import Pool
 
 
-class ParallelMerge():
+class ParallelMerge(object):
     def __init__(self, input_template, output_template, asic_list,
                  n_processes, current_list):
         self.input_template = input_template
@@ -65,7 +65,7 @@ def exec_merge(input_template, output_template, asic, current_list):
         obj.run()
 
 
-class MergeDrscs():
+class MergeDrscs(object):
     def __init__(self, cs_input_template, output_fname, asic, current_list):
 
         self.cs_input_template = cs_input_template
@@ -221,6 +221,7 @@ class MergeDrscs():
             print("took time: {}".format(time.time() - t))
         finally:
             output_file.close()
+
 
 if __name__ == "__main__":
     base_path = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/"

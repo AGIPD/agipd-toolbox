@@ -33,7 +33,7 @@ def get_arguments():
     return args
 
 
-class JoinConstants():
+class JoinConstants(object):
     def __init__(self, in_fname, out_fname):
         self.in_fname = in_fname
         self.out_fname = out_fname
@@ -51,10 +51,7 @@ class JoinConstants():
     def run(self):
         file_list = self.get_file_names()
 
-        f = None
-        try:
-            f = h5py.File(self.out_fname, "w")
-
+        with h5py.File(self.out_fname, "w") as f:
             # TODO change to automatic channel detection
             for channel, fname in enumerate(file_list):
 
@@ -68,9 +65,7 @@ class JoinConstants():
                                      data=file_content[key])
 
                 f.flush()
-        finally:
-            if f is not None:
-                f.close()
+
 
 if __name__ == "__main__":
     args = get_arguments()

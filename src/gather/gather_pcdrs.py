@@ -3,14 +3,27 @@ from gather_base import AgipdGatherBase
 
 
 class AgipdGatherPcdrs(AgipdGatherBase):
-    def __init__(self, input_fname, output_fname, runs, max_part=False,
-                 asic=None, use_xfel_format=False, backing_store=True):
+    def __init__(self,
+                 in_fname,
+                 out_fname,
+                 runs,
+                 preproc_fname=None,
+                 max_part=False,
+                 asic=None,
+                 use_xfel_format=False,
+                 backing_store=True):
 
         self.runs = runs
         self.n_runs = 8
 
-        super().__init__(input_fname, output_fname, runs, max_part,
-                         asic, use_xfel_format, backing_store)
+        super().__init__(in_fname=in_fname,
+                         out_fname=out_fname,
+                         runs=runs,
+                         preproc_fname=preproc_fname,
+                         max_part=max_part,
+                         asic=asic,
+                         use_xfel_format=use_xfel_format,
+                         backing_store=backing_store)
 
     def set_pos_indices(self, run_idx):
 
@@ -72,29 +85,29 @@ if __name__ == "__main__":
             for j in range(number_of_runs):
                 for i in range(channels_per_run):
                     channel = j * channels_per_run + i
-                    input_file_name = ("RAW-R{run_number:04d}-" +
-                                       "AGIPD{:02d}".format(channel) +
-                                       "-S{part:05d}.h5")
-                    input_fname = os.path.join(base_dir,
-                                               "raw",
-                                               "r{run_number:04d}",
-                                               input_file_name)
+                    in_file_name = ("RAW-R{run_number:04d}-" +
+                                    "AGIPD{:02d}".format(channel) +
+                                    "-S{part:05d}.h5")
+                    in_fname = os.path.join(base_dir,
+                                            "raw",
+                                            "r{run_number:04d}",
+                                            in_file_name)
 
                     run_subdir = "r" + "-r".join(str(r).zfill(4) for r in runs)
-                    output_dir = os.path.join(base_dir,
-                                              subdir,
-                                              run_subdir,
-                                              "gather")
-                    utils.create_dir(output_dir)
+                    out_dir = os.path.join(base_dir,
+                                           subdir,
+                                           run_subdir,
+                                           "gather")
+                    utils.create_dir(out_dir)
 
-                    output_file_name = ("{}-AGIPD{}-gathered.h5"
-                                        .format(run_subdir.upper(), channel))
-                    output_fname = os.path.join(output_dir,
-                                                output_file_name)
+                    out_file_name = ("{}-AGIPD{}-gathered.h5"
+                                     .format(run_subdir.upper(), channel))
+                    out_fname = os.path.join(out_dir,
+                                             out_file_name)
 
                     p = multiprocessing.Process(target=AgipdGatherPcdrs,
-                                                args=(input_fname,
-                                                      output_fname,
+                                                args=(in_fname,
+                                                      out_fname,
                                                       runs,
                                                       False,  # max_part
                                                       asic,

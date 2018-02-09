@@ -61,6 +61,10 @@ def is_xfel_format(data_shape):
         return False
 
 
+def as_nparray(data, type_):
+    return np.array(np.squeeze(data.astype(type_)))
+
+
 def convert_to_agipd_format(module, data):
 
     if isinstance(data, np.ndarray):
@@ -156,21 +160,17 @@ def load_file_content(fname, excluded=[]):
                     file_content[name].dtype == object):
                 file_content[name] = file_content[name].astype('S')
 
-    f = h5py.File(fname, "r")
-    f.visititems(get_file_content)
-    f.close()
+    with h5py.File(fname, "r") as f:
+        f.visititems(get_file_content)
 
     return file_content
 
 
 def write_content(fname, file_content, prefix="", excluded=[]):
-    f = h5py.File(fname, "w", libver="latest")
-
-    for key in file_content:
-        if key not in excluded:
-            f.create_dataset(prefix + "/" + key, data=file_content[key])
-
-    f.close()
+    with h5py.File(fname, "w", libver="latest") as f:
+        for key in file_content:
+            if key not in excluded:
+                f.create_dataset(prefix + "/" + key, data=file_content[key])
 
 
 def calculate_mapped_asic(self, asic_order):
@@ -274,18 +274,27 @@ def concatenate_to_module(data, row_axis=2, col_axis=1):
     return result
 
 
-# source: https://stackoverflow.com/questions/6027558/flatten-nested-python-dictionaries-compressing-keys  # noqa E725
 def flatten(d, parent_key='', sep='/'):
     # converts nested dictionary into flat one
     # e.g. {"a": {"n":1, "m":2}} -> {"a/n":1, "a/m":2}
 
     items = []
-    for k, v in d.items():
-        new_key = parent_key + sep + str(k) if parent_key else k
-        if isinstance(v, collections.MutableMapping):
-            items.extend(flatten(v, new_key, sep=sep).items())
+    for key, value in d.items():
+        if parent_key:
+            new_key = parent_key + sep + str(key)
         else:
-            items.append((new_key, v))
+            new_key = key
+
+        if isinstance(value, collections.MutableMapping):
+            f = flatten(value, new_key, sep=sep)
+            # extend is used in combination when working with iterables
+            # e.g.: x = [1, 2, 3];
+            #       x.append([4, 5]) -> [1, 2, 3, [4, 5]]
+            #       x.extend([4, 5]) -> [1, 2, 3, 4, 5]
+            items.extend(f.items())
+        else:
+            items.append((new_key, value))
+
     return dict(items)
 
 
