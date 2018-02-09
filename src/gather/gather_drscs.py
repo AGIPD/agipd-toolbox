@@ -19,22 +19,34 @@ import utils  # noqa E402
 
 
 class AgipdGatherDrscs(AgipdGatherBase):
-    def __init__(self, in_fname, out_fname, runs, max_part=False,
-                 asic=None, use_xfel_format=False, backing_store=True):
+    def __init__(self,
+                 in_fname,
+                 out_fname,
+                 runs,
+                 max_part=False,
+                 asic=None,
+                 use_xfel_format=False,
+                 backing_store=True):
 
         self.runs = runs
         self.n_runs = 4
 
-        super().__init__(in_fname, out_fname, runs, max_part,
-                         asic, use_xfel_format, backing_store)
+        super().__init__(in_fname=in_fname,
+                 out_fname=out_fname,
+                 runs=runs,
+                 preproc_fname=preproc_fname,
+                 max_part=max_part,
+                 asic=asic,
+                 use_xfel_format=use_xfel_format,
+                 backing_store=backing_store)
 
     def set_pos_indices(self, run_idx):
 
         pos_idxs = []
 
-        # column position at top rows
         if self.asic is not None:
 
+            # column position at top rows
             if self.a_row_start == 0:
                 start = (self.n_runs - 1) - run_idx
             else:
@@ -45,6 +57,9 @@ class AgipdGatherDrscs(AgipdGatherBase):
             pos_idx_cols = np.arange(start, self.n_cols, self.n_runs)
 
             pos_idxs.append([pos_idx_rows, pos_idx_cols])
+            # returns:
+            # [[all, [3, 7, 11, 15, ...]     # top half of the module
+            #  [all, [0, 4, 8, 12, ...]]     # bottom half of the module
 
         else:
             pos_idx_rows = slice(0, self.asic_size)

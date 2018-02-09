@@ -13,9 +13,15 @@ if SRC_PATH not in sys.path:
 import utils  # noqa E402
 
 
-class Correct():
-    def __init__(self, data_fname, dark_fname, gain_fname, output_fname,
-                 photon_energy, use_xfel_format=False):
+class Correct(object):
+    def __init__(self,
+                 data_fname,
+                 dark_fname,
+                 gain_fname,
+                 output_fname,
+                 photon_energy,
+                 use_xfel_format=False):
+
         self.data_fname = data_fname
         self.dark_fname = dark_fname
         self.gain_fname = gain_fname
@@ -49,19 +55,17 @@ class Correct():
     def get_dims(self):
         fname = self.data_fname
 
-        f = h5py.File(fname, "r")
+        with h5py.File(fname, "r") as f:
+            k = list(f[self.data_path_prefix].keys())[0]
+            self.base_path = os.path.join(self.data_path_prefix, k)
 
-        k = list(f[self.data_path_prefix].keys())[0]
-        self.base_path = os.path.join(self.data_path_prefix, k)
+            self.data_path = os.path.join(self.base_path,
+                                          self.data_path_postfix)
+            raw_data_shape = f[self.data_path].shape
 
-        self.data_path = os.path.join(self.base_path, self.data_path_postfix)
-        raw_data_shape = f[self.data_path].shape
-
-        self.pulse_count_path = os.path.join(self.base_path,
-                                             self.pulse_count_postfix)
-        self.n_memcells = f[self.pulse_count_path][0].astype(int) // 2
-
-        f.close()
+            self.pulse_count_path = os.path.join(self.base_path,
+                                                 self.pulse_count_postfix)
+            self.n_memcells = f[self.pulse_count_path][0].astype(int) // 2
 
         self.gain_path = os.path.join(self.base_path, self.gain_path_postfix)
 
@@ -82,10 +86,9 @@ class Correct():
         total_time = time.time()
 
         print("Start loading dark from", self.dark_fname)
-        f = h5py.File(self.dark_fname, "r")
-        self.offset = f["/offset"][()]
-        self.threshold = f["/threshold"][()]
-        f.close()
+        with h5py.File(self.dark_fname, "r") as f:
+            self.offset = f["/offset"][()]
+            self.threshold = f["/threshold"][()]
         print("Loading done")
 
         print("Start loading data from", self.data_fname)
@@ -180,6 +183,7 @@ class Correct():
 
         save_file.close()
         print("Saving done")
+
 
 if __name__ == "__main__":
     import multiprocessing

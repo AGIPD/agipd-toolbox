@@ -4,7 +4,6 @@ import os
 import sys
 import time
 import glob
-import configparser
 
 
 try:
@@ -22,7 +21,7 @@ import utils  # noqa E402
 import cfel_optarg  # noqa E402
 
 
-class AgipdGatherBase():
+class AgipdGatherBase(object):
     def __init__(self,
                  in_fname,
                  out_fname,
@@ -33,84 +32,83 @@ class AgipdGatherBase():
                  use_xfel_format=False,
                  backing_store=True):
 
-        self.in_fname = in_fname
-        self.out_fname = out_fname
-        self.preprocessing_fname = preproc_fname
+        self._in_fname = in_fname
+        self._out_fname = out_fname
 
         self.runs = [int(r) for r in runs]
 
-        self.max_part = max_part
-        self.asic = asic
-        self.backing_store = backing_store
+        self._max_part = max_part
+        self._asic = asic
+        self._backing_store = backing_store
 
         if use_xfel_format:
             from layouts.xfel_layout import XfelLayout as layout
 
             # to use the interleaved or not interleaved format
-            #self.use_interleaved = True
-            self.use_interleaved = False
+            # self._use_interleaved = True
+            self._use_interleaved = False
 
         else:
             from layouts.cfel_layout import CfelLayout as layout
-            self.use_interleaved = True
+            self._use_interleaved = True
 
         self.layout = layout(
-            in_fname=self.in_fname,
+            in_fname=self._in_fname,
             runs=self.runs,
-            use_interleaved=self.use_interleaved,
-            preproc_fname=self.preprocessing_fname,
-            max_part=self.max_part,
-            asic=self.asic
+            use_interleaved=self._use_interleaved,
+            preproc_fname=preproc_fname,
+            max_part=self._max_part,
+            asic=self._asic
         )
 
-        self.analog = None
-        self.digital = None
+        self._analog = None
+        self._digital = None
 
         self.raw_shape = None
-        self.tmp_shape = None
-        self.target_shape = None
+        self._raw_tmp_shape = None
+        self._tmp_shape = None
+        self._target_shape = None
 
-        self.target_index = None
-        self.target_index_full_size = None
-        self.source_index = None
-        self.source_seq_number = None
-        self.seq_number = None
-        self.max_pulses = None
+        self._data_path = None
 
-        self.n_rows_total = 128
-        self.n_cols_total = 512
+        self._n_rows_total = 128
+        self._n_cols_total = 512
 
-        self.asic_size = 64
+        self._asic_size = 64
 
-        self.a_row_start = None
-        self.a_row_stop = None
-        self.a_col_start = None
-        self.a_col_stop = None
+        self._a_row_start = None
+        self._a_row_stop = None
+        self._a_col_start = None
+        self._a_col_stop = None
+
+        # public to be used in inherited classes
+        self.n_rows = None
+        self.n_cols = None
 
         self.get_parts()
 
-        if self.n_parts == 0:
+        if self._n_parts == 0:
             msg = "No parts to gather found\n"
-            msg += "in_fname={}".format(self.in_fname)
+            msg += "in_fname={}".format(self._in_fname)
             raise Exception(msg)
 
-        if self.asic is None:
-            self.n_rows = self.n_rows_total
-            self.n_cols = self.n_cols_total
+        if self._asic is None:
+            self.n_rows = self._n_rows_total
+            self.n_cols = self._n_cols_total
         else:
-            print("asic {}".format(self.asic))
-            self.n_rows = self.asic_size
-            self.n_cols = self.asic_size
+            print("asic {}".format(self._asic))
+            self.n_rows = self._asic_size
+            self.n_cols = self._asic_size
 
             asic_order = utils.get_asic_order()
             mapped_asic = utils.calculate_mapped_asic(asic_order)
             print("mapped_asic={}".format(mapped_asic))
 
-            (self.a_row_start,
-             self.a_row_stop,
-             self.a_col_start,
-             self.a_col_stop) = utils.determine_asic_border(mapped_asic,
-                                                            self.asic_size)
+            (self._a_row_start,
+             self._a_row_stop,
+             self._a_col_start,
+             self._a_col_stop) = utils.determine_asic_border(mapped_asic,
+                                                             self._asic_size)
 
         self.intiate()
 
@@ -119,13 +117,13 @@ class AgipdGatherBase():
               "in_fname = {}\n"
               "out_fname ={}\n"
               "data_path = {}\n"
-              .format(self.in_fname,
-                      self.out_fname,
-                      self.data_path))
+              .format(self._in_fname,
+                      self._out_fname,
+                      self._data_path))
 
     def get_parts(self):
         # remove extension
-        prefix = self.in_fname.rsplit(".", 1)[0]
+        prefix = self._in_fname.rsplit(".", 1)[0]
         # removet the part section
         prefix = prefix[:-9]
         # use the first run number to determine number of parts
@@ -135,30 +133,30 @@ class AgipdGatherBase():
 
         part_files = glob.glob("{}*".format(prefix))
 
-        self.n_parts = self.max_part or len(part_files)
-        print("n_parts {}".format(self.n_parts))
+        self._n_parts = self._max_part or len(part_files)
+        print("n_parts {}".format(self._n_parts))
 
     def intiate(self):
-        (self.n_memcells,
-         self.n_frames_total,
+        (n_memcells,
+         n_frames_total,
          self.raw_shape,
-         self.data_path) = self.layout.initiate(n_rows=self.n_rows,
-                                                n_cols=self.n_cols)
+         self._data_path) = self.layout.initiate(n_rows=self.n_rows,
+                                                 n_cols=self.n_cols)
 
         self.define_needed_data_paths()
 
         # tmp data is already converted into agipd format
-        if self.use_interleaved:
-            self.raw_tmp_shape = (self.n_frames_total,
-                                  self.n_rows, self.n_cols)
+        if self._use_interleaved:
+            self._raw_tmp_shape = (n_frames_total,
+                                   self.n_rows, self.n_cols)
         else:
-            self.raw_tmp_shape = (self.n_frames_total, 2,
-                                  self.n_rows, self.n_cols)
+            self._raw_tmp_shape = (n_frames_total, 2,
+                                   self.n_rows, self.n_cols)
 
-        self.tmp_shape = (-1, self.n_memcells, 2, self.n_rows, self.n_cols)
+        self._tmp_shape = (-1, n_memcells, 2, self.n_rows, self.n_cols)
 
-        self.target_shape = (-1, self.n_memcells, self.n_rows, self.n_cols)
-        print("target shape:", self.target_shape)
+#        self._target_shape = (-1, n_memcells, self.n_rows, self.n_cols)
+#        print("target shape:", self._target_shape)
 
     # to give classes which inherite from this class the possibility to define
     # file internal paths they need
@@ -172,12 +170,10 @@ class AgipdGatherBase():
         self.load_data()
 
         print("Start saving")
-        print("out_fname = {}".format(self.out_fname))
-        f = None
-        try:
-            f = h5py.File(self.out_fname, "w", libver='latest')
-            f.create_dataset("analog", data=self.analog, dtype=np.int16)
-            f.create_dataset("digital", data=self.digital, dtype=np.int16)
+        print("out_fname = {}".format(self._out_fname))
+        with h5py.File(self._out_fname, "w", libver='latest') as f:
+            f.create_dataset("analog", data=self._analog, dtype=np.int16)
+            f.create_dataset("digital", data=self._digital, dtype=np.int16)
 
             # save metadata from original files
             idx = 0
@@ -198,19 +194,15 @@ class AgipdGatherBase():
             print("Saving done")
 
             f.flush()
-        finally:
-            if f is not None:
-                f.close()
 
         print("gather took time:", time.time() - totalTime, "\n\n")
 
     def load_data(self):
 
-        print("raw_tmp_shape", self.raw_tmp_shape)
-        tmp_data = np.zeros(self.raw_tmp_shape, dtype=np.int16)
+        print("raw_tmp_shape", self._raw_tmp_shape)
+        tmp_data = np.zeros(self._raw_tmp_shape, dtype=np.int16)
 
         self.metadata = {}
-        self.seq_number = None
 
         for run_idx, run_number in enumerate(self.runs):
             print("\n\nrun {}".format(run_number))
@@ -218,16 +210,15 @@ class AgipdGatherBase():
             self.pos_idxs = self.set_pos_indices(run_idx)
             print("pos_idxs", self.pos_idxs)
 
-            load_idx_rows = slice(self.a_row_start, self.a_row_stop)
-            load_idx_cols = slice(self.a_col_start, self.a_col_stop)
+            load_idx_rows = slice(self._a_row_start, self._a_row_stop)
+            load_idx_cols = slice(self._a_col_start, self._a_col_stop)
             print("load idx: {}, {}".format(load_idx_rows, load_idx_cols))
 
-            self.source_seq_number = [0]
-            for i in range(self.n_parts):
-                fname = self.in_fname.format(run_number=run_number, part=i)
+            for i in range(self._n_parts):
+                fname = self._in_fname.format(run_number=run_number, part=i)
                 print("loading file {}".format(fname))
 
-                excluded = [self.data_path]
+                excluded = [self._data_path]
                 file_content = utils.load_file_content(fname, excluded)
 
                 self.layout.load(fname=fname,
@@ -241,14 +232,14 @@ class AgipdGatherBase():
 
                 self.metadata[fname] = file_content
 
-        print("self.tmp_shape", self.tmp_shape)
+        print("self._tmp_shape", self._tmp_shape)
         print("tmp_data.shape", tmp_data.shape)
 
-        tmp_data.shape = self.tmp_shape
+        tmp_data.shape = self._tmp_shape
         print("tmp_data.shape", tmp_data.shape)
 
-        self.analog = tmp_data[:, :, 0, ...]
-        self.digital = tmp_data[:, :, 1, ...]
+        self._analog = tmp_data[:, :, 0, ...]
+        self._digital = tmp_data[:, :, 1, ...]
 
     def set_pos_indices(self, run_idx):
         pos_idx_rows = slice(None)
@@ -259,9 +250,10 @@ class AgipdGatherBase():
         # e.g. top half should use these cols and bottom half those ones
         return [[pos_idx_rows, pos_idx_cols]]
 
+
 if __name__ == "__main__":
 
-#    use_xfel_format = True
+    # use_xfel_format = True
     use_xfel_format = False
 
     if use_xfel_format:

@@ -59,7 +59,7 @@ def create_dir(directory_name):
                 pass
 
 
-class GenerateStats():
+class GenerateStats(object):
     def __init__(self, module, current, gather_template, process_template,
                  plot_prefix, plot_dir_template, n_processes, stat_fname,
                  no_plotting, no_over_plotting):
@@ -148,9 +148,8 @@ class GenerateStats():
 
     def determine_failed_pixels(self, process_fname, asic):
 
-        f = h5py.File(process_fname, "r")
-        error_code = f["/error_code"][()]
-        f.close()
+        with h5py.File(process_fname, "r") as f:
+            error_code = f["/error_code"][()]
 
         self.stats[asic] = dict()
 

@@ -19,7 +19,7 @@ if SRC_PATH not in sys.path:
 import utils  # noqa E402
 
 
-class PreprocessXfel():
+class PreprocessXfel(object):
     def __init__(self, in_fname, out_fname):
 
         self.in_fname = in_fname
@@ -72,9 +72,8 @@ class PreprocessXfel():
         fname = self.in_fname.format(channel, part=seq)
         read_in_path = self.path_temp['pulse_count'].format(channel)
 
-        f = h5py.File(fname, "r")
-        in_data = f[read_in_path][()].astype(np.int)
-        f.close()
+        with h5py.File(fname, "r") as f:
+            in_data = f[read_in_path][()].astype(np.int)
 
         return max(in_data)
 
@@ -97,16 +96,14 @@ class PreprocessXfel():
                 status_path = self.path_temp['status'].format(ch)
                 trainid_path = self.path_temp['header_trainid'].format(ch)
 
-                f = h5py.File(fname, "r")
+                with h5py.File(fname, "r") as f:
+                    # number of trains actually stored for this
+                    # channel + sequence
+                    s = f[status_path][()].astype(np.int)
+                    n_tr = len(np.squeeze(np.where(s != 0)))
 
-                # number of trains actually stored for this channel + sequence
-                s = f[status_path][()].astype(np.int)
-                n_tr = len(np.squeeze(np.where(s != 0)))
-
-                # do not read in the trailing zeros
-                tr = f[trainid_path][:n_tr].astype(np.int)
-
-                f.close()
+                    # do not read in the trailing zeros
+                    tr = f[trainid_path][:n_tr].astype(np.int)
 
                 trainids.append(tr)
 
@@ -204,6 +201,7 @@ class PreprocessXfel():
 
         with open(self.out_fname, 'w') as configfile:
             config.write(configfile)
+
 
 if __name__ == "__main__":
     run = 709

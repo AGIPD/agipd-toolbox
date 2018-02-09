@@ -241,7 +241,7 @@ def create_plots(mem_cell_list, colormap_matrix, plot_file_prefix, plot_ending,
             plt.close(fig)
 
 
-class CreateColormaps():
+class CreateColormaps(object):
     def __init__(self, input_template, output_template, module, current,
                  plot_dir, n_processes, gain_name, matrix_type, mem_cell_list,
                  individual_plots=False):

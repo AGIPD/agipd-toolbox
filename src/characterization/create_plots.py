@@ -62,6 +62,7 @@ def create_dir(directory_name):
             if os.path.isdir(directory_name):
                 pass
 
+
 if __name__ == "__main__":
 
     args = get_arguments()

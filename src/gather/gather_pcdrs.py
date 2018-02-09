@@ -13,7 +13,6 @@ class AgipdGatherPcdrs(AgipdGatherBase):
                  use_xfel_format=False,
                  backing_store=True):
 
-
         self.runs = runs
         self.n_runs = 8
 
@@ -99,7 +98,7 @@ if __name__ == "__main__":
                                            subdir,
                                            run_subdir,
                                            "gather")
-                    utils.create_dir(output_dir)
+                    utils.create_dir(out_dir)
 
                     out_file_name = ("{}-AGIPD{}-gathered.h5"
                                      .format(run_subdir.upper(), channel))

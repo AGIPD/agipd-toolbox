@@ -4,10 +4,7 @@ import os
 import sys
 import datetime
 import time
-# import numpy as np
-# from string import Template
 import glob
-import string
 
 import utils
 # from merge_drscs import ParallelMerge
@@ -28,7 +25,7 @@ if PROCESS_PATH not in sys.path:
     sys.path.insert(0, PROCESS_PATH)
 
 
-class Analyse():
+class Analyse(object):
     def __init__(self,
                  run_type,
                  meas_type,
@@ -160,7 +157,8 @@ class Analyse():
                                              for r in self.runs)
 
             else:
-                print("WARNING: generate_preproc_path is running in 'else'. Why?")
+                print("WARNING: generate_preproc_path is running in 'else'. "
+                      "Why?")
                 print("self.runs={}".format(self.runs))
                 run_subdir = "r{:04}".format(self.runs[0])
 
@@ -319,7 +317,11 @@ class Analyse():
         in_fname = os.path.join(in_dir, in_file_name)
         # partially substitute the string
         split = in_fname.rsplit("-AGIPD", 1)
-        in_fname = split[0].format(run_number=self.runs[0]) + "-AGIPD" + split[1]
+        in_fname = (
+            split[0].format(run_number=self.runs[0]) +
+            "-AGIPD" +
+            split[1]
+        )
 
         # define out files
         out_dir, out_file_name = self.generate_preproc_path(self.out_base_dir)

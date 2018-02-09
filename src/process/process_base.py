@@ -19,12 +19,14 @@ if SRC_PATH not in sys.path:
 import utils  # noqa E402
 
 
-class AgipdProcessBase():
+class AgipdProcessBase(object):
     def __init__(self, in_fname, out_fname, runs, use_xfel_format=False):
 
+        self._out_fname = out_fname
+        self._use_xfel_format = use_xfel_format
+
+        # public attributes for use in inherited classes
         self.in_fname = in_fname
-        self.out_fname = out_fname
-        self.use_xfel_format = use_xfel_format
 
         self.runs = runs
 
@@ -32,17 +34,9 @@ class AgipdProcessBase():
         self.n_rows = 128
         self.n_cols = 512
 
-#        n_xpixs = 128
-#        n_ypixs = 512
-
-        f = None
-        try:
-            in_fname = self.in_fname.format(run_number=self.runs[0])
-            f = h5py.File(in_fname, "r")
+        in_fname = self.in_fname.format(run_number=self.runs[0])
+        with h5py.File(in_fname, "r") as f:
             self.n_memcells = f["analog"].shape[1]
-        finally:
-            if f is not None:
-                f.close()
 
         self.shapes = {}
         self.result = {}
@@ -53,15 +47,14 @@ class AgipdProcessBase():
 
         print("\n\n\nStart process")
         print("in_fname = ", self.in_fname)
-        print("out_fname = ", self.out_fname, "\n")
+        print("out_fname = ", self._out_fname, "\n")
 
         self.run()
 
     def load_data(self, in_fname):
-        f = h5py.File(in_fname, "r")
-        analog = f["analog"][()]
-        digital = f["digital"][()]
-        f.close()
+        with h5py.File(in_fname, "r") as f:
+            analog = f["analog"][()]
+            digital = f["digital"][()]
 
         return analog, digital
 
@@ -76,7 +69,7 @@ class AgipdProcessBase():
 
         self.calculate()
 
-        if self.use_xfel_format:
+        if self._use_xfel_format:
             self.convert_to_xfel_format()
 
         self.write_data()
@@ -156,30 +149,28 @@ class AgipdProcessBase():
                                              self.shapes[key]))
 
     def write_data(self):
-        print("Start saving results at", self.out_fname)
+        print("Start saving results at", self._out_fname)
 
-        f = h5py.File(self.out_fname, "w", libver="latest")
+        with  h5py.File(self._out_fname, "w", libver="latest") as f:
+            for key in self.result:
+                f.create_dataset(self.result[key]["path"],
+                                 data=self.result[key]["data"],
+                                 dtype=self.result[key]["type"])
 
-        for key in self.result:
-            f.create_dataset(self.result[key]["path"],
-                             data=self.result[key]["data"],
-                             dtype=self.result[key]["type"])
+            # convert into unicode
+            if type(self.runs[0]) == str:
+                used_run_numbers = [run.encode('utf8') for run in self.runs]
+            else:
+                used_run_numbers = ["r{:04d}".format(run).encode('utf8')
+                                    for run in self.runs]
 
-        # convert into unicode
-        if type(self.runs[0]) == str:
-            used_run_numbers = [run.encode('utf8') for run in self.runs]
-        else:
-            used_run_numbers = ["r{:04d}".format(run).encode('utf8')
-                                for run in self.runs]
+            today = str(date.today())
+            metadata_base_path = "collection"
 
-        today = str(date.today())
-        metadata_base_path = "collection"
+            f.create_dataset("{}/run_number".format(metadata_base_path),
+                             data=used_run_numbers)
+            f.create_dataset("{}/creation_date".format(metadata_base_path),
+                             data=today)
 
-        f.create_dataset("{}/run_number".format(metadata_base_path),
-                         data=used_run_numbers)
-        f.create_dataset("{}/creation_date".format(metadata_base_path),
-                         data=today)
-
-        f.flush()
-        f.close()
+            f.flush()
         print("Saving done")

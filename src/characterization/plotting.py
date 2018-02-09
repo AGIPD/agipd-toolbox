@@ -69,8 +69,8 @@ def generate_failed_images_plot(data, plot_title, plot_name):
 
 def remove_legend_dubplicates():
     # Remove duplicates in legend
-    # https://stackoverflow.com/questions/26337493/pyplot-combine-multiple-line-labels-in-legend  # noqa E501
     handles, labels = plt.gca().get_legend_handles_labels()
+
     i = 1
     while i < len(labels):
         if labels[i] in labels[:i]:
@@ -236,7 +236,7 @@ def generate_idx_plot(plot_file_prefix, plot_title_prefix, plot_ending,
                        plot_name)
 
 
-class GeneratePlots():
+class GeneratePlots(object):
     def __init__(self, asic, current, input_template, plot_prefix, plot_dir,
                  n_processes):
 

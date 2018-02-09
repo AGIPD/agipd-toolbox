@@ -151,9 +151,8 @@ def read_in_data(file_raw_temp,
     for seq in range(seq_start, seq_stop):
         fname = file_raw_temp.format(channel, seq)
 
-        f = h5py.File(fname, 'r')
-        read_in_data = f[read_in_path][()].astype(np.int)
-        f.close()
+        with h5py.File(fname, 'r') as f:
+            read_in_data = f[read_in_path][()].astype(np.int)
 
 #        if convert:
 #            read_in_data = utils.convert_to_agipd_format(channel,
@@ -298,8 +297,7 @@ class SanityChecks(unittest.TestCase):
         pass
 
     def test_n_seqs_equal(self):
-        """
-        Tests that all modules have the same number of sequences
+        """Checks that all modules have the same number of sequences.
         """
 
         res = []
@@ -317,8 +315,7 @@ class SanityChecks(unittest.TestCase):
         # of the data has to be loaded
 
     def test_n_train_equal(self):
-        """
-        Checks if number of trains is equal for all module (per seq)
+        """Checks if number of trains is equal for all module (per seq).
         """
 
         res = []
@@ -378,9 +375,10 @@ class SanityChecks(unittest.TestCase):
             self.fail(msg)
 
     def test_dims_header(self):
-        """
+        """Checks dimenstion of header.
+
         Checks if the first dimension is equal for all datasets contained
-        in 'header' (per module and per seq)
+        in 'header' (per module and per seq).
         """
 
         if self._detail_level == 1:
@@ -393,15 +391,13 @@ class SanityChecks(unittest.TestCase):
 
                 group_name = self._path['header'].format(channel)
 
-                f = h5py.File(fname, "r")
-                keys = list(f[group_name].keys())
+                with h5py.File(fname, "r") as f:
+                    keys = list(f[group_name].keys())
 
-                res = []
-                for key in keys:
-                    path = "{}/{}".format(group_name, key)
-                    res.append(f[path].shape[0])
-
-                f.close()
+                    res = []
+                    for key in keys:
+                        path = "{}/{}".format(group_name, key)
+                        res.append(f[path].shape[0])
 
                 unique = np.unique(res)
                 try:
@@ -419,9 +415,10 @@ class SanityChecks(unittest.TestCase):
             self.fail(msg)
 
     def test_dims_image(self):
-        """
+        """Checks dimensions of image.
+
         Checks if the first dimension is equal for all datasets contained
-        in 'image' (per module and per seq)"
+        in 'image' (per module and per seq).
         """
 
         if self._detail_level == 1:
@@ -434,15 +431,13 @@ class SanityChecks(unittest.TestCase):
 
                 group_name = self._path['image'].format(channel)
 
-                f = h5py.File(fname, "r")
-                keys = list(f[group_name].keys())
+                with h5py.File(fname, "r") as f:
+                    keys = list(f[group_name].keys())
 
-                res = []
-                for key in keys:
-                    path = "{}/{}".format(group_name, key)
-                    res.append(f[path].shape[0])
-
-                f.close()
+                    res = []
+                    for key in keys:
+                        path = "{}/{}".format(group_name, key)
+                        res.append(f[path].shape[0])
 
                 unique = np.unique(res)
                 try:
@@ -460,9 +455,10 @@ class SanityChecks(unittest.TestCase):
             self.fail(msg)
 
     def test_dims_trailer(self):
-        """
+        """Checks dimensions of trailer.
+
         Checks if the first dimension is equal for all datasets contained in
-        'trailer' (per module and per seq)"
+        'trailer' (per module and per seq).
         """
 
         if self._detail_level == 1:
@@ -475,15 +471,13 @@ class SanityChecks(unittest.TestCase):
 
                 group_name = self._path['trailer'].format(channel)
 
-                f = h5py.File(fname, "r")
-                keys = list(f[group_name].keys())
+                with h5py.File(fname, "r") as f:
+                    keys = list(f[group_name].keys())
 
-                res = []
-                for key in keys:
-                    path = "{}/{}".format(group_name, key)
-                    res.append(f[path].shape[0])
-
-                f.close()
+                    res = []
+                    for key in keys:
+                        path = "{}/{}".format(group_name, key)
+                        res.append(f[path].shape[0])
 
                 unique = np.unique(res)
                 try:
@@ -501,9 +495,9 @@ class SanityChecks(unittest.TestCase):
             self.fail(msg)
 
     def test_train_id_shift(self):
+        """Checks if the first trainId value is equal for all modules.
         """
-        Checks if the first train id value is equal for all modules
-        """
+
         msg = ""
 
         first_train_ids = [d['header_train_id'][0][self._usable_start + 0]
@@ -522,9 +516,10 @@ class SanityChecks(unittest.TestCase):
         self.assertEqual(len(unique), 1, msg)
 
     def test_train_id_equal(self):
-        """
+        """Checks if all trainIds are equal.
+
         Checks if the train ids taken from detector, header and trailer are
-        equal (per module)
+        equal (per module).
         """
 
         assert_failed = False
@@ -555,9 +550,10 @@ class SanityChecks(unittest.TestCase):
             self.fail(msg)
 
     def test_data_vs_pulsec(self):
-        """
+        """Checks data against pulseCount.
+
         Checks if the sum of the pulseCount entries is corresponding to the
-        data
+        data.
         """
 
         if self._detail_level == 1:
@@ -574,9 +570,8 @@ class SanityChecks(unittest.TestCase):
                 fname = self._file_raw_temp.format(channel, seq)
                 group_name = self._path['data'].format(channel)
 
-                f = h5py.File(fname, "r")
-                data_shape = f[group_name].shape
-                f.close()
+                with h5py.File(fname, "r") as f:
+                    data_shape = f[group_name].shape
 
                 try:
                     self.assertEqual(n_total_pulses, data_shape[0])
@@ -594,8 +589,7 @@ class SanityChecks(unittest.TestCase):
             self.fail(msg)
 
     def test_train_id_diff(self):
-        """
-        Checks if the trainId is monotonically increasing
+        """Checks if the trainId is monotonically increasing.
         """
 
         if self._detail_level == 1:
@@ -627,7 +621,8 @@ class SanityChecks(unittest.TestCase):
             self.fail(msg)
 
     def test_train_id_tzero(self):
-        """
+        """Checks if trainId contains trailing zeros.
+
         Checks number of placeholder in trainId and if they are always at the
         end
         """
@@ -661,8 +656,7 @@ class SanityChecks(unittest.TestCase):
             self.fail(msg)
 
     def test_train_id_zeros(self):
-        """
-        Checks if trainId contains zeros which are not at the end
+        """Checks if trainId contains zeros which are not at the end.
         """
 
         if self._detail_level == 1:
@@ -693,8 +687,7 @@ class SanityChecks(unittest.TestCase):
             self.fail(msg)
 
     def test_train_loss(self):
-        """
-        Checks for missing entries in trainId
+        """Checks for missing entries in trainId.
         """
 
         assert_failed = False
@@ -826,8 +819,7 @@ class SanityChecks(unittest.TestCase):
                 self.fail(msg)
 
     def test_data_tzeros(self):
-        """
-        Check if extra data entries are trailing zeros
+        """Check if extra data entries are trailing zeros.
         """
 
         if self._detail_level == 1:
@@ -842,15 +834,13 @@ class SanityChecks(unittest.TestCase):
                 fname = self._file_raw_temp.format(channel, seq)
                 group_name = self._path['data'].format(channel)
 
-                f = h5py.File(fname, "r")
-                data_shape = f[group_name].shape
+                with h5py.File(fname, "r") as f:
+                    data_shape = f[group_name].shape
 
-                if data_shape[0] > n_total_pulses:
-                    extra_data = f[group_name][n_total_pulses:]
-                else:
-                    extra_data = np.array([])
-
-                f.close()
+                    if data_shape[0] > n_total_pulses:
+                        extra_data = f[group_name][n_total_pulses:]
+                    else:
+                        extra_data = np.array([])
 
                 try:
                     self.assertTrue(not np.any(extra_data))
@@ -867,9 +857,10 @@ class SanityChecks(unittest.TestCase):
             self.fail(msg)
 
     def test_data_vs_tr_id(self):
-        """
+        """Checks data agains image trainId.
+
         Checks if the dimension of the image trainId is corresponding to the
-        data
+        data.
         """
 
         if self._detail_level == 1:
@@ -883,10 +874,9 @@ class SanityChecks(unittest.TestCase):
                 group_name = self._path['image_train_id'].format(channel)
                 data_name = self._path['data'].format(channel)
 
-                f = h5py.File(fname, "r")
-                train_id_shape = f[group_name].shape
-                data_shape = f[data_name].shape
-                f.close()
+                with h5py.File(fname, "r") as f:
+                    train_id_shape = f[group_name].shape
+                    data_shape = f[data_name].shape
 
                 try:
                     self.assertEqual(train_id_shape[0], data_shape[0])
@@ -904,9 +894,10 @@ class SanityChecks(unittest.TestCase):
             self.fail(msg)
 
     def test_dim_first_last(self):
-        """
+        """Checks first against last.
+
         Checks if the dimensions of the arrays providing the information about
-        the start and end of the train are of the same dimensions
+        the start and end of the train are of the same dimensions.
         """
 
         if self._detail_level == 1:
@@ -934,8 +925,7 @@ class SanityChecks(unittest.TestCase):
             self.fail(msg)
 
     def test_pulse_loss(self):
-        """
-        Checks if all trains have the same number of pulses
+        """Checks if all trains have the same number of pulses.
         """
 
         if self._detail_level == 1:
@@ -1018,9 +1008,8 @@ def get_info(instrument_cycle, beamtime, run):
         fname = file_raw_temp.format(channel, seq)
         group_name = path_temp['data'].format(channel)
 
-        f = h5py.File(fname, 'r')
-        data_shape[channel] = f[group_name].shape[0]
-        f.close()
+        with h5py.File(fname, 'r') as f:
+            data_shape[channel] = f[group_name].shape[0]
 
     # display information
 

@@ -8,7 +8,7 @@ import sys
 import utils
 
 
-class Combine():
+class Combine(object):
     def __init__(self, cs_fname, xray_fname, output_fname=None,
                  probe_type="Cu", use_xfel_format=False, module=None):
 
@@ -109,12 +109,9 @@ class Combine():
 
     def get_dimensions(self):
         input_fname = self.cs_fname.format(1)
-        f = h5py.File(input_fname, "r")
 
-        try:
+        with h5py.File(input_fname, "r") as f:
             s = f[self.offset_path].shape
-        finally:
-            f.close()
 
         if self.use_xfel_format:
             dims = utils.convert_to_xfel_format(self.module, s)
@@ -168,14 +165,10 @@ class Combine():
 
         for asic in np.arange(self.n_asics):
             input_fname = self.cs_fname.format(self.rev_mapped_asic[asic])
-            f = h5py.File(input_fname, "r")
-
-            try:
+            with h5py.File(input_fname, "r") as f:
                 offset = f[self.offset_path][()]
                 slope = f[self.slope_path][()]
                 threshold = f[self.threshold_path][()]
-            finally:
-                f.close()
 
             if utils.is_xfel_format(offset.shape):
                 offset = utils.convert_to_xfel_format(self.module, offset)
@@ -204,14 +197,10 @@ class Combine():
 
         for asic in np.arange(self.n_asics):
             input_fname = self.cs_fname.format(self.rev_mapped_asic[asic])
-            f = h5py.File(input_fname, "r")
-
-            try:
+            with h5py.File(input_fname, "r") as f:
                 offset = f[self.offset_path][()]
                 slope = f[self.slope_path][()]
                 threshold = f[self.threshold_path][()]
-            finally:
-                f.close()
 
             if utils.is_xfel_format(offset.shape):
                 offset = utils.convert_to_xfel_format(self.module, offset)
@@ -232,13 +221,9 @@ class Combine():
 #        print(self.result["threshold"])
 
     def load_xray_data(self):
-        f = h5py.File(self.xray_fname, "r")
-
-        try:
+        with h5py.File(self.xray_fname, "r") as f:
             # currently there is only data for mem_cell 175 in the files
             slope = f[self.xray_slope_path][()]
-        finally:
-            f.close()
 
         # determine whether one or all memcells used in xray
         if (len(slope.shape) == 2 or

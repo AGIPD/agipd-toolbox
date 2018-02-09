@@ -10,7 +10,10 @@ class AgipdProcessDark(AgipdProcessBase):
 
         self.n_offsets = None
 
-        super().__init__(in_fname, out_fname, runs, use_xfel_format)
+        super().__init__(in_fname=in_fname,
+                         out_fname=out_fname,
+                         runs=runs,
+                         use_xfel_format=use_xfel_format)
 
     def initiate(self):
         self.n_offsets = len(self.runs)
@@ -76,6 +79,7 @@ class AgipdProcessDark(AgipdProcessBase):
         md = self.result["gainlevel_mean"]["data"]
         for i in range(self.n_offsets - 1):
             t[i, ...] = (md[i, ...] + md[i + 1, ...]) // 2
+
 
 if __name__ == "__main__":
     import multiprocessing

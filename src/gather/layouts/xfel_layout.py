@@ -19,7 +19,7 @@ import utils  # noqa E402
 import cfel_optarg  # noqa E402
 
 
-class XfelLayout():
+class XfelLayout(object):
     def __init__(self,
                  in_fname,
                  runs,
@@ -57,7 +57,11 @@ class XfelLayout():
         self._raw_shape = None
 
     def get_preproc_res(self, run):
+        """Return the preprocessing results a run.
 
+        Args:
+            run: Run number to get preprocessing results for.
+        """
 
         if self._preprocessing_fname is None:
             return {}
@@ -67,15 +71,26 @@ class XfelLayout():
             config = configparser.RawConfigParser()
             config.read(fname)
 
-            return cfel_optarg.parse_parameters(config)
+            return cfel_optarg.parse_parameters(config=config)
 
     def initiate(self, n_rows, n_cols):
-        """
+        """Initiates all layout dependent attributes.
 
-        Keyword arguments:
-        n_rows -- number of rows of the detector
-        n_cols -- number of columns of the detector
+        Args:
+            n_rows: Number of rows in the module.
+            n_cols: Number of columns in the module.
+
+        Return:
+            A tuple containing layout specific dimensions:
+
+            - Number of memory cells
+            - Total frames contained in the data
+            - Raw shape
+            - Path where to find the data inside the file.
         """
+        # TODO raise RuntimeError if dimensions of the data do not match the
+        # requirements
+
 
         print("in_fname", self._in_fname)
         split_tmp = self._in_fname.split("-")
@@ -85,7 +100,7 @@ class XfelLayout():
         n_memcells_per_run = [[] for i in range(len(self._runs))]
         n_trains_per_run = [[] for i in range(len(self._runs))]
         for i, run in enumerate(self._runs):
-            preproc = self.get_preproc_res(run)
+            preproc = self.get_preproc_res(run=run)
 
             n_memcells_per_run[i] = preproc['general']['n_memcells']
             n_trains_per_run[i] = preproc['general']['n_trains_total']
@@ -133,34 +148,29 @@ class XfelLayout():
              pos_idxs):
         """Load the data.
 
-        Keyword arguments:
-        fname -- the name of the file containing the data to be loaded
-        run_idx -- the run currently looked at (not the actual run number but
-                   the index in the overall run list). This is needed to get
-                   the corresponding preprocessing information
-        seq -- the sequence number to be loaded
-        load_idx_rows --
-        load_idx_cols --
-        file_content -- all metadata in corresponding to the data
-        tmp_data -- array where the data is stored into
-        pos_idxs -- which data parts should be loaded (shich columns and rows),
-                    load and store positions are the same
+        Args:
+        fname: The name of the file containing the data to be loaded.
+        run_idx: The run currently looked at (not the actual run number but
+                 the index in the overall run list). This is needed to get
+                 the corresponding preprocessing information.
+        seq: The sequence number to be loaded.
+        load_idx_rows: The data of which rows should be loaded only.
+        load_idx_cols: The data of which columns should be loaded only.
+        file_content: All metadata in corresponding to the data.
+        tmp_data: Array where the data is stored into.
+        pos_idxs: Which data parts should be loaded (shich columns and rows),
+                  load and store positions are the same.
         """
 
         train_pos = self._train_pos_per_run[run_idx]
 
-        f = None
-        try:
-            f = h5py.File(fname, "r")
+        with h5py.File(fname, "r") as f:
             raw_data = f[self._path['data']][()]
 
-            status = np.squeeze(f[self._path['status']][()]).astype(np.int)
-            first = np.squeeze(f[self._path['image_first']][()]).astype(np.int)
-            last = np.squeeze(f[self._path['image_last']][()]).astype(np.int)
-            cellid = np.squeeze(f[self._path['cellid']][()]).astype(np.int)
-        finally:
-            if f is not None:
-                f.close()
+            status = utils.as_nparray(f[self._path['status']][()], np.int)
+            first = utils.as_nparray(f[self._path['image_first']][()], np.int)
+            last = utils.as_nparray(f[self._path['image_last']][()], np.int)
+            cellid = utils.as_nparray(f[self._path['cellid']][()], np.int)
 
         print("raw_data.shape", raw_data.shape)
         print("self._raw_shape", self._raw_shape)
@@ -172,9 +182,10 @@ class XfelLayout():
             #    dimension
             raw_data = raw_data[:, 0, ...]
 
-        raw_data = utils.convert_to_agipd_format(self._channel, raw_data)
+        raw_data = utils.convert_to_agipd_format(module=self._channel,
+                                                 data=raw_data)
 
-        last_index = np.squeeze(np.where(status != 0))[-1]
+        last_index = np.array(np.squeeze(np.where(status != 0)))[-1]
         print("last_index", last_index)
 
         for i, source_fidx in enumerate(first[:last_index + 1]):
@@ -197,7 +208,8 @@ class XfelLayout():
                 t_start = target_fidx + cellid[source_interval[0]]
                 t_stop = target_fidx + cellid[source_interval[1] - 1] + 1
                 target_interval = [t_start, t_stop]
-                #print(train_pos[seq][i], "interval", source_interval, "-", target_interval)
+#                print(train_pos[seq][i], "interval", source_interval,
+#                      "-", target_interval)
 
                 for index_set in pos_idxs:
                     pos_idx_rows = index_set[0]

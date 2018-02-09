@@ -175,7 +175,7 @@ def get_arguments():
     return args
 
 
-class StartAnalyse():
+class StartAnalyse(object):
     def __init__(self):
         args = get_arguments()
 

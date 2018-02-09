@@ -48,7 +48,12 @@ def get_arguments():
 
     parser.add_argument("--run_type",
                         type=str,
-                        choices=["preprocess", "gather", "process", "merge", "join", "all"],
+                        choices=["preprocess",
+                                 "gather",
+                                 "process",
+                                 "merge",
+                                 "join",
+                                 "all"],
                         help="Run type of the analysis")
     parser.add_argument("--no_slurm",
                         action="store_true",
@@ -60,7 +65,7 @@ def get_arguments():
     return args
 
 
-class SubmitJobs():
+class SubmitJobs(object):
     def __init__(self):
         global conf_dir
 
@@ -241,8 +246,8 @@ class SubmitJobs():
 
             jobnums_type = []
             for run_type in self.run_type_list_per_module:
-#                if run_type == "preprocess":
-#                    run_list = self.run_list
+                # if run_type == "preprocess":
+                #     run_list = self.run_list
                 if run_type == "gather" and self.measurement == "dark":
                     run_list = self.run_list
                 else:
@@ -250,16 +255,20 @@ class SubmitJobs():
 
                 dep_overview[module][run_type] = {}
 
+                print("run_type", run_type)
+                print("jobnums_type", jobnums_type)
                 dep_jobs = ":".join(jobnums_type)
                 for runs in run_list:
 
                     jn = self.create_job(run_type, runs, dep_jobs)
-                    jobnums_type.append(jn)
+                    if jn is not None:
+                        jobnums_type.append(jn)
 
                     if type(runs) == list:
                         runs_string = "-".join(list(map(str, runs)))
                     else:
                         runs_string = str(runs)
+
                     d_o = dep_overview[module][run_type]
                     d_o[runs_string] = {}
                     d_o[runs_string]["jobnum"] = jn
@@ -392,7 +401,7 @@ class SubmitJobs():
 
         elif self.measurement == "drscs":
             # comma seperated string into into list
-            current_list = [c.split()[0] for c in current.split(",")]
+            current_list = [c.split()[0] for c in self.meas_spec.split(",")]
 
             for current in current_list:
                 self.meas_spec = current
@@ -511,6 +520,7 @@ class SubmitJobs():
                     raise
 
             return jobnum
+
 
 if __name__ == "__main__":
     obj = SubmitJobs()
