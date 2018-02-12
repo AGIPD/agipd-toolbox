@@ -71,6 +71,9 @@ class AgipdGatherBase(object):
 
         self._data_path = None
 
+        self._module = None
+        self._channel = None
+
         self._n_rows_total = 128
         self._n_cols_total = 512
 
@@ -85,7 +88,7 @@ class AgipdGatherBase(object):
         self.n_rows = None
         self.n_cols = None
 
-        self.get_parts()
+        self._get_n_parts()
 
         if self._n_parts == 0:
             msg = "No parts to gather found\n"
@@ -110,7 +113,7 @@ class AgipdGatherBase(object):
              self._a_col_stop) = utils.determine_asic_border(mapped_asic,
                                                              self._asic_size)
 
-        self.intiate()
+        self._intiate()
 
         print("\n\n\n"
               "start gather\n"
@@ -121,7 +124,7 @@ class AgipdGatherBase(object):
                       self._out_fname,
                       self._data_path))
 
-    def get_parts(self):
+    def _get_n_parts(self):
         # remove extension
         prefix = self._in_fname.rsplit(".", 1)[0]
         # remove the part section
@@ -136,13 +139,17 @@ class AgipdGatherBase(object):
         self._n_parts = self._max_part or len(part_files)
         print("n_parts {}".format(self._n_parts))
 
-    def intiate(self):
-        (self._in_fname,
-         n_memcells,
-         n_frames_total,
-         self.raw_shape,
-         self._data_path) = self.layout.initiate(n_rows=self.n_rows,
-                                                 n_cols=self.n_cols)
+    def _intiate(self):
+        init_results = self.layout.initiate(n_rows=self.n_rows,
+                                            n_cols=self.n_cols)
+
+        self._in_fname = init_results['in_fname']
+        self._module = init_results['module']
+        self._channel = init_results['channel']
+        n_memcells = init_results['n_memcells']
+        n_frames_total = init_results['n_frames_total']
+        self.raw_shape = init_results['raw_shape']
+        self._data_path = init_results['data_path']
 
         self.define_needed_data_paths()
 
@@ -165,40 +172,17 @@ class AgipdGatherBase(object):
         pass
 
     def run(self):
-
         totalTime = time.time()
 
-        self.load_data()
+        self._load_data()
 
         print("Start saving")
-        print("out_fname = {}".format(self._out_fname))
-        with h5py.File(self._out_fname, "w", libver='latest') as f:
-            f.create_dataset("analog", data=self._analog, dtype=np.int16)
-            f.create_dataset("digital", data=self._digital, dtype=np.int16)
-
-            # save metadata from original files
-            idx = 0
-            for set_name, set_value in iter(self.metadata.items()):
-                    gname = "metadata_{}".format(idx)
-
-                    name = "{}/source".format(gname)
-                    f.create_dataset(name, data=set_name)
-
-                    for key, value in iter(set_value.items()):
-                        try:
-                            name = "{}/{}".format(gname, key)
-                            f.create_dataset(name, data=value)
-                        except:
-                            print("Error in", name, value.dtype)
-                            raise
-                    idx += 1
-            print("Saving done")
-
-            f.flush()
+        self._write_data()
+        print("Saving done")
 
         print("gather took time:", time.time() - totalTime, "\n\n")
 
-    def load_data(self):
+    def _load_data(self):
 
         print("raw_tmp_shape", self._raw_tmp_shape)
         tmp_data = np.zeros(self._raw_tmp_shape, dtype=np.int16)
@@ -241,6 +225,35 @@ class AgipdGatherBase(object):
 
         self._analog = tmp_data[:, :, 0, ...]
         self._digital = tmp_data[:, :, 1, ...]
+
+    def _write_data(self):
+
+        print("out_fname = {}".format(self._out_fname))
+        with h5py.File(self._out_fname, "w", libver='latest') as f:
+            f.create_dataset("analog", data=self._analog, dtype=np.int16)
+            f.create_dataset("digital", data=self._digital, dtype=np.int16)
+
+            f.create_dataset("module", data=self._module)
+            f.create_dataset("channel", data=self._channel)
+
+            # save metadata from original files
+            idx = 0
+            for set_name, set_value in iter(self.metadata.items()):
+                    gname = "metadata_{}".format(idx)
+
+                    name = "{}/source".format(gname)
+                    f.create_dataset(name, data=set_name)
+
+                    for key, value in iter(set_value.items()):
+                        try:
+                            name = "{}/{}".format(gname, key)
+                            f.create_dataset(name, data=value)
+                        except:
+                            print("Error in", name, value.dtype)
+                            raise
+                    idx += 1
+
+            f.flush()
 
     def set_pos_indices(self, run_idx):
         pos_idx_rows = slice(None)
@@ -324,6 +337,7 @@ if __name__ == "__main__":
         in_subdir = "raw/315-304-309-314-316-306-307/temperature_m25C/dark"
         module = "M304"
         runs = [12]
+
         asic = None  # asic (None means full module)
 #        asic = 1
 
@@ -361,6 +375,16 @@ if __name__ == "__main__":
                                      meas_spec[meas_type],
                                      asic))
         out_fname = os.path.join(out_dir, out_file_name)
+
+        print("Used parameters:")
+        print("in_fname=", in_fname)
+        print("out_fname=", out_fname)
+        print("runs=",runs)
+        print("max_part=", max_part)
+        print("asic=", asic)
+        print("use_xfel_format=", use_xfel_format)
+        print()
+
 
         obj = AgipdGatherBase(in_fname=in_fname,
                               out_fname=out_fname,

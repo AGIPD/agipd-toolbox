@@ -95,8 +95,7 @@ class XfelLayout(object):
 
 
         print("in_fname", self._in_fname)
-        split_tmp = self._in_fname.split("-")
-        self._channel = int(split_tmp[-2].split("AGIPD")[1])
+        module, self._channel = self._get_module_and_channel()
         print("channel", self._channel)
 
         n_memcells_per_run = [[] for i in range(len(self._runs))]
@@ -107,7 +106,7 @@ class XfelLayout(object):
             n_memcells_per_run[i] = preproc['general']['n_memcells']
             n_trains_per_run[i] = preproc['general']['n_trains_total']
 
-            ch = 'channel{:02}'.format(self._channel)
+            ch = "channel{:02}".format(self._channel)
             self._train_pos_per_run[i] = preproc[ch]['train_pos']
 
         self._n_memcells = max(n_memcells_per_run)
@@ -134,11 +133,35 @@ class XfelLayout(object):
         for key in self._path_temp:
             self._path[key] = self._path_temp[key].format(self._channel)
 
-        return (self._in_fname  # no modification
-                self._n_memcells,
-                n_frames_total,
-                self._raw_shape,
-                self._path['data'])
+        results = {
+            'in_fname': self._in_fname,  # no modification
+            'module': module,
+            'channel': self._channel,
+            'n_memcells': self._n_memcells,
+            'n_frames_total': n_frames_total,
+            'raw_shape':, self._raw_shape,
+            'data_path': self._path['data'],
+        }
+
+        return results
+
+    def _get_module_and_channel(self):
+        """Determines module and module position.
+
+        Return:
+            The module workin on and on which channel it is plugged in:
+            [module, channel].
+
+        """
+
+        # Get module
+        module = None
+
+        # Get channel
+        split_tmp = self._in_fname.split("-")
+        channel = int(split_tmp[-2].split("AGIPD")[1])
+
+        return module, channel
 
     def load(self,
              fname,

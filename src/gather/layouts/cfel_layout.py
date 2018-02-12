@@ -47,7 +47,7 @@ class CfelLayout(object):
         self._path['total_lost_frames'] = ("{}/total_loss_frames"
                                            .format(self._path['collection']))
 
-        self._module_pos = None
+        self._channel = None
 
         # dark
         self._max_pulses = 704
@@ -100,10 +100,14 @@ class CfelLayout(object):
         # -> the wildcard for the module position has to be filled
         fname = glob.glob(fname_with_wildcard)[0]
 
-        self._module_pos = self._get_module_pos(fname, fname_with_wildcard)
-        print("module_pos {}".format(self._module_pos))
+        module, self._channel = self._get_module_and_channel(
+            fname,
+            fname_with_wildcard
+        )
+        print("module {}".format(module))
+        print("channel {}".format(self._channel))
 
-        new_fname = self._in_fname.replace("*", "_" + self._module_pos)
+        new_fname = self._in_fname.replace("*", "_" + self._channel)
 
         source_shape = None
         # get number of frames
@@ -129,14 +133,20 @@ class CfelLayout(object):
 
         self._raw_shape = (self._n_memcells, 2, n_rows, n_cols)
 
-        return (new_fname,
-                self._n_memcells,
-                n_frames_total,
-                self._raw_shape,
-                self._path['data'])
+        results = {
+            'in_fname': new_fname,
+            'module': module,
+            'channel': self._channel,
+            'n_memcells': self._n_memcells,
+            'n_frames_total': n_frames_total,
+            'raw_shape': self._raw_shape,
+            'data_path': self._path['data'],
+        }
 
-    def _get_module_pos(self, fname, fname_with_wildcard):
-        """ Determine module position from file name
+        return results
+
+    def _get_module_and_channel(self, fname, fname_with_wildcard):
+        """Determines module and module position.
 
         Args:
             fname: File name without any wildcard but containing the actual
@@ -145,17 +155,23 @@ class CfelLayout(object):
                                  position should be filled in
 
         Return:
-            The position the module was plugged into the detector
+            The module workin on and on which channel it is plugged in the
+            detector: [module, channel].
+
 
         """
+
         # determine the cut off parts to receive the module position
         pre_and_postfix = fname_with_wildcard.split("*")
         # cut off the part before the wildcard + underscore
-        module_pos = fname[len(pre_and_postfix[0]) + 1:]
+        channel = fname[len(pre_and_postfix[0]) + 1:]
         # cut off the part after the wildcard
-        module_pos = module_pos[:-len(pre_and_postfix[1])]
+        channel = channel[:-len(pre_and_postfix[1])]
 
-        return module_pos
+        # determine module out of the first part of the file name
+        module = os.path.basename(pre_and_postfix[0])
+
+        return module, channel
 
     def load(self,
              fname,

@@ -13,7 +13,6 @@ class AgipdGatherPcdrs(AgipdGatherBase):
                  use_xfel_format=False,
                  backing_store=True):
 
-        self.runs = runs
         self.n_runs = 8
 
         super().__init__(in_fname=in_fname,
