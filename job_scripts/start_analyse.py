@@ -8,8 +8,6 @@ import multiprocessing
 BASE_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 print("BASE_PATH", BASE_PATH)
 SRC_PATH = os.path.join(BASE_PATH, "src")
-GATHER_PATH = os.path.join(SRC_PATH, "gather")
-PROCESS_PATH = os.path.join(SRC_PATH, "process")
 
 if SRC_PATH not in sys.path:
     sys.path.insert(0, SRC_PATH)
@@ -94,6 +92,10 @@ def get_arguments():
                              "dark: 3 runs for the gain stages "
                              "high, medium, low (in this order)\n"
                              "pcdrs: 8 runs")
+    parser.add_argument("--run_name",
+                        type=str,
+                        help="Names of the runs. Requirement for dark runs"
+                             "(e.g. high, medium, low).")
 
     parser.add_argument("--max_part",
                         type=int,
@@ -184,8 +186,12 @@ class StartAnalyse(object):
         self.in_base_dir = args.input_dir
         self.out_base_dir = args.output_dir
         self.run_list = args.run_list
+        self.run_name = args.run_name
         self.n_processes = args.n_processes
-        self.module = args.module or args.channel
+        if args.module is not None:
+            self.module = [args.module]
+        else:
+            self.module = args.channel
         self.temperature = args.temperature
         self.meas_spec = args.meas_spec
         self.asic_list = args.asic_list or [None]
@@ -202,6 +208,7 @@ class StartAnalyse(object):
         print("in_dir: ", self.in_base_dir)
         print("out_dir: ", self.out_base_dir)
         print("run_list: ", self.run_list)
+        print("run_name: ", self.run_name)
         print("n_processes: ", self.n_processes)
         print("temperature: ", self.temperature)
         print("meas_spec: ", self.meas_spec)
@@ -221,22 +228,23 @@ class StartAnalyse(object):
 
         jobs = []
         if self.run_type == "merge":
-            Analyse(self.run_type,
-                    self.meas_type,
-                    self.in_base_dir,
-                    self.out_base_dir,
-                    self.n_processes,
-                    self.module,
-                    self.temperature,
-                    self.meas_spec,
-                    0,
-                    self.asic_list,
-                    self.safety_factor,
-                    self.run_list,
-                    self.max_part,
-                    self.current_list,
-                    self.use_xfel_in_format,
-                    self.use_xfel_out_format)
+            Analyse(run_type=self.run_type,
+                    meas_type=self.meas_type,
+                    in_base_dir=self.in_base_dir,
+                    out_base_dir=self.out_base_dir,
+                    n_processes=self.n_processes,
+                    module=self.module,
+                    temperature=self.temperature,
+                    meas_spec=self.meas_spec,
+                    asic=0,
+                    asic_list=self.asic_list,
+                    safety_factor=self.safety_factor,
+                    runs=self.run_list,
+                    run_name=self.run_name,
+                    max_part=self.max_part,
+                    current_list=self.current_list,
+                    use_xfel_in_format=self.use_xfel_in_format,
+                    use_xfel_out_format=self.use_xfel_out_format)
 
         elif self.run_type == "preprocess":
             for run in self.run_list:
@@ -256,6 +264,7 @@ class StartAnalyse(object):
                           self.asic_list,
                           self.safety_factor,
                           [run],
+                          run_name,
                           self.max_part,
                           self.current_list,  # = None
                           self.use_xfel_in_format,
@@ -269,7 +278,8 @@ class StartAnalyse(object):
         else:
             for m in self.module:
                 for asic in self.asic_list:
-                    print("Starting script for asic {}\n".format(asic))
+                    print("Starting script for module {} and asic {}\n"
+                          .format(m, asic))
 
                     p = multiprocessing.Process(
                         target=Analyse,
@@ -285,6 +295,7 @@ class StartAnalyse(object):
                               self.asic_list,
                               self.safety_factor,
                               self.run_list,
+                              self.run_name,
                               self.max_part,
                               self.current_list,  # = None
                               self.use_xfel_in_format,

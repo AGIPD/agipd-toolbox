@@ -147,9 +147,11 @@ class SubmitJobs(object):
         else:
             self.run_type_list = ["gather", "process", "join"]
 
-        self.run_list = args.run_list or self.config["general"]["run_list"]
-
+        # convert str into list
+        self.run_name = self.config[self.measurement]["run_name"].split(", ")
         if self.use_xfel:
+            self.run_list = args.run_list or self.config["general"]["run_list"]
+
             if self.run_type == "preprocess":
                 self.module_list = ["0"]
             else:
@@ -384,9 +386,14 @@ class SubmitJobs(object):
                 print("run_type", run_type)
                 print("jobnums_type", jobnums_type)
                 dep_jobs = ":".join(jobnums_type)
-                for runs in run_list:
+                for i, runs in enumerate(run_list):
+                    if self.run_name is not None:
+                        run_name = self.run_name[i]
 
-                    jn = self.create_job(run_type, runs, dep_jobs)
+                    jn = self.create_job(run_type=run_type,
+                                         runs=runs,
+                                         run_name=run_name,
+                                         dep_jobs=dep_jobs)
                     if jn is not None:
                         jobnums_type.append(jn)
 
@@ -408,7 +415,10 @@ class SubmitJobs(object):
         for run_type in self.run_type_list_module_dep_after:
             dep_jobs = ":".join(jobnums_indp)
 
-            jn = self.create_job(run_type, self.run_list, dep_jobs)
+            jn = self.create_job(run_type=run_type,
+                                 runs=self.run_list,
+                                 run_name=None,
+                                 dep_job=dep_jobs)
             if jn is not None:
                 jobnums_indp.append(jn)
 
@@ -446,7 +456,7 @@ class SubmitJobs(object):
         print("\nCurrent status:\n")
         os.system("squeue --user $USER")
 
-    def create_job(self, run_type, runs, dep_jobs):
+    def create_job(self, run_type, runs, run_name, dep_jobs):
         print("runs", runs, type(runs))
         self.asic_lists = None
         self.generate_asic_lists(self.asic_set, self.n_jobs[run_type])
@@ -489,6 +499,9 @@ class SubmitJobs(object):
             self.script_params += ["--run_list"] + [str(r) for r in runs]
         else:
             self.script_params += ["--run_list", str(runs)]
+
+        if self.run_name is not None:
+            self.script_params += ["--run_name", run_name]
 
         if self.use_xfel:
             self.script_params += [

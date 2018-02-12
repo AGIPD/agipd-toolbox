@@ -39,6 +39,7 @@ class Analyse(object):
                  asic_list,
                  safety_factor,
                  runs,
+                 run_name,
                  max_part,
                  current_list=None,
                  use_xfel_in_format=True,
@@ -58,6 +59,7 @@ class Analyse(object):
         self.asic_list = asic_list
         self.safety_factor = safety_factor
         self.runs = runs
+        self.run_name = run_name
         self.current_list = current_list
         self.channel = module
 
@@ -77,6 +79,7 @@ class Analyse(object):
         print("in_dir: ", self.in_base_dir)
         print("out_dir: ", self.out_base_dir)
         print("runs: ", self.runs)
+        print("run_name: ", self.run_name)
         print("max_part: ", self.max_part)
         print("current_list: ", self.current_list)
         print("use_xfel_in_format: ", self.use_xfel_in_format)
