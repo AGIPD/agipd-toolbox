@@ -9,10 +9,9 @@ import configparser
 import subprocess
 import argparse
 
-batch_job_dir = os.path.dirname(os.path.realpath(__file__))
-script_base_dir = os.path.dirname(batch_job_dir)
-conf_dir = os.path.join(script_base_dir, "conf")
-
+BATCH_JOB_DIR = os.path.dirname(os.path.realpath(__file__))
+SCRIPT_BASE_DIR = os.path.dirname(BATCH_JOB_DIR)
+CONF_DIR = os.path.join(SCRIPT_BASE_DIR, "conf")
 
 def get_arguments():
     parser = argparse.ArgumentParser()
@@ -67,13 +66,13 @@ def get_arguments():
 
 class SubmitJobs(object):
     def __init__(self):
-        global conf_dir
+        global CONF_DIR
 
         self.use_xfel = True
         self.config_file = "xfel"
 
         # load base config
-        ini_file = os.path.join(conf_dir, "base.ini")
+        ini_file = os.path.join(CONF_DIR, "base.ini")
         self.config = dict()
         self.load_config(ini_file)
 
@@ -82,7 +81,8 @@ class SubmitJobs(object):
         config_name = args.config_file or self.config_file
         self.no_slurm = args.no_slurm
 
-        ini_file = os.path.join(conf_dir, "{}.ini".format(config_name))
+        config_name = args.config_file or self.config_file
+        ini_file = os.path.join(CONF_DIR, "{}.ini".format(config_name))
         print("Using ini_file: {}".format(ini_file))
 
         # override base config with values of user config file
@@ -369,8 +369,10 @@ class SubmitJobs(object):
             work_dir = os.path.join(self.output_dir[run_type],
                                     "sbatch_out")
         else:
-            work_dir = os.path.join(self.output_dir, self.module,
-                                    self.temperature, "sbatch_out")
+            work_dir = os.path.join(self.output_dir[run_type],
+                                    self.module,
+                                    self.temperature,
+                                    "sbatch_out")
 
         if not os.path.exists(work_dir):
             os.makedirs(work_dir)
@@ -477,7 +479,7 @@ class SubmitJobs(object):
         return jobnum
 
     def start_job(self, run_type, dep_jobs):
-        global batch_job_dir
+        global BATCH_JOB_DIR
 
         # getting date and time
         now = datetime.datetime.now()
@@ -527,15 +529,15 @@ class SubmitJobs(object):
                 "--error", "{}_{}_%j.err".format(error_name, dt)
             ]
 
-#            #shell_script = os.path.join(batch_job_dir, "analyse.sh")
+#            #shell_script = os.path.join(BATCH_JOB_DIR, "analyse.sh")
 
             # split of the cmd is unneccessary but easier for debugging
             # (e.g. no job should be launched)
 #            cmd = [shell_script] + self.script_params + \
 #                  [asic_set]
 
-            shell_script = os.path.join(batch_job_dir, "start_analyse.sh")
-            cmd = [shell_script, batch_job_dir] + self.script_params
+            shell_script = os.path.join(BATCH_JOB_DIR, "start_analyse.sh")
+            cmd = [shell_script, BATCH_JOB_DIR] + self.script_params
 
             if asic_set is not None:
                 cmd += ["--asic_list", asic_set]
