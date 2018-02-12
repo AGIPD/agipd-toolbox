@@ -8,10 +8,20 @@ import datetime
 import configparser
 import subprocess
 import argparse
+import glob
 
 BATCH_JOB_DIR = os.path.dirname(os.path.realpath(__file__))
 SCRIPT_BASE_DIR = os.path.dirname(BATCH_JOB_DIR)
 CONF_DIR = os.path.join(SCRIPT_BASE_DIR, "conf")
+
+BASE_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+SRC_PATH = os.path.join(BASE_PATH, "src")
+
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
+
+from generate_paths import GeneratePathsCfel as GeneratePaths
+
 
 def get_arguments():
     parser = argparse.ArgumentParser()
@@ -195,6 +205,11 @@ class SubmitJobs(object):
             self.output_dir[run_type] = (args.output_dir or
                                          self.output_dir[run_type])
 
+        # This has to be done after input_dir is defined thus can not be put
+        # in the if above
+        if not self.use_xfel:
+            self.run_list = self.get_cfel_run_list()
+
         # Needed for gather
         try:
             self.max_part = self.config["gather"]["max_part"]
@@ -209,6 +224,50 @@ class SubmitJobs(object):
             self.asic_set = conf_asic_set[1:-1].split(", ")
             # convert list entries into ints
             self.asic_set = list(map(int, self.asic_set))
+
+    def get_cfel_run_list(self):
+
+        generate_paths = GeneratePaths(
+            run_type=None,
+            meas_type=self.measurement,
+            out_base_dir=None,
+            module=self.module_list[0],
+            channel=None,
+            temperature=self.temperature,
+            meas_spec=self.meas_spec,
+            meas_in={self.measurement: self.measurement},
+            asic=None,
+            runs=None,
+            run_name=None,
+            use_xfel_out_format=None
+        )
+
+        raw_dir, raw_fname = generate_paths.raw(self.input_dir['gather'])
+        raw_path = os.path.join(raw_dir, raw_fname)
+
+        run_number_templ = "{run_number:05}"
+        # we are trying to determine the run_number, thus we cannot fill it in
+        # and have to replace it with a wildcard
+        raw = raw_path.replace(run_number_templ, "*")
+
+        raw=raw.format(part=0)
+#        print("raw", raw)
+
+        found_files = glob.glob(raw)
+#        print("found_files", found_files)
+
+        run_numbers = []
+        postfix = raw_path.split(run_number_templ)[-1]
+        postfix = postfix.format(part=0)
+        for f in found_files:
+            # cut off the part after the run_number
+            rn = f[:-len(postfix)]
+            # the run number now is the tail of the string till the underscore
+            rn = rn.rsplit("_", 1)[-1]
+
+            run_numbers.append(int(rn))
+
+        return run_numbers
 
     def load_config(self, ini_file):
 
