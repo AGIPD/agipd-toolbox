@@ -18,22 +18,21 @@ def get_arguments():
 
     parser.add_argument("--input_dir",
                         type=str,
-                        required=True,
+#                        required=True,
                         help="Directory to get data from")
     parser.add_argument("--output_dir",
                         type=str,
-                        required=True,
+#                        required=True,
                         help="Base directory to write results to")
     parser.add_argument("--type",
                         type=str,
-                        required=True,
+#                        required=True,
                         choices=["dark", "pcdrs"],
                         help="Which type to run:\n"
                              "dark: generating the dark constants\n"
                              "pcdrs: generating the pulse capacitor constants")
     parser.add_argument("--run_list",
                         type=int,
-                        required=True,
                         nargs="+",
                         help="Run numbers to extract data from. "
                              "Requirements:\n"
@@ -54,12 +53,34 @@ def get_arguments():
                                  "join",
                                  "all"],
                         help="Run type of the analysis")
+
+    parser.add_argument("--cfel",
+                        action="store_true",
+                        help="Activate cfel mode (default is xfel mode)")
+    parser.add_argument("--module",
+                        type=str,
+                        help="Module to be analysed (e.g M215).\n"
+                             "This is only used in cfel mode")
+
     parser.add_argument("--no_slurm",
                         action="store_true",
                         help="The job(s) are not submitted to slurm but run "
                              "interactively")
 
     args = parser.parse_args()
+
+    #TODO move that after combining with config?
+#    if args.cfel and not args.module:
+#        msg = "To run in cfel mode a module has to be specified."
+#        parser.error(msg)
+
+    if (not args.cfel
+            and not args.input_dir
+            and not args.output_dir
+            and not args.type
+            and not args.run_list):
+        msg = "XFEL mode requires a run list to be specified."
+        parser.error(msg)
 
     return args
 
@@ -68,17 +89,23 @@ class SubmitJobs(object):
     def __init__(self):
         global CONF_DIR
 
-        self.use_xfel = True
-        self.config_file = "xfel"
+        # get command line arguments
+        args = get_arguments()
+
+        # consider user running in cfel mode more advance thus being able to
+        # add argument to command line; default should always be XFEL case
+        self.use_xfel = not args.cfel
+
+        if self.use_xfel:
+            self.config_file = "xfel"
+        else:
+            self.config_file = "cfel"
 
         # load base config
         ini_file = os.path.join(CONF_DIR, "base.ini")
         self.config = dict()
         self.load_config(ini_file)
 
-        args = get_arguments()
-
-        config_name = args.config_file or self.config_file
         self.no_slurm = args.no_slurm
 
         config_name = args.config_file or self.config_file
@@ -121,6 +148,7 @@ class SubmitJobs(object):
             self.temperature = None
 
             self.run_type_list = ["preprocess"] + self.run_type_list
+
         else:
             self.module_list = self.config["general"]["module"].split(" ")
             self.temperature = self.config["general"]["temperature"]
@@ -157,7 +185,7 @@ class SubmitJobs(object):
                 self.output_dir[run_type] = None
 
         # overwrite with input and output from command line
-        self.input_dir["gather"] = args.input_dir or self.input_dir["gather"]
+#        self.input_dir["gather"] = args.input_dir or self.input_dir["gather"]
 
         for run_type in self.run_type_list:
             if (run_type not in ["preprocess", "gather"] and
