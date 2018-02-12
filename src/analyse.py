@@ -89,6 +89,32 @@ class Analyse(object):
         # but there are exceptions
         self.meas_in["drscs_dark"] = "drscs"
 
+        if self.use_xfel_in_format:
+            from generate_paths import GeneratePathsXfel as GeneratePaths
+        else:
+            from generate_paths import GeneratePathsCfel as GeneratePaths
+
+        generate_paths = GeneratePaths(
+            run_type=self.run_type,
+            meas_type=self.meas_type,
+            out_base_dir=self.out_base_dir,
+            module=self.module,
+            channel=self.channel,
+            temperature=self.temperature,
+            meas_spec=self.meas_spec,
+            meas_in=self.meas_in,
+            asic=self.asic,
+            runs=self.runs,
+            run_name=self.run_name,
+            use_xfel_out_format=self.use_xfel_out_format
+        )
+
+        self.generate_raw_path = generate_paths.raw
+        self.generate_preproc_path = generate_paths.preproc
+        self.generate_gather_path = generate_paths.gather
+        self.generate_process_path = generate_paths.process
+        self.generate_join_path = generate_paths.join
+
         self.run()
 
     def run(self):
@@ -110,200 +136,6 @@ class Analyse(object):
 
         print("\nFinished at", str(datetime.datetime.now()))
         print("took time: ", time.time() - t)
-
-    ########################################
-    ##           generate paths           ##
-    ########################################
-
-    def generate_raw_path(self, base_dir, as_template=False):
-        if self.use_xfel_in_format:
-            if as_template:
-                channel = "{:02}"
-            else:
-                channel = str(self.channel).zfill(2)
-
-            # define in files
-            fdir = os.path.join(base_dir,
-                                "raw",
-                                "r{run_number:04}")
-
-            fname = ("RAW-R{run_number:04}-" +
-                     "AGIPD{}".format(channel) +
-                     "-S{part:05}.h5")
-
-        else:
-            # define in files
-            fdir = os.path.join(base_dir,
-                                self.temperature,
-                                self.meas_in[self.meas_type])
-
-            if self.meas_type not in ["dark", "xray"]:
-                fdir = os.path.join(base_dir,
-                                    self.meas_spec)
-
-            # fname = ("{}*_{}_{}_" # only module without location, e.g. M304
-            fname = ("{}_{}_{}_"
-                     .format(self.module,
-                             self.meas_type,
-                             self.meas_spec)
-                     + "{run_number:04}_part{part:05}.nxs")
-
-        return fdir, fname
-
-    def generate_preproc_path(self, base_dir, as_template=False):
-        if self.use_xfel_in_format:
-            if self.meas_type == "pcdrs" or len(self.runs) == 1:
-                run_subdir = "r" + "-r".join(str(r).zfill(4)
-                                             for r in self.runs)
-
-            else:
-                print("WARNING: generate_preproc_path is running in 'else'. "
-                      "Why?")
-                print("self.runs={}".format(self.runs))
-                run_subdir = "r{:04}".format(self.runs[0])
-
-            if as_template:
-                fdir = os.path.join(base_dir,
-                                    self.meas_type,
-                                    "r{run:04}")
-
-                fname = "R{run:04}-preprocessing.result"
-            else:
-                fdir = os.path.join(base_dir,
-                                    self.meas_type,
-                                    run_subdir)
-
-                fname = "R{:04}-preprocessing.result".format(self.runs[0])
-
-        else:
-            print("Preprocessing not implemented for CFEL layout")
-            return None, None
-
-        return fdir, fname
-
-    def generate_gather_path(self, base_dir):
-        if self.use_xfel_in_format:
-            # TODO: concider additing this into out_base_dir (joined) and
-            #       create subdirs for gathered files
-            if self.meas_type == "pcdrs" or len(self.runs) == 1:
-                run_subdir = "r" + "-r".join(str(r).zfill(4)
-                                             for r in self.runs)
-
-                fname = ("{}-AGIPD{:02}-gathered.h5"
-                         .format(run_subdir.upper(), self.channel))
-
-            # TODO fill run_number + for what is this 'else' (what cases)?
-            else:
-                run_subdir = "r{run_number:04}"
-
-                fname = ("R{run_number:04}-" +
-                         "AGIPD{:02}-gathered.h5".format(self.channel))
-
-            fdir = os.path.join(base_dir,
-                                self.meas_type,
-                                run_subdir,
-                                "gather")
-
-        else:
-            # define out files
-            fdir = os.path.join(base_dir,
-                                self.module,
-                                self.temperature,
-                                self.meas_type,
-                                self.meas_spec,
-                                self.run_type)
-            # for testing
-#            out_base_dir = ("/gpfs/exfel/exp/SPB/201701/p002012/" +
-#                               "scratch/user/kuhnm")
-#            out_subdir = "tmp"
-#            out_dir = os.path.join(out_base_dir,
-#                                      out_subdir,
-#                                      "gather")
-            if self.asic is None:
-                fname = ("{}_{}_{}.h5"
-                         .format(self.module,
-                                 self.meas_type,
-                                 self.meas_spec))
-            else:
-                fname = ("{}_{}_{}_asic{:02}.h5"
-                         .format(self.module,
-                                 self.meas_type,
-                                 self.meas_spec,
-                                 self.asic))
-
-        return fdir, fname
-
-    def generate_process_path(self, base_dir, use_xfel_out_format,
-                              as_template=False):
-        run_subdir = "r" + "-r".join(str(r).zfill(4) for r in self.runs)
-
-        fdir = os.path.join(base_dir,
-                            self.meas_type,
-                            run_subdir,
-                            "process")
-
-        if use_xfel_out_format:
-            fname = self.meas_type + "_AGIPD{:02}_xfel.h5"
-        else:
-            fname = self.meas_type + "_AGIPD{:02}_agipd.h5"
-
-        if not as_template:
-            fname = fname.format(self.channel)
-
-        self.use_cfel_gpfs = False
-        if self.use_cfel_gpfs:
-            fname = ("{}_{}_{}_asic{:02}_processed.h5"
-                     .format(self.module,
-                             self.meas_type,
-                             self.meas_spec,
-                             self.asic))
-
-            print("process fname", fname)
-
-            fdir = os.path.join(self.out_base_dir,
-                                self.module,
-                                self.temperature,
-                                self.meas_type,
-                                self.meas_spec,
-                                self.run_type)
-
-        return fdir, fname
-
-    def generate_join_path(self, base_dir, use_xfel_out_format):
-        run_subdir = "r" + "-r".join(str(r).zfill(4) for r in self.runs)
-
-        fdir = os.path.join(base_dir,
-                            self.meas_type,
-                            run_subdir)
-
-        if use_xfel_out_format:
-            fname = "{}_joined_constants_xfel.h5".format(self.meas_type)
-        else:
-            fname = "{}_joined_constants_agipd.h5".format(self.meas_type)
-
-        self.use_cfel_gpfs = False
-        if self.use_cfel_gpfs:
-            raise Exception("CFEL gpfs not supported for join at the moment")
-#            fname = ("{}_{}_{}_asic{:02d}_processed.h5"
-#                     .format(self.module,
-#                             self.meas_type,
-#                             self.meas_spec,
-#                             self.asic))
-
-#            print("process fname", fname)
-
-#            fdir = os.path.join(self.out_base_dir,
-#                                self.module,
-#                                self.temperature,
-#                                self.meas_type,
-#                                self.meas_spec,
-#                                self.run_type)
-
-        return fdir, fname
-
-    ########################################
-    ##                run                 ##
-    ########################################
 
     def run_preprocess(self):
         from gather.preprocess import PreprocessXfel as Preprocess
