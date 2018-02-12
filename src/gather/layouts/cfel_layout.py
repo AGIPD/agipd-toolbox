@@ -2,6 +2,7 @@ import h5py
 import numpy as np
 import os
 import sys
+import glob
 
 try:
     CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -46,6 +47,8 @@ class CfelLayout(object):
         self._path['total_lost_frames'] = ("{}/total_loss_frames"
                                            .format(self._path['collection']))
 
+        self._module_pos = None
+
         # dark
         self._max_pulses = 704
         self._n_memcells = 352
@@ -75,6 +78,8 @@ class CfelLayout(object):
         Return:
             A tuple containing layout specific dimensions:
 
+            - Input file name: Some layouts require the input file name to
+                               be modified (e.g. insert module position)
             - Number of memory cells
             - Total frames contained in the data
             - Raw shape
@@ -89,9 +94,19 @@ class CfelLayout(object):
         # TODO check this
         run_number = self._runs[0]
 
-        # get number of frames
-        fname = self._in_fname.format(run_number=run_number, part=0)
+        fname_with_wildcard = self._in_fname.format(run_number=run_number,
+                                                    part=0)
+        # cfel file names have ...<module name>_<module position>...
+        # -> the wildcard for the module position has to be filled
+        fname = glob.glob(fname_with_wildcard)[0]
+
+        self._module_pos = self._get_module_pos(fname, fname_with_wildcard)
+        print("module_pos {}".format(self._module_pos))
+
+        new_fname = self._in_fname.replace("*", "_" + self._module_pos)
+
         source_shape = None
+        # get number of frames
         with h5py.File(fname, "r", libver="latest", driver="core") as f:
             try:
                 # TODO: verify that the shape is always right and not
@@ -114,10 +129,33 @@ class CfelLayout(object):
 
         self._raw_shape = (self._n_memcells, 2, n_rows, n_cols)
 
-        return (self._n_memcells,
+        return (new_fname,
+                self._n_memcells,
                 n_frames_total,
                 self._raw_shape,
                 self._path['data'])
+
+    def _get_module_pos(self, fname, fname_with_wildcard):
+        """ Determine module position from file name
+
+        Args:
+            fname: File name without any wildcard but containing the actual
+                   module position
+            fname_with_wildcard: File name with wildcard where the module
+                                 position should be filled in
+
+        Return:
+            The position the module was plugged into the detector
+
+        """
+        # determine the cut off parts to receive the module position
+        pre_and_postfix = fname_with_wildcard.split("*")
+        # cut off the part before the wildcard + underscore
+        module_pos = fname[len(pre_and_postfix[0]) + 1:]
+        # cut off the part after the wildcard
+        module_pos = module_pos[:-len(pre_and_postfix[1])]
+
+        return module_pos
 
     def load(self,
              fname,
@@ -145,6 +183,9 @@ class CfelLayout(object):
         """
 
         self.pos_idxs = pos_idxs
+
+        # fill in the wildcard for the module position
+        fname = glob.glob(fname)[0]
 
         # load data
         with h5py.File(fname, "r") as f:

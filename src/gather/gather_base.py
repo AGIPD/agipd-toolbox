@@ -124,7 +124,7 @@ class AgipdGatherBase(object):
     def get_parts(self):
         # remove extension
         prefix = self._in_fname.rsplit(".", 1)[0]
-        # removet the part section
+        # remove the part section
         prefix = prefix[:-9]
         # use the first run number to determine number of parts
         run_number = self.runs[0]
@@ -137,7 +137,8 @@ class AgipdGatherBase(object):
         print("n_parts {}".format(self._n_parts))
 
     def intiate(self):
-        (n_memcells,
+        (self._in_fname,
+         n_memcells,
          n_frames_total,
          self.raw_shape,
          self._data_path) = self.layout.initiate(n_rows=self.n_rows,
@@ -321,8 +322,8 @@ if __name__ == "__main__":
 
         # no frame loss
         in_subdir = "raw/315-304-309-314-316-306-307/temperature_m25C/dark"
-        module = "M304_m2"
-        runs = ["00012"]
+        module = "M304"
+        runs = [12]
         asic = None  # asic (None means full module)
 #        asic = 1
 
@@ -334,7 +335,7 @@ if __name__ == "__main__":
             "dark": "tint150ns",
         }
 
-        in_file_name = ("{}_{}_{}_"
+        in_file_name = ("{}*_{}_{}_"
                         .format(module,
                                 meas_type,
                                 meas_spec[meas_type]) +

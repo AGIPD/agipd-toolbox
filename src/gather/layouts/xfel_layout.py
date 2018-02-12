@@ -83,6 +83,8 @@ class XfelLayout(object):
         Return:
             A tuple containing layout specific dimensions:
 
+            - Input file name: Some layouts require the input file name to
+                               be modified (e.g. insert module position)
             - Number of memory cells
             - Total frames contained in the data
             - Raw shape
@@ -132,7 +134,8 @@ class XfelLayout(object):
         for key in self._path_temp:
             self._path[key] = self._path_temp[key].format(self._channel)
 
-        return (self._n_memcells,
+        return (self._in_fname  # no modification
+                self._n_memcells,
                 n_frames_total,
                 self._raw_shape,
                 self._path['data'])
