@@ -103,6 +103,7 @@ class SubmitJobs(object):
 
         self.safety_factor = None
         self.meas_spec = None
+        self.module = None
 
         if self.measurement == "drscs":
             self.run_type_list = ["gather", "process", "merge"]
@@ -224,21 +225,59 @@ class SubmitJobs(object):
                                 for i in range(start, stop, size + 1)]
 
     def run(self):
-        if self.run_type == "join":
+        if self.run_type == "preprocess":
+            self.run_type_list_module_dep_before = [self.run_type]
             self.run_type_list_per_module = []
-            self.run_type_list_module_dep = [self.run_type]
+            self.run_type_list_module_dep_after = []
+        if self.run_type == "join":
+            self.run_type_list_module_dep_before = []
+            self.run_type_list_per_module = []
+            self.run_type_list_module_dep_after = [self.run_type]
+        # everything which is not preprocess or join
         elif self.run_type != "all":
+            self.run_type_list_module_dep_before = []
             self.run_type_list_per_module = [self.run_type]
-            self.run_type_list_module_dep = []
+            self.run_type_list_module_dep_after = []
+        # for "all"
         else:
-            self.run_type_list_per_module = [t for t in self.run_type_list
-                                             if t != "join"]
-            self.run_type_list_module_dep = ["join"]
+            if self.use_xfel:
+                self.run_type_list_module_dep_before = ["preprocess"]
+                self.run_type_list_per_module = [t for t in self.run_type_list
+                                                 if t not in ["preprocess",
+                                                              "join"]]
+                self.run_type_list_module_dep_after = ["join"]
+            else:
+                self.run_type_list_per_module = [t for t in self.run_type_list
+                                                 if t != "join"]
+                self.run_type_list_module_dep_after = ["join"]
 
         dep_overview = {}
 
+        # jobs concering all modules (before single module jobs are done)
+        dep_overview["all_modules_before"] = {}
+        jobnums_indp = []
+        for run_type in self.run_type_list_module_dep_before:
+            # as a placeholder because a module has to be defined
+            self.module = self.module_list[0]
+
+            dep_jobs = ":".join(jobnums_indp)
+
+            jn = self.create_job(run_type, self.run_list, dep_jobs)
+            if jn is not None:
+                jobnums_indp.append(jn)
+
+            if type(self.run_list) == list:
+                runs_string = "-".join(list(map(str, self.run_list)))
+            else:
+                runs_string = str(self.run_list)
+            d_o = dep_overview["all_modules_before"]
+            d_o[run_type] = {}
+            d_o[run_type][runs_string] = {}
+            d_o[run_type][runs_string]["jobnum"] = jn
+            d_o[run_type][runs_string]["deb_jobs"] = dep_jobs
+
         # jobs concering single modules
-        jobnums_mod = []
+        jobnums_mod = jobnums_indp
         for module in self.module_list:
             self.module = module
 
@@ -276,20 +315,21 @@ class SubmitJobs(object):
 
             jobnums_mod += jobnums_type
 
-        # jobs concering all modules
-        dep_overview["all_modules"] = {}
+        # jobs concering all modules (after single module jobs were done)
+        dep_overview["all_modules_after"] = {}
         jobnums_indp = jobnums_mod
-        for run_type in self.run_type_list_module_dep:
+        for run_type in self.run_type_list_module_dep_after:
             dep_jobs = ":".join(jobnums_indp)
 
             jn = self.create_job(run_type, self.run_list, dep_jobs)
-            jobnums_indp.append(jn)
+            if jn is not None:
+                jobnums_indp.append(jn)
 
             if type(self.run_list) == list:
                 runs_string = "-".join(list(map(str, self.run_list)))
             else:
                 runs_string = str(self.run_list)
-            d_o = dep_overview["all_modules"]
+            d_o = dep_overview["all_modules_after"]
             d_o[run_type] = {}
             d_o[run_type][runs_string] = {}
             d_o[run_type][runs_string]["jobnum"] = jn
