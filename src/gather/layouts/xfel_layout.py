@@ -68,6 +68,11 @@ class XfelLayout(object):
         else:
             fname = self._preprocessing_fname.format(run=run)
 
+            if not os.path.exists(fname):
+                print("fname={}".format(fname))
+                print("ERROR: preprocessing file does not exist")
+                sys.exit(1)
+
             config = configparser.RawConfigParser()
             config.read(fname)
 
@@ -139,7 +144,7 @@ class XfelLayout(object):
             'channel': self._channel,
             'n_memcells': self._n_memcells,
             'n_frames_total': n_frames_total,
-            'raw_shape':, self._raw_shape,
+            'raw_shape': self._raw_shape,
             'data_path': self._path['data'],
         }
 

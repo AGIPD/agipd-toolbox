@@ -147,8 +147,16 @@ class SubmitJobs(object):
         else:
             self.run_type_list = ["gather", "process", "join"]
 
-        # convert str into list
-        self.run_name = self.config[self.measurement]["run_name"].split(", ")
+        try:
+            # convert str into list
+            run_name = self.config[self.measurement]["run_name"]
+            if run_name == "None":
+                self.run_name = None
+            else:
+                self.run_name = self.config[self.measurement]["run_name"].split(", ")
+        except KeyError:
+            self.run_name = None
+
         if self.use_xfel:
             self.run_list = args.run_list or self.config["general"]["run_list"]
 
@@ -277,7 +285,7 @@ class SubmitJobs(object):
         config.read(ini_file)
 
         if not config.sections():
-            print("No ini file found (tried to find {})".format(ini_file))
+            print("ERROR: No ini file found (tried to find {})".format(ini_file))
             sys.exit(1)
 
         for section, sec_value in config.items():
@@ -389,6 +397,8 @@ class SubmitJobs(object):
                 for i, runs in enumerate(run_list):
                     if self.run_name is not None:
                         run_name = self.run_name[i]
+                    else:
+                        run_name = None
 
                     jn = self.create_job(run_type=run_type,
                                          runs=runs,

@@ -94,6 +94,7 @@ def get_arguments():
                              "pcdrs: 8 runs")
     parser.add_argument("--run_name",
                         type=str,
+                        default=None,
                         help="Names of the runs. Requirement for dark runs"
                              "(e.g. high, medium, low).")
 
@@ -264,7 +265,7 @@ class StartAnalyse(object):
                           self.asic_list,
                           self.safety_factor,
                           [run],
-                          run_name,
+                          self.run_name,
                           self.max_part,
                           self.current_list,  # = None
                           self.use_xfel_in_format,
