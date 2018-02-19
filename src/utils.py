@@ -11,6 +11,12 @@ from logging.config import dictConfig
 
 
 def create_dir(directory_name):
+    """Creates a directory including supdirectories if it does not exist.
+
+    Args:
+        direcoty_name: The path of the direcory to be created.
+    """
+
     if not os.path.exists(directory_name):
         try:
             os.makedirs(directory_name)
@@ -22,10 +28,18 @@ def create_dir(directory_name):
 
 
 def check_file_exists(file_name, quit=True):
+    """Checks if a file already exists.
+
+    Args:
+        file_name: The file to check for existence
+        quit (optional): Quit the program if the file exists or not.
+    """
+
     print("file_name = {}".format(file_name))
     if os.path.exists(file_name):
         print("Output file already exists")
-        sys.exit(1)
+        if quit:
+            sys.exit(1)
     else:
         print("Output file: ok")
 
@@ -148,6 +162,23 @@ def convert_to_xfel_format(channel, data):
 
 
 def load_file_content(fname, excluded=[]):
+    """Load the HDF5 file into a dictionary.
+
+    Args:
+        fname: The name of the HDF5 file to be loaded.
+        excluded: The data paths which should be excluded from loading.
+
+    Return:
+        A dictionary containing the content of the content of the file where
+        the keys are the paths in the original file.
+
+        HDF5 file:
+            my_group
+                my_dataset: numpy array
+
+        dictionary:
+            "mygroup/mydataset": numpy array
+    """
 
     file_content = {}
 
@@ -167,6 +198,19 @@ def load_file_content(fname, excluded=[]):
 
 
 def write_content(fname, file_content, prefix="", excluded=[]):
+    """Writes data to a file.
+
+    Args:
+        fname: The file to store the data to.
+        file_content: A dictionary descibing the data to be stored,
+                      in the form {key: value}
+                      where:
+                        key: path inside the hdf5 file
+                        value: data stored in that path.
+        prefix (optional): A prefix to be prepended to all keys.
+        excluded (optional): List of keys to be excluded from storing.
+    """
+
     with h5py.File(fname, "w", libver="latest") as f:
         for key in file_content:
             if key not in excluded:
@@ -274,14 +318,23 @@ def concatenate_to_module(data, row_axis=2, col_axis=1):
     return result
 
 
-def flatten(d, parent_key='', sep='/'):
-    # converts nested dictionary into flat one
-    # e.g. {"a": {"n":1, "m":2}} -> {"a/n":1, "a/m":2}
+def flatten(d, prefix='', sep='/'):
+    """Converts nested dictionary into flat one.
+
+    Args:
+        d: The dictionary to be flattened.
+        prefix (optional): A prefix to be prepended to all keys.
+        sep (optional): Seperater to be used, default is "/"
+
+    Return:
+        A not Dictionary nested dictionary where the keys are flattened,
+        e.g. {"a": {"n":1, "m":2}} -> {"a/n":1, "a/m":2}.
+    """
 
     items = []
     for key, value in d.items():
-        if parent_key:
-            new_key = parent_key + sep + str(key)
+        if prefix:
+            new_key = prefix + sep + str(key)
         else:
             new_key = key
 

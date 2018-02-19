@@ -105,6 +105,7 @@ class SubmitJobs(object):
         # consider user running in cfel mode more advance thus being able to
         # add argument to command line; default should always be XFEL case
         self.use_xfel = not args.cfel
+        self.no_slurm = args.no_slurm
 
         if self.use_xfel:
             self.config_file = "xfel"
@@ -116,26 +117,22 @@ class SubmitJobs(object):
         self.config = dict()
         self.load_config(ini_file)
 
-        self.no_slurm = args.no_slurm
-
+        # override base config with values of user config file
         config_name = args.config_file or self.config_file
         ini_file = os.path.join(CONF_DIR, "{}.ini".format(config_name))
         print("Using ini_file: {}".format(ini_file))
-
-        # override base config with values of user config file
         self.load_config(ini_file)
+
+        # override user config file with command line arguments
+        self.insert_args_in_config(args)
 
         try:
             self.mail_address = self.config["general"]["mail_address"]
         except KeyError:
             self.mail_address = None
 
-        run_type = self.config["general"]["run_type"]
-
-        # console parameters overwrite the config file ones
-        self.run_type = args.run_type or run_type
-        self.measurement = args.type or self.config["general"]["measurement"]
-
+        self.run_type = self.config["general"]["run_type"]
+        self.measurement = self.config["general"]["measurement"]
         self.partition = self.config["general"]["partition"]
 
         self.safety_factor = None
@@ -158,7 +155,7 @@ class SubmitJobs(object):
             self.run_name = None
 
         if self.use_xfel:
-            self.run_list = args.run_list or self.config["general"]["run_list"]
+            self.run_list = self.config["general"]["run_list"]
 
             if self.run_type == "preprocess":
                 self.module_list = ["0"]
@@ -189,31 +186,40 @@ class SubmitJobs(object):
         self.time_limit = {}
         self.input_dir = {}
         self.output_dir = {}
-        for run_type in self.run_type_list:
-            self.n_jobs[run_type] = int(self.config[run_type]["n_jobs"])
-            self.n_processes[run_type] = self.config[run_type]["n_processes"]
-            self.time_limit[run_type] = self.config[run_type]["time_limit"]
+        if self.run_type == 'all':
+            first_run_type = self.run_type_list[0]
+            c_first_run_type = self.config[first_run_type]
 
-            try:
-                self.input_dir[run_type] = (args.input_dir or
-                                            self.config[run_type]["input_dir"])
-            except KeyError:
-                self.input_dir[run_type] = None
-            try:
-                self.output_dir[run_type] = self.config[run_type]["output_dir"]
-            except KeyError:
-                self.output_dir[run_type] = None
+            self.n_jobs[first_run_type] = int(c_first_run_type['n_jobs'])
+            self.n_processes[first_run_type] = c_first_run_type['n_processes']
+            self.time_limit[first_run_type] = c_first_run_type['time_limit']
 
-        # overwrite with input and output from command line
-#        self.input_dir["gather"] = args.input_dir or self.input_dir["gather"]
+            if 'all' in self.config and 'input_dir' in self.config['all']:
+                self.input_dir[first_run_type] = self.config['all']['input_dir']
+            else:
+                self.input_dir[first_run_type] = c_first_run_type["input_dir"]
 
-        for run_type in self.run_type_list:
-            if (run_type not in ["preprocess", "gather"] and
-                    args.output_dir is not None):
-                self.input_dir[run_type] = args.output_dir
+            if 'all' in self.config and 'output_dir' in self.config['all']:
+                self.output_dir[first_run_type] = self.config['all']['output_dir']
+            else:
+                self.output_dir[first_run_type] = c_first_run_type['output_dir']
 
-            self.output_dir[run_type] = (args.output_dir or
-                                         self.output_dir[run_type])
+            for run_type in self.run_type_list[1:]:
+                self.n_jobs[run_type] = int(self.config[run_type]['n_jobs'])
+                self.n_processes[run_type] = self.config[run_type]['n_processes']
+                self.time_limit[run_type] = self.config[run_type]['time_limit']
+
+                self.input_dir[run_type] = c_first_run_time['output_dir']
+                self.out_dir[run_type] = c_first_run_time['output_dir']
+        else:
+            c_run_type = self.config[self.run_type]
+
+            self.n_jobs[self.run_type] = int(c_run_type["n_jobs"])
+            self.n_processes[self.run_type] = c_run_type["n_processes"]
+            self.time_limit[self.run_type] = c_run_type["time_limit"]
+
+            self.input_dir[self.run_type] = c_run_type["input_dir"]
+            self.output_dir[self.run_type] = c_run_type["output_dir"]
 
         # This has to be done after input_dir is defined thus can not be put
         # in the if above
@@ -234,6 +240,40 @@ class SubmitJobs(object):
             self.asic_set = conf_asic_set[1:-1].split(", ")
             # convert list entries into ints
             self.asic_set = list(map(int, self.asic_set))
+
+    def load_config(self, ini_file):
+
+        config = configparser.ConfigParser()
+        config.read(ini_file)
+
+        if not config.sections():
+            print("ERROR: No ini file found (tried to find {})".format(ini_file))
+            sys.exit(1)
+
+        for section, sec_value in config.items():
+            if section not in self.config:
+                self.config[section] = {}
+            for key, key_value in sec_value.items():
+                self.config[section][key] = key_value
+
+        return config
+
+    def insert_args_in_config(self, args):
+        c_general = self.config['general']
+        c_general['run_type'] = args.run_type or c_general['run_type']
+        c_general['measurement'] = args.type or c_general['measurement']
+
+        # xfel specific
+        try:
+            c_general['run_list'] = args.run_list or c_general['run_list']
+        except KeyError:
+            c_general['run_list'] = None
+
+        run_type = c_general['run_type']
+        c_run_type = self.config[run_type]
+
+        c_run_type['input_dir'] = args.input_dir or c_run_type['input_dir']
+        c_run_type['output_dir'] = args.output_dir or c_run_type['output_dir']
 
     def get_cfel_run_list(self):
 
@@ -278,23 +318,6 @@ class SubmitJobs(object):
             run_numbers.append(int(rn))
 
         return run_numbers
-
-    def load_config(self, ini_file):
-
-        config = configparser.ConfigParser()
-        config.read(ini_file)
-
-        if not config.sections():
-            print("ERROR: No ini file found (tried to find {})".format(ini_file))
-            sys.exit(1)
-
-        for section, sec_value in config.items():
-            if section not in self.config:
-                self.config[section] = {}
-            for key, key_value in sec_value.items():
-                self.config[section][key] = key_value
-
-        return config
 
     def generate_asic_lists(self, asic_set, n_jobs):
 

@@ -33,6 +33,19 @@ class GeneratePathsXfel(object):
         self.use_xfel_out_format = use_xfel_out_format
 
     def raw(self, base_dir, as_template=False):
+        """Generates raw path.
+
+        Args:
+            base_dir: Base directory under which the raw directory can be
+                      found.
+            as_template (optional, bool): If enabled the channel is kept as a
+                                          template instead of being filled in
+                                          (default: False).
+
+        Return:
+            Raw directory and file name, each as string.
+        """
+
         if as_template:
             channel = "{:02}"
         else:
@@ -50,6 +63,19 @@ class GeneratePathsXfel(object):
         return fdir, fname
 
     def preproc(self, base_dir, as_template=False):
+        """Generates the preprocessing file path.
+
+        Args:
+            base_dir: Base directory under which the output is stored.
+            as_template (optional, bool): If enabled the run is kept as a
+                                          template instead of being filled in
+                                          (default: False).
+
+        Return:
+            Preprocessing directory and file name, each as
+            string.
+        """
+
         if self.meas_type == "pcdrs" or len(self.runs) == 1:
             run_subdir = "r" + "-r".join(str(r).zfill(4)
                                          for r in self.runs)
@@ -76,6 +102,15 @@ class GeneratePathsXfel(object):
         return fdir, fname
 
     def gather(self, base_dir):
+        """Generate the gather file path.
+
+        Args:
+            base_dir: Base directory under which the output is stored.
+
+        Return:
+            Gather directory and file name, each as string.
+        """
+
         # TODO: concider additing this into out_base_dir (joined) and
         #       create subdirs for gathered files
         if self.meas_type == "pcdrs" or len(self.runs) == 1:
@@ -101,8 +136,20 @@ class GeneratePathsXfel(object):
 
         return fdir, fname
 
-    def process(self, base_dir, use_xfel_out_format,
-                              as_template=False):
+    def process(self, base_dir, use_xfel_out_format, as_template=False):
+        """Generate the process file path.
+
+        Args:
+            base_dir: Base directory under which the output is stored.
+            use_xfel_out_format (bool): If enabled the output is in xfel format.
+            as_template (optional, bool): If enabled the channel is kept as a
+                                          template instead of being filled in
+                                          (default: False).
+
+        Return:
+            Process directory and file name, each as string.
+        """
+
         run_subdir = "r" + "-r".join(str(r).zfill(4) for r in self.runs)
 
         fdir = os.path.join(base_dir,
@@ -121,6 +168,16 @@ class GeneratePathsXfel(object):
         return fdir, fname
 
     def join(self, base_dir, use_xfel_out_format):
+        """Generates the join file path.
+
+        Args:
+            base_dir: Base directory under which the output is stored.
+            use_xfel_out_format (bool): If enabled the output is in xfel format.
+
+        Return:
+            Join directory and file name, each as string.
+        """
+
         run_subdir = "r" + "-r".join(str(r).zfill(4) for r in self.runs)
 
         fdir = os.path.join(base_dir,
@@ -164,7 +221,21 @@ class GeneratePathsCfel(object):
 
         self.use_xfel_out_format = use_xfel_out_format
 
-    def raw(self, base_dir, as_template=False):
+    def raw(self, base_dir, as_template=True):
+        """Generates raw path.
+
+        Args:
+            base_dir: Base directory under which the raw directory can be
+                      found.
+            as_template (optional, bool): If enabled the channel is kept as a
+                                          template instead of being filled in.
+                                          (default: True, but not implemented here)
+
+        Return:
+            Raw directory and file name, each as string. The file name as
+            a wildcard for the channel.
+        """
+
         # as_template refers to module/channel
 
         # define in files
@@ -186,11 +257,33 @@ class GeneratePathsCfel(object):
         return fdir, fname
 
     def preproc(self, base_dir, as_template=False):
+        """Generates the preprocessing file path. NOT IMPLEMENTED.
+
+        Args:
+            base_dir: Base directory under which the output is stored.
+            as_template (optional, bool): If enabled the run is kept as a
+                                          template instead of being filled in
+                                          (default: False).
+
+        Return:
+            None, None because preprocessing is not implemented in the CFEL
+            layout.
+        """
+
         print("Preprocessing not implemented for CFEL layout")
 
         return None, None
 
     def gather(self, base_dir):
+        """Generate the gather file path.
+
+        Args:
+            base_dir: Base directory under which the output is stored.
+
+        Return:
+            Gather directory and file name, each as string.
+        """
+
         # define out files
         fdir = os.path.join(base_dir,
                             self.module,
@@ -219,8 +312,20 @@ class GeneratePathsCfel(object):
 
         return fdir, fname
 
-    def process(self, base_dir, use_xfel_out_format,
-                              as_template=False):
+    def process(self, base_dir, use_xfel_out_format, as_template=False):
+        """Generate the process file path.
+
+        Args:
+            base_dir: Base directory under which the output is stored.
+            use_xfel_out_format (bool): If enabled the output is in xfel format
+                                        (not implemented).
+            as_template (optional, bool): If enabled the channel is kept as a
+                                          template instead of being filled in
+                                          (default: False, but not implemented here)
+
+        Return:
+            Process directory and file name, each as string.
+        """
 
         fdir = os.path.join(self.out_base_dir,
                             self.module,
@@ -240,6 +345,15 @@ class GeneratePathsCfel(object):
         return fdir, fname
 
     def join(self, base_dir, use_xfel_out_format):
+        """Generates the join file path. NOT IMPLEMENTED.
+
+        Args:
+            base_dir: Base directory under which the output is stored.
+            use_xfel_out_format (bool): If enabled the output is in xfel format.
+
+        Return:
+            Join directory and file name, each as string.
+        """
         raise Exception("CFEL gpfs not supported for join at the moment")
 #        fname = ("{}_{}_{}_asic{:02d}_processed.h5"
 #                 .format(self.module,
