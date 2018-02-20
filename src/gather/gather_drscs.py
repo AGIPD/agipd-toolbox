@@ -44,7 +44,6 @@ class AgipdGatherDrscs(AgipdGatherBase):
         pos_idxs = []
 
         if self.asic is not None:
-
             # column position at top rows
             if self.a_row_start == 0:
                 start = (self.n_runs - 1) - run_idx

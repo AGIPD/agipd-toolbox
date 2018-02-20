@@ -77,16 +77,17 @@ class AgipdGatherBase(object):
         self._n_rows_total = 128
         self._n_cols_total = 512
 
-        self._asic_size = 64
-
-        self._a_row_start = None
-        self._a_row_stop = None
-        self._a_col_start = None
-        self._a_col_stop = None
 
         # public to be used in inherited classes
         self.n_rows = None
         self.n_cols = None
+
+        self.asic_size = 64
+
+        self.a_row_start = None
+        self.a_row_stop = None
+        self.a_col_start = None
+        self.a_col_stop = None
 
         self._get_n_parts()
 
@@ -100,18 +101,18 @@ class AgipdGatherBase(object):
             self.n_cols = self._n_cols_total
         else:
             print("asic {}".format(self._asic))
-            self.n_rows = self._asic_size
-            self.n_cols = self._asic_size
+            self.n_rows = self.asic_size
+            self.n_cols = self.asic_size
 
             asic_order = utils.get_asic_order()
             mapped_asic = utils.calculate_mapped_asic(asic_order)
             print("mapped_asic={}".format(mapped_asic))
 
-            (self._a_row_start,
-             self._a_row_stop,
-             self._a_col_start,
-             self._a_col_stop) = utils.determine_asic_border(mapped_asic,
-                                                             self._asic_size)
+            (self.a_row_start,
+             self.a_row_stop,
+             self.a_col_start,
+             self.a_col_stop) = utils.determine_asic_border(mapped_asic,
+                                                            self.asic_size)
 
         self._intiate()
 
@@ -195,8 +196,8 @@ class AgipdGatherBase(object):
             self.pos_idxs = self.set_pos_indices(run_idx)
             print("pos_idxs", self.pos_idxs)
 
-            load_idx_rows = slice(self._a_row_start, self._a_row_stop)
-            load_idx_cols = slice(self._a_col_start, self._a_col_stop)
+            load_idx_rows = slice(self.a_row_start, self.a_row_stop)
+            load_idx_cols = slice(self.a_col_start, self.a_col_stop)
             print("load idx: {}, {}".format(load_idx_rows, load_idx_cols))
 
             for i in range(self._n_parts):

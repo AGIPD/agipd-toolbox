@@ -45,6 +45,11 @@ def check_file_exists(file_name, quit=True):
 
 
 def get_channel_order():
+    """Default channel order on system.
+
+    Return:
+        The order of the channels on the system per wing.
+    """
     channel_order = [[12, 13, 14, 15, 8, 9, 10, 11],
                      [0, 1, 2, 3, 4, 5, 6, 7]]
 
@@ -217,23 +222,36 @@ def write_content(fname, file_content, prefix="", excluded=[]):
                 f.create_dataset(prefix + "/" + key, data=file_content[key])
 
 
-def calculate_mapped_asic(self, asic_order):
-    # converts asic numbering
-    # e.g. convert an ordering like this (defined in asic_order):
-    #  ____ ____ ____ ____ ____ ____ ____ ____
-    # |    |    |    |    |    |    |    |    |
-    # | 16 | 15 | 14 | 13 | 12 | 11 | 10 |  9 |
-    # |____|____|____|____|____|____|____|____|
-    # |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |
-    # |____|____|____|____|____|____|____|____|
-    #
-    #                   into
-    #  ____ ____ ____ ____ ____ ____ ____ ____
-    # |    |    |    |    |    |    |    |    |
-    # |  0 |  1 | 2  | 3  |  4 |  5 |  6 |  7 |
-    # |____|____|____|____|____|____|____|____|
-    # |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
-    # |____|____|____|____|____|____|____|____|
+def calculate_mapped_asic(asic, asic_order):
+    """Converts asic numbering
+
+    e.g. convert an ordering like this (defined in asic_order):
+      ____ ____ ____ ____ ____ ____ ____ ____
+     |    |    |    |    |    |    |    |    |
+     | 16 | 15 | 14 | 13 | 12 | 11 | 10 |  9 |
+     |____|____|____|____|____|____|____|____|
+     |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |
+     |____|____|____|____|____|____|____|____|
+
+                       into
+      ____ ____ ____ ____ ____ ____ ____ ____
+     |    |    |    |    |    |    |    |    |
+     |  0 |  1 | 2  | 3  |  4 |  5 |  6 |  7 |
+     |____|____|____|____|____|____|____|____|
+     |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
+     |____|____|____|____|____|____|____|____|
+
+    Args:
+        asic: Asic to be mapped.
+        asic_order: Desciption of how the asics are numbered on the module,
+                    e.g. [[16, 15, 14, 13, 12, 11, 10, 9],  # top half
+                          [8, 7, 6, 5, 4, 3, 2, 1]]  # bottom half
+
+    Return:
+        Mapping result of the asic, e.g asic 8 -> 1 or 13-> 3.
+    Raises:
+        Exception: If the asic can not be found in the asic_order.
+    """
 
     #                  [rows, columns]
     asics_per_module = [len(asic_order), len(asic_order[0])]
@@ -242,22 +260,51 @@ def calculate_mapped_asic(self, asic_order):
 
     for row_i in np.arange(len(asic_order)):
         try:
-            col_i = asic_order[row_i].index(self.asic)
+            col_i = asic_order[row_i].index(asic)
             return index_map[row_i * asics_per_module[1] + col_i]
         except:
             pass
     raise Exception("Asic {} is not supported. (asic_order={})"
-                    .format(self.asic, asic_order))
+                    .format(asic, asic_order))
 
 
-def determine_asic_border(mapped_asic, asic_size, asic_order=None):
-    #       ____ ____ ____ ____ ____ ____ ____ ____
-    # 0x64 |    |    |    |    |    |    |    |    |
-    #      |  0 |  1 | 2  | 3  |  4 |  5 |  6 |  7 |
-    # 1x64 |____|____|____|____|____|____|____|____|
-    #      |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
-    # 2x64 |____|____|____|____|____|____|____|____|
-    #      0*64 1x64 2x64 3x64 4x64 5x64 6x64 7x64 8x64
+def determine_asic_border(mapped_asic,
+                          asic_size,
+                          asic_order=None,
+                          verbose=True):
+    """Determines the start and end point of an asic.
+
+    Determines on which row and col the asic starts and stops according to
+    the following layout:
+           ____ ____ ____ ____ ____ ____ ____ ____
+     0x64 |    |    |    |    |    |    |    |    |
+          |  0 |  1 | 2  | 3  |  4 |  5 |  6 |  7 |
+     1x64 |____|____|____|____|____|____|____|____|
+          |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
+     2x64 |____|____|____|____|____|____|____|____|
+          0*64 1x64 2x64 3x64 4x64 5x64 6x64 7x64 8x64
+
+    Args:
+        mapped_asic: Asic number in the internernal numbering scheme
+                     (can be determined with calculate_mapped_asic).
+        asic_size: How many pixel are on an asic, e.g. 64
+        asic_order (optional): Desciption of how the asics are numbered on the
+                               module, e.g.
+                               [[16, 15, 14, 13, 12, 11, 10, 9],  # top half
+                                [8, 7, 6, 5, 4, 3, 2, 1]]  # bottom half
+                               If not set, or set to None, the default asic
+                               order is taken.
+        verbose (optional, bool): If enabled (intermediate) results are
+                                  printed.
+    Return:
+        The start and end point of the columns and rows of the asic in this
+        order:
+
+            row start
+            row stop
+            column start
+            column stop.
+    """
 
     if asic_order is None:
         asic_order = get_asic_order()
@@ -265,19 +312,21 @@ def determine_asic_border(mapped_asic, asic_size, asic_order=None):
 
     row_progress = int(mapped_asic / asics_per_module[1])
     col_progress = int(mapped_asic % asics_per_module[1])
-    print("row_progress: {}".format(row_progress))
-    print("col_progress: {}".format(col_progress))
 
     row_start = row_progress * asic_size
     row_stop = (row_progress + 1) * asic_size
     col_start = col_progress * asic_size
     col_stop = (col_progress + 1) * asic_size
 
-    print("asic_size {}".format(asic_size))
-    print("row_start: {}".format(row_start))
-    print("row_stop: {}".format(row_stop))
-    print("col_start: {}".format(col_start))
-    print("col_stop: {}".format(col_stop))
+    if verbose:
+        print("row_progress: {}".format(row_progress))
+        print("col_progress: {}".format(col_progress))
+
+        print("asic_size {}".format(asic_size))
+        print("row_start: {}".format(row_start))
+        print("row_stop: {}".format(row_stop))
+        print("col_start: {}".format(col_start))
+        print("col_stop: {}".format(col_stop))
 
     return row_start, row_stop, col_start, col_stop
 
