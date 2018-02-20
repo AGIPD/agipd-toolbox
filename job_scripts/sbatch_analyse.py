@@ -71,6 +71,11 @@ def get_arguments():
                         type=str,
                         help="Module to be analysed (e.g M215).\n"
                              "This is only used in cfel mode")
+    parser.add_argument("--temperature",
+                        type=str,
+                        help="The temperature for which the data was taken "
+                             "(e.g. temperature_m25C).\n"
+                             "This is only used in cfel mode")
 
     parser.add_argument("--no_slurm",
                         action="store_true",
@@ -79,18 +84,13 @@ def get_arguments():
 
     args = parser.parse_args()
 
-    #TODO move that after combining with config?
-#    if args.cfel and not args.module:
-#        msg = "To run in cfel mode a module has to be specified."
-#        parser.error(msg)
-
-    if (not args.cfel
-            and not args.input_dir
-            and not args.output_dir
-            and not args.type
-            and not args.run_list):
-        msg = "XFEL mode requires a run list to be specified."
-        parser.error(msg)
+    if not args.cfel:
+        if (not args.input_dir
+                or not args.output_dir
+                or not args.type
+                or not args.run_list):
+            msg = "XFEL mode requires a run list to be specified."
+            parser.error(msg)
 
     return args
 
@@ -125,6 +125,11 @@ class SubmitJobs(object):
 
         # override user config file with command line arguments
         self.insert_args_in_config(args)
+
+        print("\nsbatch uses config:")
+        for key in self.config:
+            print(key, self.config[key])
+        print()
 
         try:
             self.mail_address = self.config["general"]["mail_address"]
@@ -194,23 +199,16 @@ class SubmitJobs(object):
             self.n_processes[first_run_type] = c_first_run_type['n_processes']
             self.time_limit[first_run_type] = c_first_run_type['time_limit']
 
-            if 'all' in self.config and 'input_dir' in self.config['all']:
-                self.input_dir[first_run_type] = self.config['all']['input_dir']
-            else:
-                self.input_dir[first_run_type] = c_first_run_type["input_dir"]
-
-            if 'all' in self.config and 'output_dir' in self.config['all']:
-                self.output_dir[first_run_type] = self.config['all']['output_dir']
-            else:
-                self.output_dir[first_run_type] = c_first_run_type['output_dir']
+            self.input_dir[first_run_type] = self.config['all']['input_dir']
+            self.output_dir[first_run_type] = self.config['all']['output_dir']
 
             for run_type in self.run_type_list[1:]:
                 self.n_jobs[run_type] = int(self.config[run_type]['n_jobs'])
                 self.n_processes[run_type] = self.config[run_type]['n_processes']
                 self.time_limit[run_type] = self.config[run_type]['time_limit']
 
-                self.input_dir[run_type] = c_first_run_time['output_dir']
-                self.out_dir[run_type] = c_first_run_time['output_dir']
+                self.input_dir[run_type] = self.output_dir[first_run_type]
+                self.output_dir[run_type] = self.output_dir[first_run_type]
         else:
             c_run_type = self.config[self.run_type]
 
@@ -263,20 +261,63 @@ class SubmitJobs(object):
 
     def insert_args_in_config(self, args):
         c_general = self.config['general']
-        c_general['run_type'] = args.run_type or c_general['run_type']
-        c_general['measurement'] = args.type or c_general['measurement']
+
+        try:
+            c_general['run_type'] = args.run_type or c_general['run_type']
+        except:
+            raise Exception("No run_type specified. Abort.")
+            sys.exit(1)
+
+        try:
+            c_general['measurement'] = args.type or c_general['measurement']
+        except:
+            raise Exception("No measurement type specified. Abort.")
+            sys.exit(1)
+
+        # cfel specific
+        try:
+            c_general['module'] = args.module or c_general['module']
+        except:
+            if not self.use_xfel:
+                raise Exception("No module specified. Abort.")
+                sys.exit(1)
+
+        try:
+            c_general['temperature'] = args.temperature or c_general['temperature']
+        except:
+            if not self.use_xfel:
+                raise Exception("No temperature specified. Abort.")
+                sys.exit(1)
+
 
         # xfel specific
         try:
             c_general['run_list'] = args.run_list or c_general['run_list']
         except KeyError:
-            c_general['run_list'] = None
+            if self.use_xfel:
+                raise Exception("No run_list specified. Abort.")
+                sys.exit(1)
+            else:
+                c_general['run_list'] = None
 
         run_type = c_general['run_type']
+
+        if run_type == "all" and "all" not in self.config:
+            self.config[run_type] = {}
+
         c_run_type = self.config[run_type]
 
-        c_run_type['input_dir'] = args.input_dir or c_run_type['input_dir']
-        c_run_type['output_dir'] = args.output_dir or c_run_type['output_dir']
+        try:
+            c_run_type['input_dir'] = args.input_dir or c_run_type['input_dir']
+        except KeyError:
+            raise Exception("No input_dir specified. Abort.")
+            sys.exit(1)
+
+        try:
+            c_run_type['output_dir'] = args.output_dir or c_run_type['output_dir']
+        except KeyError:
+            raise Exception("No output_dir specified. Abort.")
+            sys.exit(1)
 
     def get_cfel_run_list(self):
 
