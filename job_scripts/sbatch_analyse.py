@@ -163,6 +163,9 @@ class SubmitJobs(object):
             self.run_list = self.config["general"]["run_list"]
 
             if self.run_type == "preprocess":
+                # preprocess only should run once and not for every channel
+                # -> because the channel is not used in prepocess at all use
+                # channel 0 as placeholder
                 self.module_list = ["0"]
             else:
                 # convert str into list
@@ -192,23 +195,31 @@ class SubmitJobs(object):
         self.input_dir = {}
         self.output_dir = {}
         if self.run_type == 'all':
-            first_run_type = self.run_type_list[0]
-            c_first_run_type = self.config[first_run_type]
-
-            self.n_jobs[first_run_type] = int(c_first_run_type['n_jobs'])
-            self.n_processes[first_run_type] = c_first_run_type['n_processes']
-            self.time_limit[first_run_type] = c_first_run_type['time_limit']
-
-            self.input_dir[first_run_type] = self.config['all']['input_dir']
-            self.output_dir[first_run_type] = self.config['all']['output_dir']
-
-            for run_type in self.run_type_list[1:]:
+            for run_type in self.run_type_list:
                 self.n_jobs[run_type] = int(self.config[run_type]['n_jobs'])
                 self.n_processes[run_type] = self.config[run_type]['n_processes']
                 self.time_limit[run_type] = self.config[run_type]['time_limit']
 
-                self.input_dir[run_type] = self.output_dir[first_run_type]
-                self.output_dir[run_type] = self.output_dir[first_run_type]
+            runs_using_all_conf = [self.run_type_list[0]]
+            if self.use_xfel:
+                #if self.run_type_list[0] == "preprocess":
+                #
+                runs_using_all_conf.append(self.run_type_list[1])
+                run_type_list = self.run_type_list[2:]
+            else:
+                run_type_list = self.run_type_list[1:]
+
+            # the runs which have to use the general input directory
+            for run_type in runs_using_all_conf:
+                self.input_dir[run_type] = self.config['all']['input_dir']
+                self.output_dir[run_type] = self.config['all']['output_dir']
+
+            # the runs which are following in the chain and work on the ourput
+            # of the bevious ones
+            for run_type in run_type_list:
+                self.input_dir[run_type] = self.output_dir[self.run_type_list[0]]
+                self.output_dir[run_type] = self.output_dir[self.run_type_list[0]]
+
         else:
             c_run_type = self.config[self.run_type]
 
@@ -302,19 +313,32 @@ class SubmitJobs(object):
 
         run_type = c_general['run_type']
 
-        if run_type == "all" and "all" not in self.config:
-            self.config[run_type] = {}
+        #if run_type == "all" and "all" not in self.config:
+        if "all" not in self.config:
+            self.config['all'] = {}
 
         c_run_type = self.config[run_type]
 
         try:
-            c_run_type['input_dir'] = args.input_dir or c_run_type['input_dir']
+            # 'all' takes higher priority than the run type specific config
+            if 'input_dir' in self.config['all']:
+                c_run_type['input_dir'] = (args.input_dir
+                                           or self.config['all']['input_dir'])
+            else:
+                c_run_type['input_dir'] = (args.input_dir
+                                           or c_run_type['input_dir'])
         except KeyError:
-            raise Exception("No input_dir specified. Abort.")
+            raise Exception("No input_dir specified. Abort.".format(run_type))
             sys.exit(1)
 
         try:
-            c_run_type['output_dir'] = args.output_dir or c_run_type['output_dir']
+            # 'all' takes higher priority than the run type specific config
+            if 'output_dir' in self.config['all']:
+                c_run_type['output_dir'] = (args.output_dir
+                                           or self.config['all']['output_dir'])
+            else:
+                c_run_type['output_dir'] = (args.output_dir
+                                           or c_run_type['output_dir'])
         except KeyError:
             raise Exception("No output_dir specified. Abort.")
             sys.exit(1)
@@ -393,7 +417,7 @@ class SubmitJobs(object):
             self.run_type_list_module_dep_before = [self.run_type]
             self.run_type_list_per_module = []
             self.run_type_list_module_dep_after = []
-        if self.run_type == "join":
+        elif self.run_type == "join":
             self.run_type_list_module_dep_before = []
             self.run_type_list_per_module = []
             self.run_type_list_module_dep_after = [self.run_type]
@@ -426,11 +450,16 @@ class SubmitJobs(object):
             self.module = self.module_list[0]
 
             dep_jobs = ":".join(jobnums_indp)
+            jn = self.create_job(run_type=run_type,
+                                 runs=self.run_list,
+                                 run_name=None,
+                                 #run_name=self.run_name,
+                                 dep_jobs=dep_jobs)
 
-            jn = self.create_job(run_type, self.run_list, dep_jobs)
             if jn is not None:
                 jobnums_indp.append(jn)
 
+            # collect information for later overview
             if type(self.run_list) == list:
                 runs_string = "-".join(list(map(str, self.run_list)))
             else:
@@ -478,6 +507,7 @@ class SubmitJobs(object):
                     if jn is not None:
                         jobnums_type.append(jn)
 
+                    # collect information for later overview
                     if type(runs) == list:
                         runs_string = "-".join(list(map(str, runs)))
                     else:
@@ -499,10 +529,11 @@ class SubmitJobs(object):
             jn = self.create_job(run_type=run_type,
                                  runs=self.run_list,
                                  run_name=None,
-                                 dep_job=dep_jobs)
+                                 dep_jobs=dep_jobs)
             if jn is not None:
                 jobnums_indp.append(jn)
 
+            # collect information for later overview
             if type(self.run_list) == list:
                 runs_string = "-".join(list(map(str, self.run_list)))
             else:

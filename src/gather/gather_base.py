@@ -234,8 +234,8 @@ class AgipdGatherBase(object):
             f.create_dataset("analog", data=self._analog, dtype=np.int16)
             f.create_dataset("digital", data=self._digital, dtype=np.int16)
 
-            f.create_dataset("module", data=self._module)
-            f.create_dataset("channel", data=self._channel)
+            f.create_dataset("module", data=str(self._module))
+            f.create_dataset("channel", data=str(self._channel))
 
             # save metadata from original files
             idx = 0
