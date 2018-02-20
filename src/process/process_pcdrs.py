@@ -23,7 +23,7 @@ class AgipdProcessPcdrs(AgipdProcessBase):
         # although only 64 contain actual usefull data
         # TODO what happens if data is processed for all 67?
 #        self.n_memcells = 74
-        self.n_memcells = 32
+#        self.n_memcells = 32
         print("n_memcell={}, n_rows={}, n_cols={}"
               .format(self.n_memcells, self.n_cols, self.n_rows))
 

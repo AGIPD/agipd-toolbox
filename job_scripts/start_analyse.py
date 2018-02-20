@@ -85,7 +85,8 @@ def get_arguments():
 #                             "correct: apply constants on experiment data")
     parser.add_argument("--run_list",
                         type=int,
-                        nargs="+",
+                        nargs="*",
+                        #nargs="+",
                         required=True,
                         help="Run numbers to extract data from. "
                              "Requirements:\n"
@@ -94,6 +95,7 @@ def get_arguments():
                              "pcdrs: 8 runs")
     parser.add_argument("--run_name",
                         type=str,
+                        nargs="+",
                         default=None,
                         help="Names of the runs. Requirement for dark runs"
                              "(e.g. high, medium, low).")

@@ -230,28 +230,26 @@ class Analyse(object):
 
         if self.meas_type == "dark":
             from process_dark import AgipdProcessDark as Process
+
+            if self.use_xfel_out_format:
+                run_list = self.runs
+            else:
+                run_list = self.run_name
+
         elif self.meas_type == "pcdrs":
             from process_pcdrs import AgipdProcessPcdrs as Process
+
+            # adjust list of runs
+            run_list = ["r" + "-r".join(str(r).zfill(4) for r in self.runs)]
+
         else:
             msg = "Process is not supported for type {}".format(self.meas_type)
             raise Exception(msg)
 
-        if self.meas_type == "pcdrs":
-            # adjust list of runs
-            run_list = ["r" + "-r".join(str(r).zfill(4) for r in self.runs)]
-
-            # define out files
-            # the in files for processing are the out ones from gather
-            in_dir, in_file_name = self.generate_gather_path(self.in_base_dir)
-            in_fname = os.path.join(in_dir, in_file_name)
-
-        else:
-            run_list = self.runs
-
-            # define out files
-            # the in files for processing are the out ones from gather
-            in_dir, in_file_name = self.generate_gather_path(self.in_base_dir)
-            in_fname = os.path.join(in_dir, in_file_name)
+        # define out files
+        # the in files for processing are the out ones from gather
+        in_dir, in_file_name = self.generate_gather_path(self.in_base_dir)
+        in_fname = os.path.join(in_dir, in_file_name)
 
         # define out files
         out_dir, out_file_name = (
@@ -266,7 +264,8 @@ class Analyse(object):
         else:
             utils.create_dir(out_dir)
 
-            # generate output
+            # generate out_put
+            print("Used parameter for process:")
             print("channel", self.channel)
             print("in_fname=", in_fname)
             print("out_fname", out_fname)

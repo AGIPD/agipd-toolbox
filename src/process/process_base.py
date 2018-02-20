@@ -36,25 +36,37 @@ class AgipdProcessBase(object):
 
         in_fname = self.in_fname.format(run_number=self.runs[0])
         with h5py.File(in_fname, "r") as f:
-            self.n_memcells = f["analog"].shape[1]
+            self.n_memcells = f['analog'].shape[1]
 
         self.shapes = {}
         self.result = {}
 
         in_fname = self.in_fname.format(run_number=self.runs[0])
-        self.channel = int(in_fname.rsplit("/", 1)[1].split("AGIPD")[1][:2])
-        self.in_wing2 = utils.located_in_wing2(self.channel)
+
+        self.module, self.channel = self._get_module_and_channel(in_fname)
 
         print("\n\n\nStart process")
-        print("in_fname = ", self.in_fname)
-        print("out_fname = ", self._out_fname, "\n")
+        print("in_fname:", self.in_fname)
+        print("out_fname:", self._out_fname)
+        print("module, channel:", self.module, self.channel)
+        print()
 
         self.run()
 
+    def _get_module_and_channel(self, in_fname):
+
+        with h5py.File(in_fname, "r") as f:
+            module = f['module'][()]
+            channel = f['channel'][()]
+
+#        self.channel = int(in_fname.rsplit("/", 1)[1].split("AGIPD")[1][:2])
+
+        return module, channel
+
     def load_data(self, in_fname):
         with h5py.File(in_fname, "r") as f:
-            analog = f["analog"][()]
-            digital = f["digital"][()]
+            analog = f['analog'][()]
+            digital = f['digital'][()]
 
         return analog, digital
 
@@ -72,9 +84,11 @@ class AgipdProcessBase(object):
         if self._use_xfel_format:
             self.convert_to_xfel_format()
 
+        print("Start saving results at {} ... ".format(self._out_fname), end='')
         self.write_data()
+        print("Done.")
 
-        print('Process took time:  ', time.time() - total_time, '\n\n')
+        print("Process took time: {}\n\n", time.time() - total_time)
 
     def get_mask(self, analog, digital):
 
@@ -139,9 +153,9 @@ class AgipdProcessBase(object):
         print("Convert to XFEL format")
 
         for key in self.result:
-            self.result[key]["data"] = (
+            self.result[key]['data'] = (
                 utils.convert_to_xfel_format(self.channel,
-                                             self.result[key]["data"]))
+                                             self.result[key]['data']))
 
         for key in self.shapes:
             self.shapes[key] = (
@@ -149,13 +163,11 @@ class AgipdProcessBase(object):
                                              self.shapes[key]))
 
     def write_data(self):
-        print("Start saving results at", self._out_fname)
-
-        with  h5py.File(self._out_fname, "w", libver="latest") as f:
+        with  h5py.File(self._out_fname, "w", libver='latest') as f:
             for key in self.result:
-                f.create_dataset(self.result[key]["path"],
-                                 data=self.result[key]["data"],
-                                 dtype=self.result[key]["type"])
+                f.create_dataset(self.result[key]['path'],
+                                 data=self.result[key]['data'],
+                                 dtype=self.result[key]['type'])
 
             # convert into unicode
             if type(self.runs[0]) == str:
@@ -173,4 +185,3 @@ class AgipdProcessBase(object):
                              data=today)
 
             f.flush()
-        print("Saving done")

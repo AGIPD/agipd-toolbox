@@ -334,11 +334,17 @@ class GeneratePathsCfel(object):
                             self.meas_spec,
                             self.run_type)
 
-        fname = ("{}_{}_{}_asic{:02}_processed.h5"
-                 .format(self.module,
-                         self.meas_type,
-                         self.meas_spec,
-                         self.asic))
+        if self.asic is None:
+            fname = ("{}_{}_{}_processed.h5"
+                     .format(self.module,
+                             self.meas_type,
+                             self.meas_spec))
+        else:
+            fname = ("{}_{}_{}_asic{:02}_processed.h5"
+                     .format(self.module,
+                             self.meas_type,
+                             self.meas_spec,
+                             self.asic))
 
         print("process fname", fname)
 

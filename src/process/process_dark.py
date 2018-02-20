@@ -56,14 +56,14 @@ class AgipdProcessDark(AgipdProcessBase):
         for i, run_number in enumerate(self.runs):
             in_fname = self.in_fname.format(run_number=run_number)
 
-            print("Start loading data from", in_fname)
+            print("Start loading data from {} ...".format(in_fname), end="")
             analog, digital = self.load_data(in_fname)
-            print("Loading done")
+            print("Done.")
 
             m_analog, m_digital = self.mask_out_problems(analog=analog,
                                                          digital=digital)
 
-            print("Start computing means and standard deviations")
+            print("Start computing means and standard deviations ...", end="")
             offset = np.mean(m_analog, axis=0).astype(np.int)
             gainlevel_mean = np.mean(m_digital, axis=0).astype(np.int)
 
@@ -73,7 +73,7 @@ class AgipdProcessDark(AgipdProcessBase):
             s = self.result["stddev"]["data"][i, ...]
             for cell in np.arange(self.n_memcells):
                 s[cell, ...] = m_analog[:, cell, :, :].std(axis=0)
-            print("Done computing means and standard deviations")
+            print("Done.")
 
         t = self.result["threshold"]["data"]
         md = self.result["gainlevel_mean"]["data"]

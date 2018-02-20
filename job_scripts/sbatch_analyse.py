@@ -224,7 +224,10 @@ class SubmitJobs(object):
         # This has to be done after input_dir is defined thus can not be put
         # in the if above
         if not self.use_xfel:
-            self.run_list = self.get_cfel_run_list()
+            if self.run_type in ["gather", "all"]:
+                self.run_list = self.get_cfel_run_list()
+            else:
+                self.run_list = []
 
         # Needed for gather
         try:
@@ -367,6 +370,7 @@ class SubmitJobs(object):
                                                               "join"]]
                 self.run_type_list_module_dep_after = ["join"]
             else:
+                self.run_type_list_module_dep_before = []
                 self.run_type_list_per_module = [t for t in self.run_type_list
                                                  if t != "join"]
                 self.run_type_list_module_dep_after = ["join"]
@@ -390,6 +394,7 @@ class SubmitJobs(object):
                 runs_string = "-".join(list(map(str, self.run_list)))
             else:
                 runs_string = str(self.run_list)
+
             d_o = dep_overview["all_modules_before"]
             d_o[run_type] = {}
             d_o[run_type][runs_string] = {}
@@ -409,8 +414,10 @@ class SubmitJobs(object):
                 #     run_list = self.run_list
                 if run_type == "gather" and self.measurement == "dark":
                     run_list = self.run_list
+                    run_name = self.run_name
                 else:
                     run_list = [self.run_list]
+                    run_name = [self.run_name]
 
                 dep_overview[module][run_type] = {}
 
@@ -419,13 +426,13 @@ class SubmitJobs(object):
                 dep_jobs = ":".join(jobnums_type)
                 for i, runs in enumerate(run_list):
                     if self.run_name is not None:
-                        run_name = self.run_name[i]
+                        rname = run_name[i]
                     else:
-                        run_name = None
+                        rname = None
 
                     jn = self.create_job(run_type=run_type,
                                          runs=runs,
-                                         run_name=run_name,
+                                         run_name=rname,
                                          dep_jobs=dep_jobs)
                     if jn is not None:
                         jobnums_type.append(jn)
@@ -459,6 +466,7 @@ class SubmitJobs(object):
                 runs_string = "-".join(list(map(str, self.run_list)))
             else:
                 runs_string = str(self.run_list)
+
             d_o = dep_overview["all_modules_after"]
             d_o[run_type] = {}
             d_o[run_type][runs_string] = {}
@@ -534,7 +542,10 @@ class SubmitJobs(object):
             self.script_params += ["--run_list", str(runs)]
 
         if self.run_name is not None:
-            self.script_params += ["--run_name", run_name]
+            if type(runs) == list:
+                self.script_params += ["--run_name"] + [str(r) for r in run_name]
+            else:
+                self.script_params += ["--run_name", str(run_name)]
 
         if self.use_xfel:
             self.script_params += [
