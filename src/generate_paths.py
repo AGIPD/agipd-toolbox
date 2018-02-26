@@ -245,14 +245,22 @@ class GeneratePathsCfel(object):
 
         if self.meas_type not in ["dark", "xray"]:
             fdir = os.path.join(base_dir,
+                                self.temperature,
+                                self.meas_in[self.meas_type],
                                 self.meas_spec)
 
         #fname = ("{}_{}_{}_"
-        fname = ("{}*_{}_{}_"  # only module without location, e.g. M304
-                 .format(self.module,
-                         self.meas_type,
-                         self.meas_spec)
-                 + "{run_number:05}_part{part:05}.nxs")
+        prefix = ("{}*_{}_{}_"  # only module without location, e.g. M304
+                     .format(self.module,
+                             self.meas_type,
+                             self.meas_spec))
+
+        if self.run_name is None:
+            fname = prefix + "{run_number:05}_part{part:05}.nxs"
+        elif len(self.run_name) == 1:
+            fname = prefix + self.run_name[0] + "_{run_number:05}_part{part:05}.nxs"
+        else:
+            raise Exception("Run name is not unique.")
 
         return fdir, fname
 
@@ -290,25 +298,28 @@ class GeneratePathsCfel(object):
                             self.temperature,
                             self.meas_type,
                             self.meas_spec,
-                            self.run_type)
-        # for testing
-#        out_base_dir = ("/gpfs/exfel/exp/SPB/201701/p002012/" +
-#                        "scratch/user/kuhnm")
-#        out_subdir = "tmp"
-#        out_dir = os.path.join(out_base_dir,
-#                               out_subdir,
-#                               "gather")
-        if self.asic is None:
-            fname = ("{}_{}_{}_gathered.h5"
-                     .format(self.module,
-                             self.meas_type,
-                             self.run_name))
+                            "gather")
+
+        if self.run_name is None:
+            prefix = ("{}_{}"
+                      .format(self.module,
+                              self.meas_type))
+
         else:
-            fname = ("{}_{}_{}_asic{:02}_gathered.h5"
-                     .format(self.module,
-                             self.meas_type,
-                             self.run_name,
-                             self.asic))
+            if len(self.runs) == 1:
+                name = "-".join(self.run_name)
+            else:
+                name = "{run_number}"
+
+            prefix = ("{}_{}_{}"
+                      .format(self.module,
+                              self.meas_type,
+                              name))
+
+        if self.asic is None:
+            fname = prefix + "_gathered.h5"
+        else:
+            fname = prefix + "_asic{:02}_gathered.h5".format(self.asic)
 
         return fdir, fname
 

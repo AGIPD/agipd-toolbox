@@ -231,7 +231,8 @@ class Analyse(object):
         if self.meas_type == "dark":
             from process_dark import AgipdProcessDark as Process
 
-            if self.use_xfel_out_format:
+
+            if self.use_xfel_in_format or self.run_name is None:
                 run_list = self.runs
             else:
                 run_list = self.run_name

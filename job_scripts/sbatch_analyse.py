@@ -488,6 +488,8 @@ class SubmitJobs(object):
                 else:
                     run_list = [self.run_list]
                     run_name = [self.run_name]
+                print("run_list", run_list)
+                print("run_name", run_name)
 
                 dep_overview[module][run_type] = {}
 
@@ -613,8 +615,8 @@ class SubmitJobs(object):
         else:
             self.script_params += ["--run_list", str(runs)]
 
-        if self.run_name is not None:
-            if type(runs) == list:
+        if run_name is not None:
+            if type(run_name) == list:
                 self.script_params += ["--run_name"] + [str(r) for r in run_name]
             else:
                 self.script_params += ["--run_name", str(run_name)]
