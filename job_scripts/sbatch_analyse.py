@@ -379,11 +379,11 @@ class SubmitJobs(object):
         postfix = raw_splitted[-1]
         postfix = postfix.format(part=0)
 
-        middle_part = f[len(raw_splitted[0]) + 2:]
-
         run_numbers = []
         for f in found_files:
             # also remove underscore
+            middle_part = f[len(raw_splitted[0]) + 2:]
+
             # only take the runs for which run_names are defined
             if middle_part.startswith(tuple(self.run_name)):
                 # cut off the part after the run_number
@@ -391,7 +391,7 @@ class SubmitJobs(object):
                 print("rn", rn)
                 # the run number now is the tail of the string till the underscore
                 # (for drscs it is not the last but the second to last underscore)
-                rn = rn.rsplit("_", split_number)[1:]
+                rn = rn.rsplit("_", 1)[1:]
                 # for drscs the splitted elements have to be join again
                 rn = "_".join(rn)
                 print("rn", rn)
