@@ -18,26 +18,12 @@ if SRC_PATH not in sys.path:
 import utils  # noqa E402
 
 
-class AgipdGatherDrscs(AgipdGatherBase):
-    def __init__(self,
-                 in_fname,
-                 out_fname,
-                 runs,
-                 max_part=False,
-                 asic=None,
-                 use_xfel_format=False,
-                 backing_store=True):
+class GatherDrscs(GatherBase):
+    def __init__(self, **kwargs):
 
         self.n_runs = 4
 
-        super().__init__(in_fname=in_fname,
-                 out_fname=out_fname,
-                 runs=runs,
-                 preproc_fname=preproc_fname,
-                 max_part=max_part,
-                 asic=asic,
-                 use_xfel_format=use_xfel_format,
-                 backing_store=backing_store)
+        super().__init__(**kwargs)
 
     def set_pos_indices(self, run_idx):
 

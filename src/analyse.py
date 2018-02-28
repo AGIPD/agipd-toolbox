@@ -272,10 +272,10 @@ class Analyse(object):
             print("out_fname", out_fname)
             print("runs", run_list)
             print("use_xfel_out_format=", self.use_xfel_out_format)
-            Process(in_fname,
-                    out_fname,
-                    run_list,
-                    self.use_xfel_out_format)
+            Process(in_fname=in_fname,
+                    out_fname=out_fname,
+                    runs=run_list,
+                    use_xfel_format=self.use_xfel_out_format)
 
     #            ParallelProcess(self.asic,
     #                            in_fname,

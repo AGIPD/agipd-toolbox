@@ -2,18 +2,15 @@ import sys
 import numpy as np
 import os
 
-from process_base import AgipdProcessBase
+from process_base import ProcessBase
 
 
-class AgipdProcessDark(AgipdProcessBase):
-    def __init__(self, in_fname, out_fname, runs, use_xfel_format=False):
+class ProcessDark(ProcessBase):
+    def __init__(self, **kwargs):
 
         self.n_offsets = None
 
-        super().__init__(in_fname=in_fname,
-                         out_fname=out_fname,
-                         runs=runs,
-                         use_xfel_format=use_xfel_format)
+        super().__init__(**kwargs)
 
     def initiate(self):
         self.n_offsets = len(self.runs)

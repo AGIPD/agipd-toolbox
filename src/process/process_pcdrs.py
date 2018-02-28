@@ -2,19 +2,16 @@ import sys
 import numpy as np
 import os
 
-from process_base import AgipdProcessBase
+from process_base import ProcessBase
 
 
-class AgipdProcessPcdrs(AgipdProcessBase):
-    def __init__(self, in_fname, out_fname, runs, use_xfel_format=False):
+class ProcessPcdrs(ProcessBase):
+    def __init__(self, **kwargs):
 
         self.fit_interval = None
         self.n_offsets = 2
 
-        super().__init__(in_fname=in_fname,
-                         out_fname=out_fname,
-                         runs=runs,
-                         use_xfel_format=use_xfel_format)
+        super().__init__(**kwargs)
 
     def initiate(self):
         # n_memcells is set in init of base class thus has to be overwritten
