@@ -374,16 +374,34 @@ class SubmitJobs(object):
         found_files = glob.glob(raw)
 #        print("found_files", found_files)
 
-        run_numbers = []
-        postfix = raw_path.split(run_number_templ)[-1]
-        postfix = postfix.format(part=0)
-        for f in found_files:
-            # cut off the part after the run_number
-            rn = f[:-len(postfix)]
-            # the run number now is the tail of the string till the underscore
-            rn = rn.rsplit("_", 1)[-1]
+        raw_splitted = raw_path.split(run_number_templ)
 
-            run_numbers.append(int(rn))
+        postfix = raw_splitted[-1]
+        postfix = postfix.format(part=0)
+
+        middle_part = f[len(raw_splitted[0]) + 2:]
+
+        run_numbers = []
+        for f in found_files:
+            # also remove underscore
+            # only take the runs for which run_names are defined
+            if middle_part.startswith(tuple(self.run_name)):
+                # cut off the part after the run_number
+                rn = f[:-len(postfix)]
+                print("rn", rn)
+                # the run number now is the tail of the string till the underscore
+                # (for drscs it is not the last but the second to last underscore)
+                rn = rn.rsplit("_", split_number)[1:]
+                # for drscs the splitted elements have to be join again
+                rn = "_".join(rn)
+                print("rn", rn)
+
+                run_numbers.append(int(rn))
+
+#               if self.use_xfel:
+#                    run_numbers.append(int(rn))
+#               else:
+#                    run_numbers.append(rn)
 
         return run_numbers
 
@@ -480,8 +498,6 @@ class SubmitJobs(object):
 
             jobnums_type = []
             for run_type in self.run_type_list_per_module:
-                # if run_type == "preprocess":
-                #     run_list = self.run_list
                 if run_type == "gather" and self.measurement == "dark":
                     run_list = self.run_list
                     run_name = self.run_name

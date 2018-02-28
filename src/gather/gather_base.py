@@ -237,22 +237,29 @@ class AgipdGatherBase(object):
             f.create_dataset("module", data=str(self._module))
             f.create_dataset("channel", data=str(self._channel))
 
+            #sort metadata entries before writing them into a file
+            keys = [key for key in self.metadata]
+            sorted_keys = sorted(keys)
+
             # save metadata from original files
             idx = 0
-            for set_name, set_value in iter(self.metadata.items()):
-                    gname = "metadata_{}".format(idx)
+            #for set_name, set_value in iter(self.metadata.items()):
+            for set_name in sorted_keys:
+                set_value = self.metadata[set_name]
 
-                    name = "{}/source".format(gname)
-                    f.create_dataset(name, data=set_name)
+                gname = "metadata_{}".format(idx)
 
-                    for key, value in iter(set_value.items()):
-                        try:
-                            name = "{}/{}".format(gname, key)
-                            f.create_dataset(name, data=value)
-                        except:
-                            print("Error in", name, value.dtype)
-                            raise
-                    idx += 1
+                name = "{}/source".format(gname)
+                f.create_dataset(name, data=set_name)
+
+                for key, value in iter(set_value.items()):
+                    try:
+                        name = "{}/{}".format(gname, key)
+                        f.create_dataset(name, data=value)
+                    except:
+                        print("Error in", name, value.dtype)
+                        raise
+                idx += 1
 
             f.flush()
 
