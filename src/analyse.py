@@ -177,9 +177,9 @@ class Analyse(object):
 
     def run_gather(self):
         if self.meas_type == "pcdrs":
-            from gather.gather_pcdrs import AgipdGatherPcdrs as Gather
+            from gather.gather_pcdrs import GatherPcdrs as Gather
         else:
-            from gather.gather_base import AgipdGatherBase as Gather
+            from gather.gather_base import GatherBase as Gather
 
 #        if self.use_xfel_in_format:
 #            self.in_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009"
@@ -229,7 +229,7 @@ class Analyse(object):
     def run_process(self):
 
         if self.meas_type == "dark":
-            from process_dark import AgipdProcessDark as Process
+            from process_dark import ProcessDark as Process
 
 
             if self.use_xfel_in_format or self.run_name is None:
@@ -238,7 +238,7 @@ class Analyse(object):
                 run_list = self.run_name
 
         elif self.meas_type == "pcdrs":
-            from process_pcdrs import AgipdProcessPcdrs as Process
+            from process_pcdrs import ProcessPcdrs as Process
 
             # adjust list of runs
             run_list = ["r" + "-r".join(str(r).zfill(4) for r in self.runs)]

@@ -2,7 +2,7 @@ import numpy as np
 import os
 import sys
 
-from gather_base import AgipdGatherBase
+from gather_base import GatherBase
 
 try:
     CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -115,7 +115,7 @@ if __name__ == "__main__":
                     out_fname = os.path.join(out_dir,
                                              out_file_name)
 
-                    p = multiprocessing.Process(target=AgipdGatherDrscs,
+                    p = multiprocessing.Process(target=GatherDrscs,
                                                 args=(in_fname,
                                                       out_fname,
                                                       runs,
@@ -180,9 +180,9 @@ if __name__ == "__main__":
                                      asic))
         out_fname = os.path.join(out_dir, out_file_name)
 
-        AgipdGatherDrscs(in_fname=in_fname,
-                         out_fname=out_fname,
-                         runs=runs,
-                         max_part=max_part,
-                         asic=asic,
-                         use_xfel_format=use_xfel_format)
+        GatherDrscs(in_fname=in_fname,
+                    out_fname=out_fname,
+                    runs=runs,
+                    max_part=max_part,
+                    asic=asic,
+                    use_xfel_format=use_xfel_format)

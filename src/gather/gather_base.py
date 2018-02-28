@@ -21,7 +21,7 @@ import utils  # noqa E402
 import cfel_optarg  # noqa E402
 
 
-class AgipdGatherBase(object):
+class GatherBase(object):
     def __init__(self,
                  in_fname,
                  out_fname,
@@ -324,13 +324,13 @@ if __name__ == "__main__":
                                      out_file_name)
             print("out_fname", out_fname)
 
-            obj = AgipdGatherBase(in_fname=in_fname,
-                                  out_fname=out_fname,
-                                  runs=runs,
-                                  preproc_fname=preproc_fname,
-                                  max_part=False,
-                                  asic=None,
-                                  use_xfel_format=use_xfel_format)
+            obj = GatherBase(in_fname=in_fname,
+                             out_fname=out_fname,
+                             runs=runs,
+                             preproc_fname=preproc_fname,
+                             max_part=False,
+                             asic=None,
+                             use_xfel_format=use_xfel_format)
             obj.run()
 
     else:
@@ -394,10 +394,10 @@ if __name__ == "__main__":
         print()
 
 
-        obj = AgipdGatherBase(in_fname=in_fname,
-                              out_fname=out_fname,
-                              runs=runs,
-                              max_part=max_part,
-                              asic=asic,
-                              use_xfel_format=use_xfel_format)
+        obj = GatherBase(in_fname=in_fname,
+                         out_fname=out_fname,
+                         runs=runs,
+                         max_part=max_part,
+                         asic=asic,
+                         use_xfel_format=use_xfel_format)
         obj.run()

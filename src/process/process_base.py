@@ -19,7 +19,7 @@ if SRC_PATH not in sys.path:
 import utils  # noqa E402
 
 
-class AgipdProcessBase(object):
+class ProcessBase(object):
     def __init__(self, in_fname, out_fname, runs, use_xfel_format=False):
 
         self._out_fname = out_fname

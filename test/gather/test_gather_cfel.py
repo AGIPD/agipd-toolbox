@@ -68,7 +68,7 @@ def call_cfel_mode(run_type,
         print("Used parameters:")
         print("in_fname=", in_fname)
         print("out_fname=", out_fname)
-        print("runs=",runs)
+        print("runs=", runs)
         print("max_part=", max_part)
         print("asic=", asic)
         print("use_xfel_format=", use_xfel_format)

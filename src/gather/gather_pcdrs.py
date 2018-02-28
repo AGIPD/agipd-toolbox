@@ -1,8 +1,8 @@
 import numpy as np
-from gather_base import AgipdGatherBase
+from gather_base import GatherBase
 
 
-class AgipdGatherPcdrs(AgipdGatherBase):
+class GatherPcdrs(GatherBase):
     def __init__(self,
                  in_fname,
                  out_fname,
