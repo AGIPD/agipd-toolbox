@@ -30,17 +30,17 @@ class ProcessDark(ProcessBase):
             "offset": {
                 "data": np.empty(self.shapes["offset"]),
                 "path": "offset",
-                "type": np.int16
+                "type": np.int
             },
             "gainlevel_mean": {
                 "data": np.empty(self.shapes["offset"]),
                 "path": "gainlevel_mean",
-                "type": np.int16
+                "type": np.int
             },
             "stddev": {
                 "data": np.empty(self.shapes["offset"]),
                 "path": "stddev",
-                "type": np.int16
+                "type": np.float
             },
             "threshold": {
                 "data": np.empty(self.shapes["threshold"]),

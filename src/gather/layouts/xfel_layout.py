@@ -199,13 +199,15 @@ class XfelLayout(object):
         with h5py.File(fname, "r") as f:
             raw_data = f[self._path['data']][()]
 
-            status = utils.as_nparray(f[self._path['status']][()], np.int)
-            first = utils.as_nparray(f[self._path['image_first']][()], np.int)
-            last = utils.as_nparray(f[self._path['image_last']][()], np.int)
-            cellid = utils.as_nparray(f[self._path['cellid']][()], np.int)
+            status = utils.as_nparray(f[self._path['status']][()])
+            first = utils.as_nparray(f[self._path['image_first']][()])
+            last = utils.as_nparray(f[self._path['image_last']][()])
+            cellid = utils.as_nparray(f[self._path['cellid']][()])
 
         print("raw_data.shape", raw_data.shape)
         print("self._raw_shape", self._raw_shape)
+
+        utils.check_data_type(raw_data)
 
         if self._use_interleaved:
             # currently the splitting in digital and analog does not work

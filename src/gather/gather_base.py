@@ -195,7 +195,7 @@ class GatherBase(object):
     def _load_data(self):
 
         print("raw_tmp_shape", self._raw_tmp_shape)
-        tmp_data = np.zeros(self._raw_tmp_shape, dtype=np.int16)
+        tmp_data = np.zeros(self._raw_tmp_shape, dtype=np.uint16)
 
         self.metadata = {}
 
@@ -240,8 +240,8 @@ class GatherBase(object):
 
         print("out_fname = {}".format(self._out_fname))
         with h5py.File(self._out_fname, "w", libver='latest') as f:
-            f.create_dataset("analog", data=self._analog, dtype=np.int16)
-            f.create_dataset("digital", data=self._digital, dtype=np.int16)
+            f.create_dataset("analog", data=self._analog, dtype=np.uint16)
+            f.create_dataset("digital", data=self._digital, dtype=np.uint16)
 
             f.create_dataset("module", data=str(self._module))
             f.create_dataset("channel", data=str(self._channel))

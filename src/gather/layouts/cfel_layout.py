@@ -204,6 +204,13 @@ class CfelLayout(object):
             idx = (Ellipsis, load_idx_rows, load_idx_cols)
             raw_data = f[self._path['data']][idx]
 
+        utils.check_data_type(raw_data)
+
+        # cfel stores the data as int16 whereas xfel stores it at uint16
+        # -> have one common type uint16 because ADC values also should be
+        # positive
+        utils.convert_dtype(raw_data, np.uint16)
+
         print("raw_data.shape", raw_data.shape)
         print("self._raw_shape", self._raw_shape)
         self.get_seq_number(file_content[self._path['seq_number']])
