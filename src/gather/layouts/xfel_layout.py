@@ -24,6 +24,7 @@ class XfelLayout(object):
                  in_fname,
                  runs,
                  use_interleaved,
+                 properties,
                  preproc_fname=None,
                  max_part=False,
                  asic=None):

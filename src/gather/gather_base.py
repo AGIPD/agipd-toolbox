@@ -26,6 +26,7 @@ class GatherBase(object):
                  in_fname,
                  out_fname,
                  runs,
+                 properties,
                  preproc_fname=None,
                  max_part=False,
                  asic=None,
@@ -34,6 +35,7 @@ class GatherBase(object):
 
         self._in_fname = in_fname
         self._out_fname = out_fname
+        self._properties = properties
 
         self.runs = [int(r) for r in runs]
 
@@ -52,10 +54,14 @@ class GatherBase(object):
             from layouts.cfel_layout import CfelLayout as layout
             self._use_interleaved = True
 
+        self._n_rows_total = self._properties["n_rows_total"]
+        self._n_cols_total = self._properties["n_cols_total"]
+
         self.layout = layout(
             in_fname=self._in_fname,
             runs=self.runs,
             use_interleaved=self._use_interleaved,
+            properties=self._properties,
             preproc_fname=preproc_fname,
             max_part=self._max_part,
             asic=self._asic
@@ -74,10 +80,6 @@ class GatherBase(object):
         self._module = None
         self._channel = None
 
-        self._n_rows_total = 128
-        self._n_cols_total = 512
-
-
         # public to be used in inherited classes
         self.n_rows = None
         self.n_cols = None
@@ -89,7 +91,7 @@ class GatherBase(object):
         self.a_col_start = None
         self.a_col_stop = None
 
-        self._get_n_parts()
+        self._set_n_parts()
 
         if self._n_parts == 0:
             msg = "No parts to gather found\n"
@@ -125,20 +127,27 @@ class GatherBase(object):
                       self._out_fname,
                       self._data_path))
 
-    def _get_n_parts(self):
+    def _set_n_parts(self):
         # remove extension
         prefix = self._in_fname.rsplit(".", 1)[0]
-        # remove the part section
-        prefix = prefix[:-9]
-        # use the first run number to determine number of parts
-        run_number = self.runs[0]
-        prefix = prefix.format(run_number=run_number)
-        print("prefix={}".format(prefix))
 
-        part_files = glob.glob("{}*".format(prefix))
+        part_string = "{part:05}"
+        if prefix.endswith(part_string):
+            # remove the part section
+            prefix = prefix[:-len(part_string)]
 
-        self._n_parts = self._max_part or len(part_files)
-        print("n_parts {}".format(self._n_parts))
+            # use the first run number to determine number of parts
+            run_number = self.runs[0]
+            prefix = prefix.format(run_number=run_number)
+            print("prefix={}".format(prefix))
+
+            part_files = glob.glob("{}*".format(prefix))
+
+            self._n_parts = self._max_part or len(part_files)
+            print("n_parts {}".format(self._n_parts))
+        else:
+            # data is not split in parts
+            self._n_parts = 1
 
     def _intiate(self):
         init_results = self.layout.initiate(n_rows=self.n_rows,

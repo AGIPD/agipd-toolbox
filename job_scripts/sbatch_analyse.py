@@ -362,8 +362,16 @@ class SubmitJobs(object):
 
         raw_dir, raw_fname = generate_paths.raw(self.input_dir['gather'])
         raw_path = os.path.join(raw_dir, raw_fname)
+#        print("raw_path", raw_path)
 
-        run_number_templ = "{run_number:05}"
+        if self.measurement == "drscs":
+            run_number_templ = self.meas_spec + "_{run_number:05}"
+            split_number = 2
+        else:
+            run_number_templ = "{run_number:05}"
+            split_number = 1
+#        print("run_number_templ", run_number_templ)
+
         # we are trying to determine the run_number, thus we cannot fill it in
         # and have to replace it with a wildcard
         raw = raw_path.replace(run_number_templ, "*")
@@ -379,7 +387,7 @@ class SubmitJobs(object):
         postfix = raw_splitted[-1]
         postfix = postfix.format(part=0)
 
-        run_numbers = []
+        run_numbers_dict = {}
         for f in found_files:
             # also remove underscore
             middle_part = f[len(raw_splitted[0]) + 2:]
@@ -387,21 +395,38 @@ class SubmitJobs(object):
             # only take the runs for which run_names are defined
             if middle_part.startswith(tuple(self.run_name)):
                 # cut off the part after the run_number
-                rn = f[:-len(postfix)]
-                print("rn", rn)
+                rnumber = f[:-len(postfix)]
+                print("rnumber", rnumber)
                 # the run number now is the tail of the string till the underscore
                 # (for drscs it is not the last but the second to last underscore)
-                rn = rn.rsplit("_", 1)[1:]
+                rnumber = rnumber.rsplit("_", split_number)[1:]
+                print("rnumber", rnumber)
+
                 # for drscs the splitted elements have to be join again
-                rn = "_".join(rn)
-                print("rn", rn)
+                rnumber = "_".join(rnumber)
+                print("rnumber", rnumber)
 
-                run_numbers.append(int(rn))
+                rname = [name for name in self.run_name if middle_part.startswith(name)][0]
+                print("rname", rname)
 
-#               if self.use_xfel:
-#                    run_numbers.append(int(rn))
-#               else:
-#                    run_numbers.append(rn)
+                if self.measurement == "drscs":
+                    run_numbers_dict[rname] = rnumber
+                else:
+                    run_numbers_dict[rname] = int(rnumber)
+
+        print("run_numbers_dir", run_numbers_dict)
+
+        # order the run_numbers the same way as the run names
+        # the order in the run names is important to determine the different
+        # gain stages
+        run_numbers = []
+        for name in self.run_name:
+            run_numbers.append(run_numbers_dict[name])
+        print("run_numbers", run_numbers)
+
+        if not run_numbers:
+            print("raw:", raw)
+            raise Exception("ERROR: No runs found.")
 
         return run_numbers
 
@@ -681,7 +706,7 @@ class SubmitJobs(object):
 
             for current in current_list:
                 self.meas_spec = current
-                self.script_params += ["--self.meas_spec", self.meas_spec]
+                self.script_params += ["--meas_spec", self.meas_spec]
 
                 print("start_job ({}): {}".format(run_type, current))
                 jobnum = self.start_job(run_type, dep_jobs)

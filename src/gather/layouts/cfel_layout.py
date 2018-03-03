@@ -24,6 +24,7 @@ class CfelLayout(object):
                  in_fname,
                  runs,
                  use_interleaved,
+                 properties,
                  preproc_fname=None,
                  max_part=False,
                  asic=None):
@@ -49,15 +50,10 @@ class CfelLayout(object):
 
         self._channel = None
 
-        # dark
-        self._max_pulses = 704
-        self._n_memcells = 352
-        # xray
-#        self._max_pulses = 2
-#        self._n_memcells = 1
-
-        self._n_rows_total = 128
-        self._n_cols_total = 512
+        self._n_rows_total = properties["n_rows_total"]
+        self._n_cols_total = properties["n_cols_total"]
+        self._max_pulses = properties["max_pulses"]
+        self._n_memcells = properties["n_memcells"]
 
         self._seq_number = None
         self._source_seq_number = [0]

@@ -92,6 +92,19 @@ class Analyse(object):
         # but there are exceptions
         self.meas_in["drscs_dark"] = "drscs"
 
+        self.properties = {
+            "measurement": self.meas_type,
+            "n_rows_total": 128,
+            "n_cols_total": 512,
+        }
+
+        if self.meas_type == "xray":
+            self.properties["max_pulses"] = 2
+            self.properties["n_memcells"] = 1
+        else:
+            self.properties["max_pulses"] = 704
+            self.properties["n_memcells"] = 352
+
         if self.use_xfel_in_format:
             from generate_paths import GeneratePathsXfel as GeneratePaths
         else:
@@ -181,11 +194,6 @@ class Analyse(object):
         else:
             from gather.gather_base import GatherBase as Gather
 
-#        if self.use_xfel_in_format:
-#            self.in_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009"
-#            self.out_base_dir = ("/gpfs/exfel/exp/SPB/201730/p900009/" +
-#                                 "scratch/user/kuhnm")
-
         # define in files
         in_dir, in_file_name = self.generate_raw_path(self.in_base_dir)
         in_fname = os.path.join(in_dir, in_file_name)
@@ -212,6 +220,7 @@ class Analyse(object):
             print("in_fname=", in_fname)
             print("out_fname=", out_fname)
             print("runs=", self.runs)
+            print("properties", self.properties)
             print("preproc_fname", preproc_fname)
             print("max_part=", self.max_part)
             print("asic=", self.asic)
@@ -220,6 +229,7 @@ class Analyse(object):
             obj = Gather(in_fname=in_fname,
                          out_fname=out_fname,
                          runs=self.runs,
+                         properties=self.properties,
                          preproc_fname=preproc_fname,
                          max_part=self.max_part,
                          asic=self.asic,
@@ -242,6 +252,12 @@ class Analyse(object):
 
             # adjust list of runs
             run_list = ["r" + "-r".join(str(r).zfill(4) for r in self.runs)]
+
+        elif self.meas_type == "drscs":
+            from process_pcdrs import AgipdProcessDrscs as Process
+
+            if not self.use_xfel_in_format:
+                run_list = self.runs
 
         else:
             msg = "Process is not supported for type {}".format(self.meas_type)

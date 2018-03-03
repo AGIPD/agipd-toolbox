@@ -88,7 +88,7 @@ class ProcessBase(object):
         self.write_data()
         print("Done.")
 
-        print("Process took time: {}\n\n", time.time() - total_time)
+        print("Process took time: {}\n\n".format(time.time() - total_time))
 
     def get_mask(self, analog, digital):
 
