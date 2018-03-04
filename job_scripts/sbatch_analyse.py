@@ -1,14 +1,13 @@
 #!/usr/bin/python3
 
-from __future__ import print_function
-
-import os
-import sys
-import datetime
-import configparser
-import subprocess
 import argparse
-import glob
+import datetime
+import os
+import subprocess
+import sys
+
+import measurement_specifics
+import run_specifics
 
 BATCH_JOB_DIR = os.path.dirname(os.path.realpath(__file__))
 SCRIPT_BASE_DIR = os.path.dirname(BATCH_JOB_DIR)
@@ -20,7 +19,7 @@ SRC_PATH = os.path.join(BASE_PATH, "src")
 if SRC_PATH not in sys.path:
     sys.path.insert(0, SRC_PATH)
 
-from generate_paths import GeneratePathsCfel as GeneratePaths
+import utils
 
 
 def get_arguments():
@@ -94,7 +93,6 @@ def get_arguments():
 
     return args
 
-
 class SubmitJobs(object):
     def __init__(self):
         global CONF_DIR
@@ -115,13 +113,13 @@ class SubmitJobs(object):
         # load base config
         ini_file = os.path.join(CONF_DIR, "base.ini")
         self.config = dict()
-        self.load_config(ini_file)
+        utils.load_config(self.config, ini_file)
 
         # override base config with values of user config file
         config_name = args.config_file or self.config_file
         ini_file = os.path.join(CONF_DIR, "{}.ini".format(config_name))
         print("Using ini_file: {}".format(ini_file))
-        self.load_config(ini_file)
+        utils.load_config(self.config, ini_file)
 
         # override user config file with command line arguments
         self.insert_args_in_config(args)
@@ -140,14 +138,35 @@ class SubmitJobs(object):
         self.measurement = self.config["general"]["measurement"]
         self.partition = self.config["general"]["partition"]
 
-        self.safety_factor = None
-        self.meas_spec = None
-        self.module = None
-
-        if self.measurement == "drscs":
-            self.run_type_list = ["gather", "process", "merge"]
+        if self.run_type == "preprocess":
+            self.run_conf = run_specifics.Preprocess(self.use_xfel)
+        elif self.run_type == "gather":
+            self.run_conf = run_specifics.Gather(self.use_xfel)
+        elif self.run_type == "process":
+            self.run_conf = run_specifics.Process(self.use_xfel)
+        elif self.run_type == "merge":
+            self.run_conf = run_specifics.Merge(self.use_xfel)
+        elif self.run_type == "join":
+            self.run_conf = run_specifics.Join(self.use_xfel)
+        elif self.run_type == "all":
+            self.run_conf = run_specifics.All(self.use_xfel)
         else:
-            self.run_type_list = ["gather", "process", "join"]
+            print("run_type:", self.run_type)
+            raise Exception("Run type not supported")
+
+        if self.measurement == "dark":
+            self.meas_conf = measurement_specifics.Dark(self.use_xfel)
+        elif self.measurement == "pcdrs":
+            self.meas_conf = measurement_specifics.Pcdrs(self.use_xfel)
+        elif self.measurement == "drscs":
+            self.meas_conf = measurement_specifics.Drscs(self.use_xfel)
+        elif self.measurement == "xray":
+            self.meas_conf = measurement_specifics.Xray(self.use_xfel)
+        else:
+            print("measurement:", self.measurement)
+            raise Exception("Measurement not supported")
+
+        self.run_type_list = self.meas_conf.get_run_type_list()
 
         try:
             # convert str into list
@@ -159,35 +178,15 @@ class SubmitJobs(object):
         except KeyError:
             self.run_name = None
 
-        if self.use_xfel:
-            self.run_list = self.config["general"]["run_list"]
+        self.safety_factor = self.meas_conf.get_safety_factor(self.config)
+        self.meas_spec = self.meas_conf.get_meas_spec(self.config)
 
-            if self.run_type == "preprocess":
-                # preprocess only should run once and not for every channel
-                # -> because the channel is not used in prepocess at all use
-                # channel 0 as placeholder
-                self.module_list = ["0"]
-            else:
-                # convert str into list
-                self.module_list = self.config["general"]["channel"].split(" ")
-            self.temperature = None
+        self.module_list = self.run_conf.get_module_list(self.config["general"]["module"])
+        self.channel_list = self.run_conf.get_channel_list(self.config["general"]["channel"])
+        self.temperature = self.run_conf.get_temperature(self.config["general"]["temperature"])
+        self.max_part = self.run_conf.get_max_part(self.config)
 
-            self.run_type_list = ["preprocess"] + self.run_type_list
-
-        else:
-            self.module_list = self.config["general"]["module"].split(" ")
-            self.temperature = self.config["general"]["temperature"]
-
-            if self.measurement == "drscs":
-                self.safety_factor = self.config["drscs"]["safety_factor"]
-                self.meas_spec = self.config[self.measurement]["current"]
-
-            elif self.measurement == "dark":
-                self.meas_spec = self.config[self.measurement]["tint"]
-
-            elif self.measurement == "xray":
-                self.meas_spec = self.config[self.measurement]["element"]
-                self.run_type_list = ["gather", "process"]
+        self.panel_list = self.module_list + self.channel_list
 
         self.n_jobs = {}
         self.n_processes = {}
@@ -202,8 +201,6 @@ class SubmitJobs(object):
 
             runs_using_all_conf = [self.run_type_list[0]]
             if self.use_xfel:
-                #if self.run_type_list[0] == "preprocess":
-                #
                 runs_using_all_conf.append(self.run_type_list[1])
                 run_type_list = self.run_type_list[2:]
             else:
@@ -230,19 +227,17 @@ class SubmitJobs(object):
             self.input_dir[self.run_type] = c_run_type["input_dir"]
             self.output_dir[self.run_type] = c_run_type["output_dir"]
 
-        # This has to be done after input_dir is defined thus can not be put
-        # in the if above
-        if not self.use_xfel:
-            if self.run_type in ["gather", "all"]:
-                self.run_list = self.get_cfel_run_list()
-            else:
-                self.run_list = []
-
-        # Needed for gather
-        try:
-            self.max_part = self.config["gather"]["max_part"]
-        except KeyError:
-            self.max_part = None
+        self.run_list = self.run_conf.get_run_list(
+            c_run_list = self.config["general"]["run_list"],
+            measurement = self.measurement,
+            module_list = self.module_list,
+            channel_list = self.channel_list,
+            temperature = self.temperature,
+            meas_spec = self.meas_spec,
+            input_dir = self.input_dir,
+            meas_conf = self.meas_conf,
+            run_name = self.run_name
+        )
 
         if self.config["general"]["asic_set"] == "None":
             self.asic_set = None
@@ -253,22 +248,7 @@ class SubmitJobs(object):
             # convert list entries into ints
             self.asic_set = list(map(int, self.asic_set))
 
-    def load_config(self, ini_file):
-
-        config = configparser.ConfigParser()
-        config.read(ini_file)
-
-        if not config.sections():
-            print("ERROR: No ini file found (tried to find {})".format(ini_file))
-            sys.exit(1)
-
-        for section, sec_value in config.items():
-            if section not in self.config:
-                self.config[section] = {}
-            for key, key_value in sec_value.items():
-                self.config[section][key] = key_value
-
-        return config
+        self.dep_overview = {}
 
     def insert_args_in_config(self, args):
         c_general = self.config['general']
@@ -343,93 +323,6 @@ class SubmitJobs(object):
             raise Exception("No output_dir specified. Abort.")
             sys.exit(1)
 
-    def get_cfel_run_list(self):
-
-        generate_paths = GeneratePaths(
-            run_type=None,
-            meas_type=self.measurement,
-            out_base_dir=None,
-            module=self.module_list[0],
-            channel=None,
-            temperature=self.temperature,
-            meas_spec=self.meas_spec,
-            meas_in={self.measurement: self.measurement},
-            asic=None,
-            runs=None,
-            run_name=None,
-            use_xfel_out_format=None
-        )
-
-        raw_dir, raw_fname = generate_paths.raw(self.input_dir['gather'])
-        raw_path = os.path.join(raw_dir, raw_fname)
-#        print("raw_path", raw_path)
-
-        if self.measurement == "drscs":
-            run_number_templ = self.meas_spec + "_{run_number:05}"
-            split_number = 2
-        else:
-            run_number_templ = "{run_number:05}"
-            split_number = 1
-#        print("run_number_templ", run_number_templ)
-
-        # we are trying to determine the run_number, thus we cannot fill it in
-        # and have to replace it with a wildcard
-        raw = raw_path.replace(run_number_templ, "*")
-
-        raw=raw.format(part=0)
-#        print("raw", raw)
-
-        found_files = glob.glob(raw)
-#        print("found_files", found_files)
-
-        raw_splitted = raw_path.split(run_number_templ)
-
-        postfix = raw_splitted[-1]
-        postfix = postfix.format(part=0)
-
-        run_numbers_dict = {}
-        for f in found_files:
-            # also remove underscore
-            middle_part = f[len(raw_splitted[0]) + 2:]
-
-            # only take the runs for which run_names are defined
-            if middle_part.startswith(tuple(self.run_name)):
-                # cut off the part after the run_number
-                rnumber = f[:-len(postfix)]
-                print("rnumber", rnumber)
-                # the run number now is the tail of the string till the underscore
-                # (for drscs it is not the last but the second to last underscore)
-                rnumber = rnumber.rsplit("_", split_number)[1:]
-                print("rnumber", rnumber)
-
-                # for drscs the splitted elements have to be join again
-                rnumber = "_".join(rnumber)
-                print("rnumber", rnumber)
-
-                rname = [name for name in self.run_name if middle_part.startswith(name)][0]
-                print("rname", rname)
-
-                if self.measurement == "drscs":
-                    run_numbers_dict[rname] = rnumber
-                else:
-                    run_numbers_dict[rname] = int(rnumber)
-
-        print("run_numbers_dir", run_numbers_dict)
-
-        # order the run_numbers the same way as the run names
-        # the order in the run names is important to determine the different
-        # gain stages
-        run_numbers = []
-        for name in self.run_name:
-            run_numbers.append(run_numbers_dict[name])
-        print("run_numbers", run_numbers)
-
-        if not run_numbers:
-            print("raw:", raw)
-            raise Exception("ERROR: No runs found.")
-
-        return run_numbers
-
     def generate_asic_lists(self, asic_set, n_jobs):
 
         if asic_set is None:
@@ -456,41 +349,20 @@ class SubmitJobs(object):
                                 for i in range(start, stop, size + 1)]
 
     def run(self):
-        if self.run_type == "preprocess":
-            self.run_type_list_module_dep_before = [self.run_type]
-            self.run_type_list_per_module = []
-            self.run_type_list_module_dep_after = []
-        elif self.run_type == "join":
-            self.run_type_list_module_dep_before = []
-            self.run_type_list_per_module = []
-            self.run_type_list_module_dep_after = [self.run_type]
-        # everything which is not preprocess or join
-        elif self.run_type != "all":
-            self.run_type_list_module_dep_before = []
-            self.run_type_list_per_module = [self.run_type]
-            self.run_type_list_module_dep_after = []
-        # for "all"
-        else:
-            if self.use_xfel:
-                self.run_type_list_module_dep_before = ["preprocess"]
-                self.run_type_list_per_module = [t for t in self.run_type_list
-                                                 if t not in ["preprocess",
-                                                              "join"]]
-                self.run_type_list_module_dep_after = ["join"]
-            else:
-                self.run_type_list_module_dep_before = []
-                self.run_type_list_per_module = [t for t in self.run_type_list
-                                                 if t != "join"]
-                self.run_type_list_module_dep_after = ["join"]
 
-        dep_overview = {}
+        rtl = self.run_conf.get_run_type_lists_split(self.run_type_list)
 
-        # jobs concering all modules (before single module jobs are done)
-        dep_overview["all_modules_before"] = {}
+        print("run type lists:")
+        print(rtl)
+
+        self.init_overview(rtl)
+
+        # jobs concering all panels (before single panel jobs are done)
         jobnums_indp = []
-        for run_type in self.run_type_list_module_dep_before:
-            # as a placeholder because a module has to be defined
-            self.module = self.module_list[0]
+        for run_type in rtl.panel_dep_before:
+
+            # as a placeholder because a panel has to be defined
+            self.panel = self.panel_list[0]
 
             dep_jobs = ":".join(jobnums_indp)
             jn = self.create_job(run_type=run_type,
@@ -503,45 +375,41 @@ class SubmitJobs(object):
                 jobnums_indp.append(jn)
 
             # collect information for later overview
-            if type(self.run_list) == list:
-                runs_string = "-".join(list(map(str, self.run_list)))
-            else:
-                runs_string = str(self.run_list)
+            self.fill_overview(group_name="all_panels_before",
+                               runs=self.run_list,
+                               run_type=run_type,
+                               jn=jn,
+                               jobs=dep_jobs)
 
-            d_o = dep_overview["all_modules_before"]
-            d_o[run_type] = {}
-            d_o[run_type][runs_string] = {}
-            d_o[run_type][runs_string]["jobnum"] = jn
-            d_o[run_type][runs_string]["deb_jobs"] = dep_jobs
-
-        # jobs concering single modules
+        # jobs concering single panel
         jobnums_mod = jobnums_indp
-        for module in self.module_list:
-            self.module = module
-
-            dep_overview[module] = {}
+        for panel in self.panel_list:
+            self.panel = panel
 
             jobnums_type = []
-            for run_type in self.run_type_list_per_module:
-                if run_type == "gather" and self.measurement == "dark":
-                    run_list = self.run_list
-                    run_name = self.run_name
-                else:
-                    run_list = [self.run_list]
-                    run_name = [self.run_name]
+            for run_type in rtl.per_panel:
+                l_and_n = self.run_conf.get_list_and_name(
+                    measurement=self.measurement,
+                    run_list=self.run_list,
+                    run_name=self.run_name,
+                    run_type=run_type
+                )
+
+                run_list = l_and_n[0]
+                run_name = l_and_n[1]
                 print("run_list", run_list)
                 print("run_name", run_name)
 
-                dep_overview[module][run_type] = {}
-
                 print("run_type", run_type)
                 print("jobnums_type", jobnums_type)
-                dep_jobs = ":".join(jobnums_type)
+                dep_jobs = ":".join(jobnums_mod + jobnums_type)
                 for i, runs in enumerate(run_list):
                     if self.run_name is not None:
                         rname = run_name[i]
+                        overview_name = rname
                     else:
                         rname = None
+                        overview_name = runs
 
                     jn = self.create_job(run_type=run_type,
                                          runs=runs,
@@ -551,22 +419,17 @@ class SubmitJobs(object):
                         jobnums_type.append(jn)
 
                     # collect information for later overview
-                    if type(runs) == list:
-                        runs_string = "-".join(list(map(str, runs)))
-                    else:
-                        runs_string = str(runs)
-
-                    d_o = dep_overview[module][run_type]
-                    d_o[runs_string] = {}
-                    d_o[runs_string]["jobnum"] = jn
-                    d_o[runs_string]["deb_jobs"] = dep_jobs
+                    self.fill_overview(group_name=panel,
+                                       runs=overview_name,
+                                       run_type=run_type,
+                                       jn=jn,
+                                       jobs=dep_jobs)
 
             jobnums_mod += jobnums_type
 
-        # jobs concering all modules (after single module jobs were done)
-        dep_overview["all_modules_after"] = {}
+        # jobs concering all panels (after single panel jobs were done)
         jobnums_indp = jobnums_mod
-        for run_type in self.run_type_list_module_dep_after:
+        for run_type in rtl.panel_dep_after:
             dep_jobs = ":".join(jobnums_indp)
 
             jn = self.create_job(run_type=run_type,
@@ -577,33 +440,65 @@ class SubmitJobs(object):
                 jobnums_indp.append(jn)
 
             # collect information for later overview
-            if type(self.run_list) == list:
-                runs_string = "-".join(list(map(str, self.run_list)))
-            else:
-                runs_string = str(self.run_list)
+            self.fill_overview(group_name="all_panels_after",
+                               runs=self.run_list,
+                               run_type=run_type,
+                               jn=jn,
+                               jobs=dep_jobs)
 
-            d_o = dep_overview["all_modules_after"]
-            d_o[run_type] = {}
-            d_o[run_type][runs_string] = {}
-            d_o[run_type][runs_string]["jobnum"] = jn
-            d_o[run_type][runs_string]["deb_jobs"] = dep_jobs
+        self.print_overview()
+
+    def init_overview(self, rtl):
+        # jobs concering all panels (before single panel jobs are done)
+        self.dep_overview["all_panels_before"] = {}
+        for run_type in rtl.panel_dep_before:
+            self.dep_overview["all_panels_before"][run_type] = {}
+
+        # jobs concering single panel
+        for panel in self.panel_list:
+            self.dep_overview[panel] = {}
+
+            for run_type in rtl.per_panel:
+                self.dep_overview[panel][run_type] = {}
+
+        # jobs concering all panels (after single panel jobs were done)
+        self.dep_overview["all_panels_after"] = {}
+        for run_type in rtl.panel_dep_after:
+            self.dep_overview["all_panels_after"][run_type] = {}
+
+    def fill_overview(self, group_name, runs, run_type, jn, jobs):
+
+        if type(runs) == list:
+            runs_string = "-".join(list(map(str, runs)))
+        else:
+            runs_string = str(runs)
+
+        ov = self.dep_overview[group_name][run_type]
+        ov[runs_string] = {}
+        ov[runs_string]["jobnum"] = jn
+        ov[runs_string]["deb_jobs"] = jobs
+
+    def print_overview(self):
 
         # print overview of dependencies
         print("\nDependencies Overview")
-        for module in dep_overview:
-            for run_type in dep_overview[module]:
-                for runs in dep_overview[module][run_type]:
-                    d_o = dep_overview[module][run_type][runs]
+        header = "Panel\tRun type\tRuns\tJob Nr\tDependencies"
+        print(header)
+        print("-" * len(header.expandtabs()))
+        for panel in self.dep_overview:
+            for run_type in self.dep_overview[panel]:
+                for runs in self.dep_overview[panel][run_type]:
+                    d_o = self.dep_overview[panel][run_type][runs]
 
                     if d_o["deb_jobs"] == "":
                         print("{}\t{}\t{}\t{}\tno dependencies"
-                              .format(module,
+                              .format(panel,
                                       run_type,
                                       runs,
                                       d_o["jobnum"]))
                     else:
                         print("{}\t{}\t{}\t{}\tdepending on\t{}"
-                              .format(module,
+                              .format(panel,
                                       run_type,
                                       runs,
                                       d_o["jobnum"],
@@ -623,7 +518,7 @@ class SubmitJobs(object):
                                     "sbatch_out")
         else:
             work_dir = os.path.join(self.output_dir[run_type],
-                                    self.module,
+                                    self.panel,
                                     self.temperature,
                                     "sbatch_out")
 
@@ -631,6 +526,25 @@ class SubmitJobs(object):
             os.makedirs(work_dir)
             print("Creating sbatch working dir: {}\n".format(work_dir))
 
+        self.set_script_parameters(run_type, runs, run_name, work_dir)
+
+        print("self.sbatch_params")
+        print(self.sbatch_params)
+        print()
+        print("self.script_params")
+        print(self.script_params)
+
+        for meas_spec in self.meas_spec:
+            if meas_spec is not None:
+                self.script_params += ["--meas_spec", meas_spec]
+
+            print("start_job ({}) for {}".format(run_type, meas_spec))
+            jobnum = self.start_job(run_type=run_type,
+                                    meas_spec=meas_spec,
+                                    dep_jobs=dep_jobs)
+        return jobnum
+
+    def set_script_parameters(self, run_type, runs, run_name, work_dir):
         self.sbatch_params = [
             "--partition", self.partition,
             "--time", self.time_limit[run_type],
@@ -664,11 +578,11 @@ class SubmitJobs(object):
 
         if self.use_xfel:
             self.script_params += [
-                "--channel", self.module,
+                "--channel", self.panel,
                 "--use_xfel_in_format"
             ]
         else:
-            self.script_params += ["--module", self.module]
+            self.script_params += ["--module", self.panel]
 
         # parameter which are None raise an error in subprocess
         # -> do not add them
@@ -681,63 +595,7 @@ class SubmitJobs(object):
         if self.max_part is not None:
             self.script_params += ["--max_part", self.max_part]
 
-        if self.meas_spec is not None:
-            self.script_params += ["--meas_spec", self.meas_spec]
-
-        print("self.sbatch_params")
-        print(self.sbatch_params)
-        print()
-        print("self.script_params")
-        print(self.script_params)
-
-        if self.run_type == "merge" and self.measurement == "drscs":
-            current_list = self.meas_spec.replace(",", "")
-            self.script_params += ["--current_list", current_list]
-
-            # missuse current to set merge as the job name
-            self.meas_spec = self.run_type
-
-            print("start_job ({})".format(run_type))
-            jobnum = self.start_job(run_type, dep_jobs)
-
-        elif self.measurement == "drscs":
-            # comma seperated string into into list
-            current_list = [c.split()[0] for c in self.meas_spec.split(",")]
-
-            for current in current_list:
-                self.meas_spec = current
-                self.script_params += ["--meas_spec", self.meas_spec]
-
-                print("start_job ({}): {}".format(run_type, current))
-                jobnum = self.start_job(run_type, dep_jobs)
-
-        else:
-            print("start_job ({}): {}".format(run_type, self.measurement))
-            jobnum = self.start_job(run_type, dep_jobs)
-
-        return jobnum
-
-    def submit_job(self, cmd, jobname):
-        p = subprocess.Popen(cmd,
-                             stdin=subprocess.PIPE,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
-        output, err = p.communicate()
-        rc = p.returncode
-
-        # remove newline and "'"
-        jobnum = str(output.rstrip())[:-1]
-        jobnum = jobnum.split("batch job ")[-1]
-
-        if rc == 0:
-            print("{} is {}".format(jobname, jobnum))
-        else:
-            print("Error submitting {}".format(jobname))
-            print("Error:", err)
-
-        return jobnum
-
-    def start_job(self, run_type, dep_jobs):
+    def start_job(self, run_type, meas_spec, dep_jobs):
         global BATCH_JOB_DIR
 
         # getting date and time
@@ -746,46 +604,35 @@ class SubmitJobs(object):
 
         print("run asic_lists", self.asic_lists)
         for asic_set in self.asic_lists:
-            job_name = ("{}_{}_{}"
-                        .format(run_type,
-                                self.measurement,
-                                self.module))
-            output_name = ("{}_{}_{}"
-                           .format(run_type,
-                                   self.measurement,
-                                   self.module))
-            error_name = ("{}_{}_{}"
-                          .format(run_type,
-                                  self.measurement,
-                                  self.module))
-            if not self.use_xfel:
-                short_temperature = self.temperature[len("temperature_"):]
+            if self.use_xfel:
                 job_name = ("{}_{}_{}"
-                            .format(job_name,
+                            .format(run_type,
+                                    self.measurement,
+                                    self.panel))
+
+            else:
+                short_temperature = self.temperature[len("temperature_"):]
+
+                job_name = ("{}_{}_{}_{}_{}"
+                            .format(run_type,
+                                    self.measurement,
+                                    self.panel,
                                     short_temperature,
-                                    self.meas_spec))
-                output_name = ("{}_{}_{}"
-                               .format(output_name,
-                                       short_temperature,
-                                       self.meas_spec))
-                error_name = ("{}_{}_{}"
-                              .format(error_name,
-                                      short_temperature,
-                                      self.meas_spec))
+                                    meas_spec))
+
+            output_name = job_name
+            error_name = job_name
 
             if asic_set is not None:
                 # map to string to be able to call shell script
                 asic_set = " ".join(map(str, asic_set))
                 print("Starting job for asics {}\n".format(asic_set))
-
-                job_name = "{}_{}".format(job_name, asic_set)
-                output_name = "{}_{}".format(output_name, asic_set)
-                error_name = "{}_{}".format(error_name, asic_set)
+                job_name = job_name + "_{}".format(asic_set)
 
             self.sbatch_params += [
                 "--job-name", job_name,
-                "--output", "{}_{}_%j.out".format(output_name, dt),
-                "--error", "{}_{}_%j.err".format(error_name, dt)
+                "--output", "{}_{}_%j.out".format(job_name, dt),
+                "--error", "{}_{}_%j.err".format(job_name, dt)
             ]
 
 #            #shell_script = os.path.join(BATCH_JOB_DIR, "analyse.sh")
@@ -821,6 +668,26 @@ class SubmitJobs(object):
                     raise
 
             return jobnum
+
+    def submit_job(self, cmd, jobname):
+        p = subprocess.Popen(cmd,
+                             stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
+        output, err = p.communicate()
+        rc = p.returncode
+
+        # remove newline and "'"
+        jobnum = str(output.rstrip())[:-1]
+        jobnum = jobnum.split("batch job ")[-1]
+
+        if rc == 0:
+            print("{} is {}".format(jobname, jobnum))
+        else:
+            print("Error submitting {}".format(jobname))
+            print("Error:", err)
+
+        return jobnum
 
 
 if __name__ == "__main__":
