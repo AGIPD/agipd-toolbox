@@ -210,8 +210,8 @@ class XfelLayout(object):
         utils.check_data_type(raw_data)
 
         if self._use_interleaved:
-            # currently the splitting in digital and analog does not work
-            # for XFEL
+            # for the first experiments the splitting in digital and analog
+            # did not work for XFEL
             # -> all data is in the first entry of the analog/digital
             #    dimension
             raw_data = raw_data[:, 0, ...]

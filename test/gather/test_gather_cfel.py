@@ -65,10 +65,20 @@ def call_cfel_mode(run_type,
                                      asic))
         out_fname = os.path.join(out_dir, out_file_name)
 
+        use_interleaved = True
+        properties = {
+            "measurement": self.meas_type,
+            "n_rows_total": 128,
+            "n_cols_total": 512,
+            "max_pulses": 704,
+            "n_memcells": 352
+        }
+
         print("Used parameters:")
         print("in_fname=", in_fname)
         print("out_fname=", out_fname)
         print("runs=", runs)
+        print("use_interleaved", use_interleaved)
         print("max_part=", max_part)
         print("asic=", asic)
         print("use_xfel_format=", use_xfel_format)
@@ -77,6 +87,8 @@ def call_cfel_mode(run_type,
         obj = Gather(in_fname=in_fname,
                      out_fname=out_fname,
                      runs=runs,
+                     properties,
+                     use_interleaved,
                      max_part=max_part,
                      asic=asic,
                      use_xfel_format=use_xfel_format)

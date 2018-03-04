@@ -107,6 +107,10 @@ def get_arguments():
                         type=int,
                         default=None,
                         help="Maximum number of parts to be combined")
+    parser.add_argument("--use_interleaved",
+                        action="store_true",
+                        default=False,
+                        help="Use inteleaved data format (ADADAD)")
     parser.add_argument("--current_list",
                         type=str,
                         nargs='+',
@@ -201,6 +205,7 @@ class StartAnalyse(object):
         self.asic_list = args.asic_list or [None]
         self.safety_factor = args.safety_factor
         self.max_part = args.max_part
+        self.use_interleaved = args.use_interleaved
         self.current_list = args.current_list if args.current_list else None
         self.energy = args.energy
         self.use_xfel_in_format = args.use_xfel_in_format
@@ -220,6 +225,7 @@ class StartAnalyse(object):
         print("asic_list: ", self.asic_list)
         print("safety_factor: ", self.safety_factor)
         print("max_part: ", self.max_part)
+        print("use_interleaved", self.use_interleaved)
         print("current_list: ", self.current_list)
         print("energy: ", self.energy)
         print("use_xfel_in_format: ", self.use_xfel_in_format)
@@ -244,6 +250,7 @@ class StartAnalyse(object):
             runs = self.run_list,
             run_name = self.run_name,
             max_part = self.max_part,
+            use_interleaved = self.use_interleaved,
             current_list = self.current_list,
             use_xfel_in_format = self.use_xfel_in_format,
             use_xfel_out_format = self.use_xfel_out_format

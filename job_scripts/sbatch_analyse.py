@@ -186,6 +186,10 @@ class SubmitJobs(object):
         self.temperature = self.run_conf.get_temperature(self.config["general"]["temperature"])
         self.max_part = self.run_conf.get_max_part(self.config)
 
+        self.use_interleaved = self.config["general"]["use_interleaved"]
+        # convert string to bool
+        self.use_interleaved = True if self.use_interleaved == "True" else False
+
         self.panel_list = self.module_list + self.channel_list
 
         self.n_jobs = {}
@@ -594,6 +598,9 @@ class SubmitJobs(object):
 
         if self.max_part is not None:
             self.script_params += ["--max_part", self.max_part]
+
+        if self.use_interleaved:
+            self.script_params += ["--use_interleaved"]
 
     def start_job(self, run_type, meas_spec, dep_jobs):
         global BATCH_JOB_DIR

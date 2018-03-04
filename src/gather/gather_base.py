@@ -27,6 +27,7 @@ class GatherBase(object):
                  out_fname,
                  runs,
                  properties,
+                 use_interleaved,
                  preproc_fname=None,
                  max_part=False,
                  asic=None,
@@ -36,6 +37,7 @@ class GatherBase(object):
         self._in_fname = in_fname
         self._out_fname = out_fname
         self._properties = properties
+        self._use_interleaved = use_interleaved
 
         self.runs = [int(r) for r in runs]
 
@@ -45,14 +47,10 @@ class GatherBase(object):
 
         if use_xfel_format:
             from layouts.xfel_layout import XfelLayout as layout
-
-            # to use the interleaved or not interleaved format
-            # self._use_interleaved = True
-            self._use_interleaved = False
-
         else:
             from layouts.cfel_layout import CfelLayout as layout
-            self._use_interleaved = True
+            if not self._use_interleaved:
+                print("ERROR: CFEL only supports interleaved mode.")
 
         self._n_rows_total = self._properties["n_rows_total"]
         self._n_cols_total = self._properties["n_cols_total"]

@@ -42,6 +42,7 @@ class Analyse(object):
                  runs,
                  run_name,
                  max_part,
+                 use_interleaved,
                  current_list=None,
                  use_xfel_in_format=True,
                  use_xfel_out_format=False):
@@ -65,6 +66,7 @@ class Analyse(object):
         self.channel = channel
 
         self.max_part = max_part
+        self.use_interleaved = use_interleaved
 
         self.use_xfel_in_format = use_xfel_in_format
         self.use_xfel_out_format = use_xfel_out_format
@@ -83,6 +85,7 @@ class Analyse(object):
         print("runs: ", self.runs)
         print("run_name: ", self.run_name)
         print("max_part: ", self.max_part)
+        print("use_interleaved", self.use_interleaved)
         print("current_list: ", self.current_list)
         print("use_xfel_in_format: ", self.use_xfel_in_format)
         print("use_xfel_out_format: ", self.use_xfel_out_format)
@@ -223,6 +226,7 @@ class Analyse(object):
             print("out_fname=", out_fname)
             print("runs=", self.runs)
             print("properties", self.properties)
+            print("use_interleaved", self.use_interleaved)
             print("preproc_fname", preproc_fname)
             print("max_part=", self.max_part)
             print("asic=", self.asic)
@@ -232,6 +236,7 @@ class Analyse(object):
                          out_fname=out_fname,
                          runs=self.runs,
                          properties=self.properties,
+                         use_interleaved=self.use_interleaved,
                          preproc_fname=preproc_fname,
                          max_part=self.max_part,
                          asic=self.asic,
