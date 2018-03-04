@@ -128,12 +128,14 @@ class XfelLayout(object):
             # xfel format has swapped rows and cols
             self._raw_shape = (self._n_memcells, 2, 2,
                                n_cols, n_rows)
+
+            n_frames_total = max(n_trains_per_run) * self._n_memcells * 2
         else:
             self._raw_shape = (self._n_memcells, 2,
                                n_cols, n_rows)
-        print("Number of memory cells found", self._n_memcells)
+            n_frames_total = max(n_trains_per_run) * self._n_memcells
 
-        n_frames_total = max(n_trains_per_run) * self._n_memcells
+        print("Number of memory cells found", self._n_memcells)
         print("n_frames_total", n_frames_total)
 
         for key in self._path_temp:
