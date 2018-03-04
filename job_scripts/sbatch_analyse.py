@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import argparse
+import copy
 import datetime
 import os
 import subprocess
@@ -387,6 +388,7 @@ class SubmitJobs(object):
 
         # jobs concering single panel
         jobnums_mod = jobnums_indp
+        jobnums_panel = copy.deepcopy(jobnums_indp)
         for panel in self.panel_list:
             self.panel = panel
 
@@ -406,7 +408,7 @@ class SubmitJobs(object):
 
                 print("run_type", run_type)
                 print("jobnums_type", jobnums_type)
-                dep_jobs = ":".join(jobnums_mod + jobnums_type)
+                dep_jobs = ":".join(jobnums_panel + jobnums_type)
                 for i, runs in enumerate(run_list):
                     if self.run_name is not None:
                         rname = run_name[i]
