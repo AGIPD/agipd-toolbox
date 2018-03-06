@@ -4,11 +4,11 @@ import os
 import sys
 import datetime
 import time
-import glob
+# import glob
 
 import utils
 # from merge_drscs import ParallelMerge
-from correct import Correct
+# from correct import Correct
 from convert_format import ConvertFormat
 from join_constants import JoinConstants
 
@@ -451,8 +451,8 @@ class Analyse(object):
 #                gain_fname = gain_fname[0]
 #            else:
 #                print("No gain constants found.")
-##                print("No gain constants found. Quitting.")
-##                sys.exit(1)
+#                #print("No gain constants found. Quitting.")
+#                #sys.exit(1)
 #
 #            out_dir = os.path.join(self.out_dir, run_number)
 #            utils.create_dir(out_dir)

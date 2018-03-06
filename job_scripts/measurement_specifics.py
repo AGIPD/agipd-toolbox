@@ -8,12 +8,14 @@ class XfelModification(object):
 
         return run_type_list
 
+
 class NoModification(object):
     def __init__(self, use_xfel):
         pass
 
     def conv_run_type_list(self, run_type_list):
         return run_type_list
+
 
 class Measurement(object):
     def __init__(self, use_xfel):
@@ -91,6 +93,7 @@ class Measurement(object):
 
         return param_list
 
+
 class Dark(Measurement):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -108,10 +111,11 @@ class Dark(Measurement):
         if self._use_xfel:
             return super().get_meas_spec(config)
         else:
-            tint =  config[self.measurement]["tint"]
+            tint = config[self.measurement]["tint"]
             self.meas_spec = [tint]
 
             return self.meas_spec
+
 
 class Pcdrs(Measurement):
     def __init__(self, *args, **kwargs):
@@ -135,6 +139,7 @@ class Pcdrs(Measurement):
             self.meas_spec = [tint]
 
             return self.meas_spec
+
 
 class Drscs(Measurement):
     def __init__(self, *args, **kwargs):
@@ -176,7 +181,6 @@ class Drscs(Measurement):
         """
 
         run_type_list = ["gather", "process", "merge"]
-        #run_type_list = ["gather", "process", "merge"]
         run_type_list = self._mod.conv_run_type_list(run_type_list)
 
         return run_type_list
@@ -195,7 +199,6 @@ class Drscs(Measurement):
 
         return run_number_templ, split_number
 
-
     def mod_params(self, param_list, run_type):
         """ Add measurement specific parameters.
 
@@ -211,6 +214,7 @@ class Drscs(Measurement):
         self.script_params += ["--current_list", currents]
 
         return param_list
+
 
 class Xray(Measurement):
     def __init__(self, *args, **kwargs):

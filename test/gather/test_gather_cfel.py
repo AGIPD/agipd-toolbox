@@ -18,13 +18,13 @@ if SRC_PATH not in sys.path:
 if GATHER_PATH not in sys.path:
     sys.path.insert(0, GATHER_PATH)
 
-import utils
+import utils  # noqa E402
 
-from gather_base import AgipdGatherBase
-from gather_pcdrs import AgipdGatherPcdrs
+from gather_base import AgipdGatherBase  # noqa E402
+from gather_pcdrs import AgipdGatherPcdrs  # noqa E402
 
 
-def call_cfel_mode(run_type,
+def call_cfel_mode(measurement,
                    in_dir,
                    out_dir,
                    module,
@@ -35,39 +35,35 @@ def call_cfel_mode(run_type,
 
         use_xfel_format = False  # input_format
 
-        if run_type == "dark":
+        if measurement == "dark":
             Gather = AgipdGatherBase
-        elif run_type == "pcdrs":
+        elif measurement == "pcdrs":
             Gather = AgipdGatherPcdrs
 
         in_file_name = ("{}*_{}_{}_"
-                        .format(module,
-                                run_type,
-                                meas_spec) +
-                        "{run_number:05}_part{part:05}.nxs")
-        in_fname = os.path.join(in_dir,
-                                in_file_name)
+                        .format(module, measurement, meas_spec)
+                        + "{run_number:05}_part{part:05}.nxs")
+        in_fname = os.path.join(in_dir, in_file_name)
 
-        out_dir = os.path.join(out_dir,
-                               "gather")
-        #utils.create_dir(out_dir)
+        out_dir = os.path.join(out_dir, "gather")
+#        utils.create_dir(out_dir)
 
         if asic is None:
             out_file_name = ("{}_{}_{}.h5"
                              .format(module.split("_")[0],
-                                     run_type,
+                                     measurement,
                                      meas_spec))
         else:
             out_file_name = ("{}_{}_{}_asic{:02}.h5"
                              .format(module.split("_")[0],
-                                     run_type,
+                                     measurement,
                                      meas_spec,
                                      asic))
         out_fname = os.path.join(out_dir, out_file_name)
 
         use_interleaved = True
         properties = {
-            "measurement": self.meas_type,
+            "measurement": measurement,
             "n_rows_total": 128,
             "n_cols_total": 512,
             "max_pulses": 704,
@@ -87,8 +83,8 @@ def call_cfel_mode(run_type,
         obj = Gather(in_fname=in_fname,
                      out_fname=out_fname,
                      runs=runs,
-                     properties,
-                     use_interleaved,
+                     properties=properties,
+                     use_interleaved=use_interleaved,
                      max_part=max_part,
                      asic=asic,
                      use_xfel_format=use_xfel_format)
@@ -99,7 +95,7 @@ class GatherBaseCfelTests(unittest.TestCase):
 
     # per test
     def setUp(self):
-        run_type = "dark"
+        measurement = "dark"
 
         in_base_path = "/gpfs/cfel/fsds/labs/agipd/calibration"
         # with frame loss
@@ -116,14 +112,16 @@ class GatherBaseCfelTests(unittest.TestCase):
 #        asic = 1
 
         max_part = False
-        out_base_path = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm"
-        out_subdir = "tmp/cfel"
+#        out_base_path = ("/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/"
+#                          "kuhnm")
+#        out_subdir = "tmp/cfel"
         meas_spec = "tint150ns"
 
         in_dir = os.path.join(in_base_path, in_subdir)
-        out_dir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm/tmp/cfel"
+        out_dir = ("/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm/"
+                   "tmp/cfel")
 
-        self.gather_obj = call_cfel_mode(run_type=run_type,
+        self.gather_obj = call_cfel_mode(measurement=measurement,
                                          in_dir=in_dir,
                                          out_dir=out_dir,
                                          module=module,

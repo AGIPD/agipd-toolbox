@@ -8,7 +8,6 @@ import numpy as np
 import sys
 
 
-
 def create_dir(directory_name):
     """Creates a directory including supdirectories if it does not exist.
 
@@ -105,6 +104,7 @@ def is_xfel_format(data_shape):
     else:
         return False
 
+
 def check_data_type(data):
     result = np.all(data >= 0)
 
@@ -116,11 +116,13 @@ def check_data_type(data):
 
     return result
 
+
 def as_nparray(data, type_=None):
     if type_ is None:
         return np.array(np.squeeze(data))
     else:
         return np.array(np.squeeze(data.astype(type_)))
+
 
 def convert_dtype(data, dtype):
     if data.dtype == dtype:
@@ -129,6 +131,7 @@ def convert_dtype(data, dtype):
     if dtype == np.int16:
         print("Convert data from int16 to uint16")
         data = (data + 2**15).astype(np.uint16)
+
 
 def convert_to_agipd_format(module, data):
 

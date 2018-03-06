@@ -20,7 +20,7 @@ SRC_PATH = os.path.join(BASE_PATH, "src")
 if SRC_PATH not in sys.path:
     sys.path.insert(0, SRC_PATH)
 
-import utils
+import utils  # noqa E402
 
 
 def get_arguments():
@@ -28,16 +28,13 @@ def get_arguments():
 
     parser.add_argument("--input_dir",
                         type=str,
-#                        required=True,
                         help="Directory to get data from")
     parser.add_argument("--output_dir",
                         type=str,
-#                        required=True,
                         help="Base directory to write results to")
     parser.add_argument("--type",
                         type=str,
-#                        required=True,
-                        choices=["dark", "pcdrs"],
+                        choices=["dark", "pcdrs", "drscs"],
                         help="Which type to run:\n"
                              "dark: generating the dark constants\n"
                              "pcdrs: generating the pulse capacitor constants")
@@ -93,6 +90,7 @@ def get_arguments():
             parser.error(msg)
 
     return args
+
 
 class SubmitJobs(object):
     def __init__(self):
@@ -175,21 +173,27 @@ class SubmitJobs(object):
             if run_name == "None":
                 self.run_name = None
             else:
-                self.run_name = self.config[self.measurement]["run_name"].split(", ")
+                self.run_name = (self.config[self.measurement]["run_name"]
+                                 .split(", "))
         except KeyError:
             self.run_name = None
 
         self.safety_factor = self.meas_conf.get_safety_factor(self.config)
         self.meas_spec = self.meas_conf.get_meas_spec(self.config)
 
-        self.module_list = self.run_conf.get_module_list(self.config["general"]["module"])
-        self.channel_list = self.run_conf.get_channel_list(self.config["general"]["channel"])
-        self.temperature = self.run_conf.get_temperature(self.config["general"]["temperature"])
-        self.max_part = self.run_conf.get_max_part(self.config)
+        c_general = self.config["general"]
+        rconf = self.run_conf
+
+        self.module_list = rconf.get_module_list(c_general["module"])
+        self.channel_list = rconf.get_channel_list(c_general["channel"])
+        self.temperature = rconf.get_temperature(c_general["temperature"])
+        self.max_part = rconf.get_max_part(self.config)
 
         self.use_interleaved = self.config["general"]["use_interleaved"]
         # convert string to bool
-        self.use_interleaved = True if self.use_interleaved == "True" else False
+        self.use_interleaved = (True
+                                if self.use_interleaved == "True"
+                                else False)
 
         self.panel_list = self.module_list + self.channel_list
 
@@ -200,9 +204,11 @@ class SubmitJobs(object):
         self.output_dir = {}
         if self.run_type == 'all':
             for run_type in self.run_type_list:
-                self.n_jobs[run_type] = int(self.config[run_type]['n_jobs'])
-                self.n_processes[run_type] = self.config[run_type]['n_processes']
-                self.time_limit[run_type] = self.config[run_type]['time_limit']
+                c_run_type = self.config[run_type]
+
+                self.n_jobs[run_type] = int(c_run_type['n_jobs'])
+                self.n_processes[run_type] = c_run_type['n_processes']
+                self.time_limit[run_type] = c_run_type['time_limit']
 
             runs_using_all_conf = [self.run_type_list[0]]
             if self.use_xfel:
@@ -219,8 +225,9 @@ class SubmitJobs(object):
             # the runs which are following in the chain and work on the ourput
             # of the bevious ones
             for run_type in run_type_list:
-                self.input_dir[run_type] = self.output_dir[self.run_type_list[0]]
-                self.output_dir[run_type] = self.output_dir[self.run_type_list[0]]
+                first_rtl = self.run_type_list[0]
+                self.input_dir[run_type] = self.output_dir[first_rtl]
+                self.output_dir[run_type] = self.output_dir[first_rtl]
 
         else:
             c_run_type = self.config[self.run_type]
@@ -233,15 +240,15 @@ class SubmitJobs(object):
             self.output_dir[self.run_type] = c_run_type["output_dir"]
 
         self.run_list = self.run_conf.get_run_list(
-            c_run_list = self.config["general"]["run_list"],
-            measurement = self.measurement,
-            module_list = self.module_list,
-            channel_list = self.channel_list,
-            temperature = self.temperature,
-            meas_spec = self.meas_spec,
-            input_dir = self.input_dir,
-            meas_conf = self.meas_conf,
-            run_name = self.run_name
+            c_run_list=self.config["general"]["run_list"],
+            measurement=self.measurement,
+            module_list=self.module_list,
+            channel_list=self.channel_list,
+            temperature=self.temperature,
+            meas_spec=self.meas_spec,
+            input_dir=self.input_dir,
+            meas_conf=self.meas_conf,
+            run_name=self.run_name
         )
 
         if self.config["general"]["asic_set"] == "None":
@@ -279,12 +286,12 @@ class SubmitJobs(object):
                 sys.exit(1)
 
         try:
-            c_general['temperature'] = args.temperature or c_general['temperature']
+            c_general['temperature'] = (args.temperature
+                                        or c_general['temperature'])
         except:
             if not self.use_xfel:
                 raise Exception("No temperature specified. Abort.")
                 sys.exit(1)
-
 
         # xfel specific
         try:
@@ -298,17 +305,17 @@ class SubmitJobs(object):
 
         run_type = c_general['run_type']
 
-        #if run_type == "all" and "all" not in self.config:
         if "all" not in self.config:
             self.config['all'] = {}
 
         c_run_type = self.config[run_type]
+        c_all = self.config['all']
 
         try:
             # 'all' takes higher priority than the run type specific config
-            if 'input_dir' in self.config['all']:
+            if 'input_dir' in c_all:
                 c_run_type['input_dir'] = (args.input_dir
-                                           or self.config['all']['input_dir'])
+                                           or c_all['input_dir'])
             else:
                 c_run_type['input_dir'] = (args.input_dir
                                            or c_run_type['input_dir'])
@@ -318,12 +325,12 @@ class SubmitJobs(object):
 
         try:
             # 'all' takes higher priority than the run type specific config
-            if 'output_dir' in self.config['all']:
+            if 'output_dir' in c_all:
                 c_run_type['output_dir'] = (args.output_dir
-                                           or self.config['all']['output_dir'])
+                                            or c_all['output_dir'])
             else:
                 c_run_type['output_dir'] = (args.output_dir
-                                           or c_run_type['output_dir'])
+                                            or c_run_type['output_dir'])
         except KeyError:
             raise Exception("No output_dir specified. Abort.")
             sys.exit(1)
@@ -373,7 +380,6 @@ class SubmitJobs(object):
             jn = self.create_job(run_type=run_type,
                                  runs=self.run_list,
                                  run_name=None,
-                                 #run_name=self.run_name,
                                  dep_jobs=dep_jobs)
 
             if jn is not None:
@@ -578,7 +584,8 @@ class SubmitJobs(object):
 
         if run_name is not None:
             if type(run_name) == list:
-                self.script_params += ["--run_name"] + [str(r) for r in run_name]
+                self.script_params += (["--run_name"]
+                                       + [str(r) for r in run_name])
             else:
                 self.script_params += ["--run_name", str(run_name)]
 
@@ -628,9 +635,6 @@ class SubmitJobs(object):
                                     self.panel,
                                     short_temperature,
                                     meas_spec))
-
-            output_name = job_name
-            error_name = job_name
 
             if asic_set is not None:
                 # map to string to be able to call shell script

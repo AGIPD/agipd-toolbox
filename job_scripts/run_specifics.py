@@ -9,7 +9,8 @@ SRC_PATH = os.path.join(BASE_PATH, "src")
 if SRC_PATH not in sys.path:
     sys.path.insert(0, SRC_PATH)
 
-from generate_paths import GeneratePathsCfel as GeneratePaths
+from generate_paths import GeneratePathsCfel as GeneratePaths  # noqa E402
+
 
 class RunType(object):
     Rtl = namedtuple("rtl", ["panel_dep_before",
@@ -99,7 +100,7 @@ class RunType(object):
         # and have to replace it with a wildcard
         raw = raw_path.replace(run_number_templ, "*")
 
-        raw=raw.format(part=0)
+        raw = raw.format(part=0)
 #        print("raw", raw)
 
         found_files = glob.glob(raw)
@@ -120,8 +121,9 @@ class RunType(object):
                 # cut off the part after the run_number
                 rnumber = f[:-len(postfix)]
                 print("rnumber", rnumber)
-                # the run number now is the tail of the string till the underscore
-                # (for drscs it is not the last but the second to last underscore)
+                # the run number now is the tail of the string till the
+                # underscore (for drscs it is not the last but the second
+                # to last underscore)
                 rnumber = rnumber.rsplit("_", split_number)[1:]
                 print("rnumber", rnumber)
 
@@ -129,7 +131,8 @@ class RunType(object):
                 rnumber = "_".join(rnumber)
                 print("rnumber", rnumber)
 
-                rname = [name for name in run_name if middle_part.startswith(name)][0]
+                rname = [name for name in run_name
+                         if middle_part.startswith(name)][0]
                 print("rname", rname)
 
                 if measurement == "drscs":
@@ -158,9 +161,9 @@ class RunType(object):
         rtl_per_panel = [self.run_type]
         rtl_panel_dep_after = []
 
-        return RunType.Rtl(panel_dep_before = rtl_panel_dep_before,
-                           per_panel = rtl_per_panel,
-                           panel_dep_after = rtl_panel_dep_after)
+        return RunType.Rtl(panel_dep_before=rtl_panel_dep_before,
+                           per_panel=rtl_per_panel,
+                           panel_dep_after=rtl_panel_dep_after)
 
     def get_list_and_name(self, measurement, run_list, run_name, run_type):
         new_run_list = [run_list]
@@ -179,20 +182,20 @@ class Preprocess(RunType):
             # preprocess only should run once and not for every channel
             # -> because the channel is not used in prepocess at all use
             # channel 0 as placeholder
-            channel = ["0"]
+            channel_list = ["0"]
         else:
-            channel_list = super().get_channel_list(conf)
+            channel_list = super().get_channel_list(conf=conf)
 
         return channel_list
 
     def get_run_type_lists_split(self, run_type_list):
-        rtl_panel_dep_before = [run_type]
+        rtl_panel_dep_before = [self.run_type]
         rtl_per_panel = []
         rtl_panel_dep_after = []
 
-        return RunType.Rtl(panel_dep_before = rtl_panel_dep_before,
-                           per_panel = rtl_per_panel,
-                           panel_dep_after = rtl_panel_dep_after)
+        return RunType.Rtl(panel_dep_before=rtl_panel_dep_before,
+                           per_panel=rtl_per_panel,
+                           panel_dep_after=rtl_panel_dep_after)
 
 
 class Gather(RunType):
@@ -234,10 +237,10 @@ class Gather(RunType):
         if measurement == "dark":
             return run_list, run_name
         else:
-            return super().get_list_and_name(measurement,
-                                             run_list,
-                                             run_name,
-                                             run_type)
+            return super().get_list_and_name(measurement=measurement,
+                                             run_list=run_list,
+                                             run_name=run_name,
+                                             run_type=run_type)
 
 
 class Process(RunType):
@@ -260,11 +263,11 @@ class Join(RunType):
     def get_run_type_lists_split(self, run_type_list):
         rtl_panel_dep_before = []
         rtl_per_panel = []
-        rtl_panel_dep_after = [run_type]
+        rtl_panel_dep_after = [run_type_list]
 
-        return RunType.Rtl(panel_dep_before = rtl_panel_dep_before,
-                           per_panel = rtl_per_panel,
-                           panel_dep_after = rtl_panel_dep_after)
+        return RunType.Rtl(panel_dep_before=rtl_panel_dep_before,
+                           per_panel=rtl_per_panel,
+                           panel_dep_after=rtl_panel_dep_after)
 
 
 class All(RunType):
@@ -297,10 +300,10 @@ class All(RunType):
         if run_type == "gather" and measurement == "dark":
             return run_list, run_name
         else:
-            return super().get_list_and_name(measurement,
-                                             run_list,
-                                             run_name,
-                                             run_type)
+            return super().get_list_and_name(measurement=measurement,
+                                             run_list=run_list,
+                                             run_name=run_name,
+                                             run_type=run_type)
 
     def get_run_type_lists_split(self, run_type_list):
         if self._use_xfel:
@@ -313,6 +316,6 @@ class All(RunType):
             rtl_per_panel = run_type_list
             rtl_panel_dep_after = []
 
-        return RunType.Rtl(panel_dep_before = rtl_panel_dep_before,
-                           per_panel = rtl_per_panel,
-                           panel_dep_after = rtl_panel_dep_after)
+        return RunType.Rtl(panel_dep_before=rtl_panel_dep_before,
+                           per_panel=rtl_per_panel,
+                           panel_dep_after=rtl_panel_dep_after)

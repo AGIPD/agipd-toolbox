@@ -16,10 +16,11 @@ if SRC_PATH not in sys.path:
 if PROCESS_PATH not in sys.path:
     sys.path.insert(0, PROCESS_PATH)
 
-import utils
+import utils  # noqa E402
 
-from process_dark import AgipdProcessDark
-from process_pcdrs import AgipdProcessPcdrs
+from process_dark import AgipdProcessDark  # noqa E402
+from process_pcdrs import AgipdProcessPcdrs  # noqa E402
+
 
 def call_xfel_mode(run_type,
                    in_base_dir,
@@ -57,10 +58,10 @@ def call_xfel_mode(run_type,
     print("use_xfel_format=", use_xfel_format)
     print()
 
-    obj = Process(in_fname=in_fname,
-                  out_fname=out_fname,
-                  runs=run_list,
-                  use_xfel_format=use_xfel_format)
+    Process(in_fname=in_fname,
+            out_fname=out_fname,
+            runs=run_list,
+            use_xfel_format=use_xfel_format)
 
 
 def call_cfel_mode(run_type,
@@ -104,10 +105,10 @@ def call_cfel_mode(run_type,
     print("use_xfel_format", use_xfel_format)
     print()
 
-    obj = Process(in_fname=in_fname,
-                  out_fname=out_fname,
-                  runs=run_names,
-                  use_xfel_format=use_xfel_format)
+    Process(in_fname=in_fname,
+            out_fname=out_fname,
+            runs=run_names,
+            use_xfel_format=use_xfel_format)
 
 
 # TESTS
@@ -115,11 +116,11 @@ def test_dark(use_xfel_format):
     run_type = "dark"
 
     if use_xfel_format:
-    #    use_xfel_output_format = False
         use_xfel_output_format = True
+#        use_xfel_output_format = False
 
         in_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm"
-        out_base_dir = in_base_dir
+#        out_base_dir = in_base_dir
         run_list = [428, 429, 430]
 
         channel = 0
@@ -132,8 +133,9 @@ def test_dark(use_xfel_format):
                        channel=channel,
                        use_xfel_format=use_xfel_output_format)
     else:
-        in_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm/tmp/cfel"
-        out_base_dir = in_base_dir
+        in_base_dir = ("/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm/"
+                       "tmp/cfel")
+#        out_base_dir = in_base_dir
 
         module = "M304"
         temperature = "temperature_m25C"
@@ -150,9 +152,10 @@ def test_dark(use_xfel_format):
                        meas_spec=nature,
                        run_names=run_names)
 
+
 def test_pcdrs():
     in_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm"
-    out_base_dir = in_base_dir
+#    out_base_dir = in_base_dir
     run_list = ["r0488-r0489-r0490-r0491-r0492-r0493-r0494-r0495"]
     run_type = "pcdrs"
 
@@ -169,7 +172,8 @@ def test_pcdrs():
                    channel=channel,
                    use_xfel_format=use_xfel_format)
 
+
 if __name__ == "__main__":
     test_dark(use_xfel_format=False)
-    #test_dark(use_xfel_format=True)
-    #test_pcdrs()
+#    test_dark(use_xfel_format=True)
+#    test_pcdrs()

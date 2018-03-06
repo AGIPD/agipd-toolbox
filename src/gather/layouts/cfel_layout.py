@@ -42,7 +42,8 @@ class CfelLayout(object):
             'collection': "entry/instrument/detector/collection",
             'seq_number': "entry/instrument/detector/sequence_number"
         }
-        self._path['error_code'] = "{}/error_code".format(self._path['collection'])
+        self._path['error_code'] = ("{}/error_code"
+                                    .format(self._path['collection']))
         self._path['frame_number'] = ("{}/frame_numbers"
                                       .format(self._path['collection']))
         self._path['total_lost_frames'] = ("{}/total_loss_frames"
@@ -234,11 +235,11 @@ class CfelLayout(object):
         print("seq_number before modifying: {}"
               .format(source_seq_number))
         self._seq_number = (source_seq_number
-                           # seq_number starts counting with 1
-                           - 1
-                           # the seq_number refers to the whole run
-                           # not one file
-                           - seq_number_last_entry_previous_file)
+                            # seq_number starts counting with 1
+                            - 1
+                            # the seq_number refers to the whole run
+                            # not one file
+                            - seq_number_last_entry_previous_file)
         print("seq_number: {}".format(self._seq_number))
 
         self._source_seq_number = source_seq_number

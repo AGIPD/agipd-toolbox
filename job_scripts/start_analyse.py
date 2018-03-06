@@ -33,12 +33,12 @@ def get_arguments():
     parser.add_argument("--module",
                         type=str,
                         nargs="+",
-                        default = [],
+                        default=[],
                         help="Module to gather, e.g M310 (AGIPD lab)")
     parser.add_argument("--channel",
                         type=int,
                         nargs="+",
-                        default = [],
+                        default=[],
                         help="Module to gather, e.g 1 (XFEL)")
     parser.add_argument("--temperature",
                         type=str,
@@ -89,7 +89,6 @@ def get_arguments():
     parser.add_argument("--run_list",
                         type=int,
                         nargs="*",
-                        #nargs="+",
                         required=True,
                         help="Run numbers to extract data from. "
                              "Requirements:\n"
@@ -235,34 +234,31 @@ class StartAnalyse(object):
 
     def run(self):
         kwargs = dict(
-            run_type = self.run_type,
-            meas_type = self.meas_type,
-            in_base_dir = self.in_base_dir,
-            out_base_dir = self.out_base_dir,
-            n_processes = self.n_processes,
-            module = self.module,
-            channel = self.channel,
-            temperature = self.temperature,
-            meas_spec = self.meas_spec,
-            asic = None,
-            asic_list = self.asic_list,
-            safety_factor = self.safety_factor,
-            runs = self.run_list,
-            run_name = self.run_name,
-            max_part = self.max_part,
-            use_interleaved = self.use_interleaved,
-            current_list = self.current_list,
-            use_xfel_in_format = self.use_xfel_in_format,
-            use_xfel_out_format = self.use_xfel_out_format
+            run_type=self.run_type,
+            meas_type=self.meas_type,
+            in_base_dir=self.in_base_dir,
+            out_base_dir=self.out_base_dir,
+            n_processes=self.n_processes,
+            module=self.module,
+            channel=self.channel,
+            temperature=self.temperature,
+            meas_spec=self.meas_spec,
+            asic=None,
+            asic_list=self.asic_list,
+            safety_factor=self.safety_factor,
+            runs=self.run_list,
+            run_name=self.run_name,
+            max_part=self.max_part,
+            use_interleaved=self.use_interleaved,
+            current_list=self.current_list,
+            use_xfel_in_format=self.use_xfel_in_format,
+            use_xfel_out_format=self.use_xfel_out_format
         )
 
         # TODO check for required parameters and stop if they are not set
 
         jobs = []
         if self.run_type == "merge":
-
-#            kwargs["asic"] = 0
-
             Analyse(**kwargs)
 
         elif self.run_type == "preprocess":

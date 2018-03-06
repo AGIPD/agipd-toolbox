@@ -244,13 +244,13 @@ class GatherBase(object):
             f.create_dataset("module", data=str(self._module))
             f.create_dataset("channel", data=str(self._channel))
 
-            #sort metadata entries before writing them into a file
+            # sort metadata entries before writing them into a file
             keys = [key for key in self.metadata]
             sorted_keys = sorted(keys)
 
             # save metadata from original files
             idx = 0
-            #for set_name, set_value in iter(self.metadata.items()):
+            # for set_name, set_value in iter(self.metadata.items()):
             for set_name in sorted_keys:
                 set_value = self.metadata[set_name]
 
@@ -394,12 +394,11 @@ if __name__ == "__main__":
         print("Used parameters:")
         print("in_fname=", in_fname)
         print("out_fname=", out_fname)
-        print("runs=",runs)
+        print("runs=", runs)
         print("max_part=", max_part)
         print("asic=", asic)
         print("use_xfel_format=", use_xfel_format)
         print()
-
 
         obj = GatherBase(in_fname=in_fname,
                          out_fname=out_fname,

@@ -99,7 +99,6 @@ class XfelLayout(object):
         # TODO raise RuntimeError if dimensions of the data do not match the
         # requirements
 
-
         print("in_fname", self._in_fname)
         module, self._channel = self._get_module_and_channel()
         print("channel", self._channel)
