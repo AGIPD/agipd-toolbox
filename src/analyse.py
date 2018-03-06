@@ -190,7 +190,7 @@ class Analyse(object):
             print("in_fname=", in_fname)
             print("out_fname=", out_fname)
             print()
-            obj = Preprocess(in_fname, out_fname)
+            obj = Preprocess(in_fname, out_fname, self.use_interleaved)
             obj.run()
 
     def run_gather(self):

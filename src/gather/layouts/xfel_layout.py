@@ -115,14 +115,9 @@ class XfelLayout(object):
             self._train_pos_per_run[i] = preproc[ch]['train_pos']
 
         self._n_memcells = max(n_memcells_per_run)
-        if self._use_interleaved:
-            # TODO: should this go into the preprocessing?
-            # _n_memcells has to be an odd number because every memory cell
-            # need analog and digital data
-            if self._n_memcells % 2 != 0:
-                self._n_memcells += 1
 
-            self._n_memcells = self._n_memcells // 2
+        if self._use_interleaved:
+            self._n_memcells_to_iterate = self._n_memcells * 2
 
             # xfel format has swapped rows and cols
             self._raw_shape = (self._n_memcells, 2, 2,
@@ -130,6 +125,8 @@ class XfelLayout(object):
 
             n_frames_total = max(n_trains_per_run) * self._n_memcells * 2
         else:
+            self._n_memcells_to_iterate = self._n_memcells
+
             self._raw_shape = (self._n_memcells, 2,
                                n_cols, n_rows)
             n_frames_total = max(n_trains_per_run) * self._n_memcells
@@ -227,7 +224,7 @@ class XfelLayout(object):
             source_lidx = last[i] + 1
 
             # Get train position (taken care of train loss)
-            target_fidx = train_pos[seq][i] * self._n_memcells
+            target_fidx = train_pos[seq][i] * self._n_memcells_to_iterate
 
             # Detect pulse loss
             diff = np.diff(cellid[source_fidx:source_lidx])
