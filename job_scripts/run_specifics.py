@@ -263,7 +263,7 @@ class Join(RunType):
     def get_run_type_lists_split(self, run_type_list):
         rtl_panel_dep_before = []
         rtl_per_panel = []
-        rtl_panel_dep_after = [run_type_list]
+        rtl_panel_dep_after = [self.run_type]
 
         return RunType.Rtl(panel_dep_before=rtl_panel_dep_before,
                            per_panel=rtl_per_panel,

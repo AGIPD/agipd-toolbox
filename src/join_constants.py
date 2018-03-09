@@ -52,8 +52,8 @@ class JoinConstants(object):
         file_list = self.get_file_names()
 
         with h5py.File(self.out_fname, "w") as f:
-            # TODO change to automatic channel detection
-            for channel, fname in enumerate(file_list):
+            for fname in file_list:
+                channel = int(fname.split("AGIPD")[1][:2])
 
                 print("channel{}: loading content of file {}"
                       .format(channel, fname))
