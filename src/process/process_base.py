@@ -118,8 +118,15 @@ class ProcessBase(object):
             y_masked = y[~mask]
             x_masked = x[~mask]
 
-        number_of_points = len(x)
-        A = np.vstack([x_masked, np.ones(number_of_points)]).T
+        number_of_points = len(x_masked)
+        try:
+            A = np.vstack([x_masked, np.ones(number_of_points)]).T
+        except:
+            print("number_of_points", number_of_points)
+            print("x (after masking)", x_masked)
+            print("y (after masking)", y_masked)
+            print("len y_masked", len(y_masked))
+            raise
 
         # lstsq returns: Least-squares solution (i.e. slope and offset),
         #                residuals,
