@@ -1,13 +1,11 @@
-from __future__ import print_function
-
-import os
-import sys
-import numpy as np
-import h5py
 import collections
-
+import configparser
+import h5py
+import os
 import logging
 from logging.config import dictConfig
+import numpy as np
+import sys
 
 
 def create_dir(directory_name):
@@ -42,6 +40,33 @@ def check_file_exists(file_name, quit=True):
             sys.exit(1)
     else:
         print("Output file: ok")
+
+
+def load_config(config, ini_file):
+    """ Loads the config from a ini_file and overwrites already exsiting config.
+
+    Overwriting an existing configuration dictionary enables multi-layered
+    configs.
+
+    Args:
+        config (dict): Dictionary with already existing config to be
+                       overwritten.
+        ini_file (str): Name of the ini file from which the config should be
+                        loaded.
+    """
+
+    new_config = configparser.ConfigParser()
+    new_config.read(ini_file)
+
+    if not new_config.sections():
+        print("ERROR: No ini file found (tried to find {})".format(ini_file))
+        sys.exit(1)
+
+    for section, sec_value in new_config.items():
+        if section not in config:
+            config[section] = {}
+        for key, key_value in sec_value.items():
+            config[section][key] = key_value
 
 
 def get_channel_order():
@@ -79,6 +104,7 @@ def is_xfel_format(data_shape):
     else:
         return False
 
+
 def check_data_type(data):
     result = np.all(data >= 0)
 
@@ -90,11 +116,13 @@ def check_data_type(data):
 
     return result
 
+
 def as_nparray(data, type_=None):
     if type_ is None:
         return np.array(np.squeeze(data))
     else:
         return np.array(np.squeeze(data.astype(type_)))
+
 
 def convert_dtype(data, dtype):
     if data.dtype == dtype:
@@ -103,6 +131,7 @@ def convert_dtype(data, dtype):
     if dtype == np.int16:
         print("Convert data from int16 to uint16")
         data = (data + 2**15).astype(np.uint16)
+
 
 def convert_to_agipd_format(module, data):
 

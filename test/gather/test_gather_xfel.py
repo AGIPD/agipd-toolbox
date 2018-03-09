@@ -18,10 +18,8 @@ if SRC_PATH not in sys.path:
 if GATHER_PATH not in sys.path:
     sys.path.insert(0, GATHER_PATH)
 
-import utils
-
-from gather_base import AgipdGatherBase
-from gather_pcdrs import AgipdGatherPcdrs
+from gather_base import AgipdGatherBase  # noqa E402
+from gather_pcdrs import AgipdGatherPcdrs  # noqa E402
 
 
 def call_xfel_mode(run_type,
@@ -53,7 +51,7 @@ def call_xfel_mode(run_type,
                                run_type,
                                run_subdir,
                                "gather")
-        #utils.create_dir(out_dir)
+#        utils.create_dir(out_dir)
 
         preproc_fname = os.path.join(base_dir,
                                      subdir,

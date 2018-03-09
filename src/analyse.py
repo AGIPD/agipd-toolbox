@@ -4,11 +4,11 @@ import os
 import sys
 import datetime
 import time
-import glob
+# import glob
 
 import utils
 # from merge_drscs import ParallelMerge
-from correct import Correct
+# from correct import Correct
 from convert_format import ConvertFormat
 from join_constants import JoinConstants
 
@@ -33,6 +33,7 @@ class Analyse(object):
                  out_base_dir,
                  n_processes,
                  module,
+                 channel,
                  temperature,
                  meas_spec,
                  asic,
@@ -41,6 +42,7 @@ class Analyse(object):
                  runs,
                  run_name,
                  max_part,
+                 use_interleaved,
                  current_list=None,
                  use_xfel_in_format=True,
                  use_xfel_out_format=False):
@@ -61,16 +63,18 @@ class Analyse(object):
         self.runs = runs
         self.run_name = run_name
         self.current_list = current_list
-        self.channel = module
+        self.channel = channel
 
         self.max_part = max_part
+        self.use_interleaved = use_interleaved
 
         self.use_xfel_in_format = use_xfel_in_format
         self.use_xfel_out_format = use_xfel_out_format
 
         print("====== Configured parameter in class Analyse ======")
         print("type {}:".format(self.run_type))
-        print("module/channel: ", self.module)
+        print("module: ", self.module)
+        print("channel: ", self.channel)
         print("temperature: ", self.temperature)
         print("type: ", self.meas_type)
         print("meas_spec: ", self.meas_spec)
@@ -81,6 +85,7 @@ class Analyse(object):
         print("runs: ", self.runs)
         print("run_name: ", self.run_name)
         print("max_part: ", self.max_part)
+        print("use_interleaved", self.use_interleaved)
         print("current_list: ", self.current_list)
         print("use_xfel_in_format: ", self.use_xfel_in_format)
         print("use_xfel_out_format: ", self.use_xfel_out_format)
@@ -185,7 +190,7 @@ class Analyse(object):
             print("in_fname=", in_fname)
             print("out_fname=", out_fname)
             print()
-            obj = Preprocess(in_fname, out_fname)
+            obj = Preprocess(in_fname, out_fname, self.use_interleaved)
             obj.run()
 
     def run_gather(self):
@@ -221,6 +226,7 @@ class Analyse(object):
             print("out_fname=", out_fname)
             print("runs=", self.runs)
             print("properties", self.properties)
+            print("use_interleaved", self.use_interleaved)
             print("preproc_fname", preproc_fname)
             print("max_part=", self.max_part)
             print("asic=", self.asic)
@@ -230,6 +236,7 @@ class Analyse(object):
                          out_fname=out_fname,
                          runs=self.runs,
                          properties=self.properties,
+                         use_interleaved=self.use_interleaved,
                          preproc_fname=preproc_fname,
                          max_part=self.max_part,
                          asic=self.asic,
@@ -240,7 +247,6 @@ class Analyse(object):
 
         if self.meas_type == "dark":
             from process_dark import ProcessDark as Process
-
 
             if self.use_xfel_in_format or self.run_name is None:
                 run_list = self.runs
@@ -308,23 +314,25 @@ class Analyse(object):
         )
         c_out_fname = os.path.join(c_out_dir, c_out_file_name)
 
-        print("convert format")
-        print("output filename = {}".format(c_out_fname))
-        if os.path.exists(c_out_fname):
-            print("WARNING: output file already exist. Skipping convert.")
-        else:
-            if self.use_xfel_out_format:
-                c_obj = ConvertFormat(out_fname,
-                                      c_out_fname,
-                                      "agipd",
-                                      self.channel)
+        # do not convert cfel data
+        if out_fname != c_out_fname:
+            print("convert format")
+            print("output filename = {}".format(c_out_fname))
+            if os.path.exists(c_out_fname):
+                print("WARNING: output file already exist. Skipping convert.")
             else:
-                c_obj = ConvertFormat(out_fname,
-                                      c_out_fname,
-                                      "xfel",
-                                      self.channel)
+                if self.use_xfel_out_format:
+                    c_obj = ConvertFormat(out_fname,
+                                          c_out_fname,
+                                          "agipd",
+                                          self.channel)
+                else:
+                    c_obj = ConvertFormat(out_fname,
+                                          c_out_fname,
+                                          "xfel",
+                                          self.channel)
 
-            c_obj.run()
+                c_obj.run()
 
     def run_join(self):
         # join constants in agipd format as well as the xfel format
@@ -405,61 +413,61 @@ class Analyse(object):
 #                          self.n_processes,
 #                          self.current_list)
 
-    def run_correct(self, run_number):
-        data_fname_prefix = ("RAW-{}-AGIPD{}*"
-                             .format(run_number.upper(), self.module))
-        data_fname = os.path.join(self.in_dir,
-                                  run_number,
-                                  data_fname_prefix)
-
-        data_parts = glob.glob(data_fname)
-        print("data_parts", data_parts)
-
-        for data_fname in data_parts:
-            part = int(data_fname[-8:-3])
-            print("part", part)
-
-            if self.use_xfel_in_format:
-                fname_prefix = "dark_AGIPD{}_xfel".format(self.module)
-            else:
-                fname_prefix = "dark_AGIPD{}_agipd_".format(self.module)
-            dark_fname_prefix = os.path.join(self.dark_dir, fname_prefix)
-            dark_fname = glob.glob("{}*".format(dark_fname_prefix))
-            if dark_fname:
-                dark_fname = dark_fname[0]
-            else:
-                print("No dark constants found. Quitting.")
-                sys.exit(1)
-            print(dark_fname)
-
-            if self.use_xfel_in_format:
-                fname_prefix = "gain_AGIPD{}_xfel".format(self.module)
-            else:
-                fname_prefix = "gain_AGIPD{}_agipd_".format(self.module)
-
-            gain_fname_prefix = os.path.join(self.gain_dir, fname_prefix)
-            gain_fname = glob.glob("{}*".format(gain_fname_prefix))
-            if gain_fname:
-                gain_fname = gain_fname[0]
-            else:
-                print("No gain constants found.")
-#                print("No gain constants found. Quitting.")
+#    def run_correct(self, run_number):
+#        data_fname_prefix = ("RAW-{}-AGIPD{}*"
+#                             .format(run_number.upper(), self.module))
+#        data_fname = os.path.join(self.in_dir,
+#                                  run_number,
+#                                  data_fname_prefix)
+#
+#        data_parts = glob.glob(data_fname)
+#        print("data_parts", data_parts)
+#
+#        for data_fname in data_parts:
+#            part = int(data_fname[-8:-3])
+#            print("part", part)
+#
+#            if self.use_xfel_in_format:
+#                fname_prefix = "dark_AGIPD{}_xfel".format(self.module)
+#            else:
+#                fname_prefix = "dark_AGIPD{}_agipd_".format(self.module)
+#            dark_fname_prefix = os.path.join(self.dark_dir, fname_prefix)
+#            dark_fname = glob.glob("{}*".format(dark_fname_prefix))
+#            if dark_fname:
+#                dark_fname = dark_fname[0]
+#            else:
+#                print("No dark constants found. Quitting.")
 #                sys.exit(1)
-
-            out_dir = os.path.join(self.out_dir, run_number)
-            utils.create_dir(out_dir)
-
-            fname = "corrected_AGIPD{}-S{:05d}.h5".format(self.module, part)
-            out_fname = os.path.join(out_dir, fname)
-
-            Correct(data_fname,
-                    dark_fname,
-                    None,
-                    # gain_fname,
-                    out_fname,
-                    self.energy,
-                    self.use_xfel_out_format)
-
-    def cleanup(self):
-        # remove gather dir
-        pass
+#            print(dark_fname)
+#
+#            if self.use_xfel_in_format:
+#                fname_prefix = "gain_AGIPD{}_xfel".format(self.module)
+#            else:
+#                fname_prefix = "gain_AGIPD{}_agipd_".format(self.module)
+#
+#            gain_fname_prefix = os.path.join(self.gain_dir, fname_prefix)
+#            gain_fname = glob.glob("{}*".format(gain_fname_prefix))
+#            if gain_fname:
+#                gain_fname = gain_fname[0]
+#            else:
+#                print("No gain constants found.")
+#                #print("No gain constants found. Quitting.")
+#                #sys.exit(1)
+#
+#            out_dir = os.path.join(self.out_dir, run_number)
+#            utils.create_dir(out_dir)
+#
+#            fname = "corrected_AGIPD{}-S{:05d}.h5".format(self.module, part)
+#            out_fname = os.path.join(out_dir, fname)
+#
+#            Correct(data_fname,
+#                    dark_fname,
+#                    None,
+#                    # gain_fname,
+#                    out_fname,
+#                    self.energy,
+#                    self.use_xfel_out_format)
+#
+#    def cleanup(self):
+#        # remove gather dir
+#        pass

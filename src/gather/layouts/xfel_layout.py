@@ -99,7 +99,6 @@ class XfelLayout(object):
         # TODO raise RuntimeError if dimensions of the data do not match the
         # requirements
 
-
         print("in_fname", self._in_fname)
         module, self._channel = self._get_module_and_channel()
         print("channel", self._channel)
@@ -116,24 +115,23 @@ class XfelLayout(object):
             self._train_pos_per_run[i] = preproc[ch]['train_pos']
 
         self._n_memcells = max(n_memcells_per_run)
-        if self._use_interleaved:
-            # TODO: should this go into the preprocessing?
-            # _n_memcells has to be an odd number because every memory cell
-            # need analog and digital data
-            if self._n_memcells % 2 != 0:
-                self._n_memcells += 1
 
-            self._n_memcells = self._n_memcells // 2
+        if self._use_interleaved:
+            self._n_memcells_to_iterate = self._n_memcells * 2
 
             # xfel format has swapped rows and cols
             self._raw_shape = (self._n_memcells, 2, 2,
                                n_cols, n_rows)
+
+            n_frames_total = max(n_trains_per_run) * self._n_memcells * 2
         else:
+            self._n_memcells_to_iterate = self._n_memcells
+
             self._raw_shape = (self._n_memcells, 2,
                                n_cols, n_rows)
-        print("Number of memory cells found", self._n_memcells)
+            n_frames_total = max(n_trains_per_run) * self._n_memcells
 
-        n_frames_total = max(n_trains_per_run) * self._n_memcells
+        print("Number of memory cells found", self._n_memcells)
         print("n_frames_total", n_frames_total)
 
         for key in self._path_temp:
@@ -199,10 +197,10 @@ class XfelLayout(object):
         with h5py.File(fname, "r") as f:
             raw_data = f[self._path['data']][()]
 
-            status = utils.as_nparray(f[self._path['status']][()])
-            first = utils.as_nparray(f[self._path['image_first']][()])
-            last = utils.as_nparray(f[self._path['image_last']][()])
-            cellid = utils.as_nparray(f[self._path['cellid']][()])
+            status = utils.as_nparray(f[self._path['status']][()], np.int)
+            first = utils.as_nparray(f[self._path['image_first']][()], np.int)
+            last = utils.as_nparray(f[self._path['image_last']][()], np.int)
+            cellid = utils.as_nparray(f[self._path['cellid']][()], np.int)
 
         print("raw_data.shape", raw_data.shape)
         print("self._raw_shape", self._raw_shape)
@@ -210,8 +208,8 @@ class XfelLayout(object):
         utils.check_data_type(raw_data)
 
         if self._use_interleaved:
-            # currently the splitting in digital and analog does not work
-            # for XFEL
+            # for the first experiments the splitting in digital and analog
+            # did not work for XFEL
             # -> all data is in the first entry of the analog/digital
             #    dimension
             raw_data = raw_data[:, 0, ...]
@@ -226,7 +224,7 @@ class XfelLayout(object):
             source_lidx = last[i] + 1
 
             # Get train position (taken care of train loss)
-            target_fidx = train_pos[seq][i] * self._n_memcells
+            target_fidx = train_pos[seq][i] * self._n_memcells_to_iterate
 
             # Detect pulse loss
             diff = np.diff(cellid[source_fidx:source_lidx])

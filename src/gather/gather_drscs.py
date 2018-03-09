@@ -37,7 +37,6 @@ class GatherDrscs(GatherBase):
                 # the asics of the lower rows are upside down
                 start = run_idx
 
-
             pos_idx_rows = slice(None)
             pos_idx_cols = np.arange(start, self.n_cols, self.n_runs)
 

@@ -32,10 +32,13 @@ def get_arguments():
                         help="The number of processes for the pool")
     parser.add_argument("--module",
                         type=str,
+                        nargs="+",
+                        default=[],
                         help="Module to gather, e.g M310 (AGIPD lab)")
     parser.add_argument("--channel",
                         type=int,
                         nargs="+",
+                        default=[],
                         help="Module to gather, e.g 1 (XFEL)")
     parser.add_argument("--temperature",
                         type=str,
@@ -86,7 +89,6 @@ def get_arguments():
     parser.add_argument("--run_list",
                         type=int,
                         nargs="*",
-                        #nargs="+",
                         required=True,
                         help="Run numbers to extract data from. "
                              "Requirements:\n"
@@ -104,6 +106,10 @@ def get_arguments():
                         type=int,
                         default=None,
                         help="Maximum number of parts to be combined")
+    parser.add_argument("--use_interleaved",
+                        action="store_true",
+                        default=False,
+                        help="Use inteleaved data format (ADADAD)")
     parser.add_argument("--current_list",
                         type=str,
                         nargs='+',
@@ -124,11 +130,11 @@ def get_arguments():
 
     args = parser.parse_args()
 
-    if args.module is None and args.channel is None:
+    if not args.module and not args.channel:
         msg = ("one of the two folling arguments is required: "
                "--channel or --module")
         parser.error(msg)
-    elif args.module is not None and args.channel is not None:
+    elif args.module and args.channel:
         msg = ("only one of the two folling arguments is required: "
                "--channel or --module")
         parser.error(msg)
@@ -191,15 +197,14 @@ class StartAnalyse(object):
         self.run_list = args.run_list
         self.run_name = args.run_name
         self.n_processes = args.n_processes
-        if args.module is not None:
-            self.module = [args.module]
-        else:
-            self.module = args.channel
+        self.module = args.module
+        self.channel = args.channel
         self.temperature = args.temperature
         self.meas_spec = args.meas_spec
         self.asic_list = args.asic_list or [None]
         self.safety_factor = args.safety_factor
         self.max_part = args.max_part
+        self.use_interleaved = args.use_interleaved
         self.current_list = args.current_list if args.current_list else None
         self.energy = args.energy
         self.use_xfel_in_format = args.use_xfel_in_format
@@ -207,7 +212,8 @@ class StartAnalyse(object):
 
         print("====== Configured parameter in class StartAnalyse ======")
         print("meas_type {}:".format(self.meas_type))
-        print("module/channel: ", self.module)
+        print("module: ", self.module)
+        print("channel: ", self.channel)
         print("in_dir: ", self.in_base_dir)
         print("out_dir: ", self.out_base_dir)
         print("run_list: ", self.run_list)
@@ -218,6 +224,7 @@ class StartAnalyse(object):
         print("asic_list: ", self.asic_list)
         print("safety_factor: ", self.safety_factor)
         print("max_part: ", self.max_part)
+        print("use_interleaved", self.use_interleaved)
         print("current_list: ", self.current_list)
         print("energy: ", self.energy)
         print("use_xfel_in_format: ", self.use_xfel_in_format)
@@ -226,53 +233,42 @@ class StartAnalyse(object):
         self.run()
 
     def run(self):
+        kwargs = dict(
+            run_type=self.run_type,
+            meas_type=self.meas_type,
+            in_base_dir=self.in_base_dir,
+            out_base_dir=self.out_base_dir,
+            n_processes=self.n_processes,
+            module=self.module,
+            channel=self.channel,
+            temperature=self.temperature,
+            meas_spec=self.meas_spec,
+            asic=None,
+            asic_list=self.asic_list,
+            safety_factor=self.safety_factor,
+            runs=self.run_list,
+            run_name=self.run_name,
+            max_part=self.max_part,
+            use_interleaved=self.use_interleaved,
+            current_list=self.current_list,
+            use_xfel_in_format=self.use_xfel_in_format,
+            use_xfel_out_format=self.use_xfel_out_format
+        )
 
         # TODO check for required parameters and stop if they are not set
 
         jobs = []
         if self.run_type == "merge":
-            Analyse(run_type=self.run_type,
-                    meas_type=self.meas_type,
-                    in_base_dir=self.in_base_dir,
-                    out_base_dir=self.out_base_dir,
-                    n_processes=self.n_processes,
-                    module=self.module,
-                    temperature=self.temperature,
-                    meas_spec=self.meas_spec,
-                    asic=0,
-                    asic_list=self.asic_list,
-                    safety_factor=self.safety_factor,
-                    runs=self.run_list,
-                    run_name=self.run_name,
-                    max_part=self.max_part,
-                    current_list=self.current_list,
-                    use_xfel_in_format=self.use_xfel_in_format,
-                    use_xfel_out_format=self.use_xfel_out_format)
+            Analyse(**kwargs)
 
         elif self.run_type == "preprocess":
             for run in self.run_list:
                 print("Starting script for run {}\n".format(run))
 
-                p = multiprocessing.Process(
-                    target=Analyse,
-                    args=(self.run_type,
-                          self.meas_type,
-                          self.in_base_dir,
-                          self.out_base_dir,
-                          self.n_processes,
-                          self.module,
-                          self.temperature,
-                          self.meas_spec,
-                          0,
-                          self.asic_list,
-                          self.safety_factor,
-                          [run],
-                          self.run_name,
-                          self.max_part,
-                          self.current_list,  # = None
-                          self.use_xfel_in_format,
-                          self.use_xfel_out_format)
-                )
+                kwargs["asic"] = 0
+                kwargs["runs"] = [run]
+
+                p = multiprocessing.Process(target=Analyse, kwargs=kwargs)
                 jobs.append(p)
                 p.start()
 
@@ -284,26 +280,24 @@ class StartAnalyse(object):
                     print("Starting script for module {} and asic {}\n"
                           .format(m, asic))
 
-                    p = multiprocessing.Process(
-                        target=Analyse,
-                        args=(self.run_type,
-                              self.meas_type,
-                              self.in_base_dir,
-                              self.out_base_dir,
-                              self.n_processes,
-                              m,
-                              self.temperature,
-                              self.meas_spec,
-                              asic,
-                              self.asic_list,
-                              self.safety_factor,
-                              self.run_list,
-                              self.run_name,
-                              self.max_part,
-                              self.current_list,  # = None
-                              self.use_xfel_in_format,
-                              self.use_xfel_out_format)
-                    )
+                    kwargs["module"] = m
+                    kwargs["channel"] = None
+                    kwargs["asic"] = asic
+
+                    p = multiprocessing.Process(target=Analyse, kwargs=kwargs)
+                    jobs.append(p)
+                    p.start()
+
+            for ch in self.channel:
+                for asic in self.asic_list:
+                    print("Starting script for channel {} and asic {}\n"
+                          .format(ch, asic))
+
+                    kwargs["module"] = None
+                    kwargs["channel"] = ch
+                    kwargs["asic"] = asic
+
+                    p = multiprocessing.Process(target=Analyse, kwargs=kwargs)
                     jobs.append(p)
                     p.start()
 

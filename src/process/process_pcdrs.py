@@ -1,7 +1,4 @@
-import sys
 import numpy as np
-import os
-
 from process_base import ProcessBase
 
 
@@ -14,13 +11,6 @@ class ProcessPcdrs(ProcessBase):
         super().__init__(**kwargs)
 
     def initiate(self):
-        # n_memcells is set in init of base class thus has to be overwritten
-        # here
-        # reason: in run 488, ... the data shows 67 memory cells being written
-        # although only 64 contain actual usefull data
-        # TODO what happens if data is processed for all 67?
-#        self.n_memcells = 74
-#        self.n_memcells = 32
         print("n_memcell={}, n_rows={}, n_cols={}"
               .format(self.n_memcells, self.n_cols, self.n_rows))
 
@@ -68,9 +58,6 @@ class ProcessPcdrs(ProcessBase):
         mask = self.get_mask(analog=analog, digital=digital)
 
         self.determine_fit_intervals()
-        print("==0", np.where(analog[:, 0, 7, 0] == 0))
-        print("==0", np.where(analog[slice(*self.fit_interval[0]), 0, 7, 0] == 0))
-        print("==0", np.where(analog[slice(*self.fit_interval[1]), 0, 7, 0] == 0))
 
         print("Start fitting")
         for i in range(self.n_offsets):

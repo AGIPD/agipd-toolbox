@@ -27,6 +27,7 @@ class GatherBase(object):
                  out_fname,
                  runs,
                  properties,
+                 use_interleaved,
                  preproc_fname=None,
                  max_part=False,
                  asic=None,
@@ -36,6 +37,7 @@ class GatherBase(object):
         self._in_fname = in_fname
         self._out_fname = out_fname
         self._properties = properties
+        self._use_interleaved = use_interleaved
 
         self.runs = [int(r) for r in runs]
 
@@ -45,14 +47,10 @@ class GatherBase(object):
 
         if use_xfel_format:
             from layouts.xfel_layout import XfelLayout as layout
-
-            # to use the interleaved or not interleaved format
-            # self._use_interleaved = True
-            self._use_interleaved = False
-
         else:
             from layouts.cfel_layout import CfelLayout as layout
-            self._use_interleaved = True
+            if not self._use_interleaved:
+                print("ERROR: CFEL only supports interleaved mode.")
 
         self._n_rows_total = self._properties["n_rows_total"]
         self._n_cols_total = self._properties["n_cols_total"]
@@ -246,13 +244,13 @@ class GatherBase(object):
             f.create_dataset("module", data=str(self._module))
             f.create_dataset("channel", data=str(self._channel))
 
-            #sort metadata entries before writing them into a file
+            # sort metadata entries before writing them into a file
             keys = [key for key in self.metadata]
             sorted_keys = sorted(keys)
 
             # save metadata from original files
             idx = 0
-            #for set_name, set_value in iter(self.metadata.items()):
+            # for set_name, set_value in iter(self.metadata.items()):
             for set_name in sorted_keys:
                 set_value = self.metadata[set_name]
 
@@ -396,12 +394,11 @@ if __name__ == "__main__":
         print("Used parameters:")
         print("in_fname=", in_fname)
         print("out_fname=", out_fname)
-        print("runs=",runs)
+        print("runs=", runs)
         print("max_part=", max_part)
         print("asic=", asic)
         print("use_xfel_format=", use_xfel_format)
         print()
-
 
         obj = GatherBase(in_fname=in_fname,
                          out_fname=out_fname,

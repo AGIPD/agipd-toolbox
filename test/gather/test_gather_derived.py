@@ -18,15 +18,15 @@ if SRC_PATH not in sys.path:
 if GATHER_PATH not in sys.path:
     sys.path.insert(0, GATHER_PATH)
 
-import utils
+import utils  # noqa
 
-from gather_pcdrs import AgipdGatherPcdrs
-from gather_drscs import AgipdGatherDrscs
+from gather_pcdrs import AgipdGatherPcdrs  # noqa E402
+from gather_drscs import AgipdGatherDrscs  # noqa E402
+
 
 #
 # PCDRS
 #
-
 class GatherPcdrsTests(unittest.TestCase):
     # per test
     def setUp(self):
@@ -70,10 +70,10 @@ class GatherPcdrsTests(unittest.TestCase):
         self.assertTrue(np.all(res[0] == ref_row))
         self.assertTrue(np.all(res[1] == ref_col))
 
+
 #
 # DRSCS
 #
-
 class GatherDrscsTest(AgipdGatherDrscs):
     def __init__(self, asic):
         self.asic = asic
@@ -152,7 +152,6 @@ class GatherDrscsTests(unittest.TestCase):
                           448, 452, 456, 460, 464, 468, 472, 476,
                           480, 484, 488, 492, 496, 500, 504, 508]
 
-
         # get result calculated by set_pos_indices
         res = self.gather_obj.set_pos_indices(run_idx)
 
@@ -211,7 +210,6 @@ class GatherDrscsTests(unittest.TestCase):
         self.assertTrue(np.all(res[1][0] == ref_row_bottom))
         self.assertTrue(np.all(res[1][1] == ref_col_bottom))
 
-
     # asic location on module
     #  ____ ____ ____ ____ ____ ____ ____ ____
     # |    |    |    |    |    |    |    |    |
@@ -220,7 +218,6 @@ class GatherDrscsTests(unittest.TestCase):
     # |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |
     # |____|____|____|____|____|____|____|____|
     #
-
     def test_pos_indices_asic1_0(self):
         self.gather_obj = GatherDrscsTest(asic=1)
 
@@ -260,7 +257,7 @@ class GatherDrscsTests(unittest.TestCase):
         # reference values
         ref_row = slice(None)
         ref_col = [3, 7, 11, 15, 19, 23, 27, 31,
-                   35, 39, 43, 47, 51, 55, 59, 63,]
+                   35, 39, 43, 47, 51, 55, 59, 63]
 
         # get result calculated by set_pos_indices
         res = self.gather_obj.set_pos_indices(run_idx)[0]

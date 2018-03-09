@@ -84,7 +84,8 @@ class ProcessBase(object):
         if self._use_xfel_format:
             self.convert_to_xfel_format()
 
-        print("Start saving results at {} ... ".format(self._out_fname), end='')
+        print("Start saving results at {} ... ".format(self._out_fname),
+              end='')
         self.write_data()
         print("Done.")
 
@@ -117,8 +118,15 @@ class ProcessBase(object):
             y_masked = y[~mask]
             x_masked = x[~mask]
 
-        number_of_points = len(x)
-        A = np.vstack([x_masked, np.ones(number_of_points)]).T
+        number_of_points = len(x_masked)
+        try:
+            A = np.vstack([x_masked, np.ones(number_of_points)]).T
+        except:
+            print("number_of_points", number_of_points)
+            print("x (after masking)", x_masked)
+            print("y (after masking)", y_masked)
+            print("len y_masked", len(y_masked))
+            raise
 
         # lstsq returns: Least-squares solution (i.e. slope and offset),
         #                residuals,
@@ -163,7 +171,7 @@ class ProcessBase(object):
                                              self.shapes[key]))
 
     def write_data(self):
-        with  h5py.File(self._out_fname, "w", libver='latest') as f:
+        with h5py.File(self._out_fname, "w", libver='latest') as f:
             for key in self.result:
                 f.create_dataset(self.result[key]['path'],
                                  data=self.result[key]['data'],

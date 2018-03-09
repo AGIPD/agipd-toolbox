@@ -141,7 +141,8 @@ class GeneratePathsXfel(object):
 
         Args:
             base_dir: Base directory under which the output is stored.
-            use_xfel_out_format (bool): If enabled the output is in xfel format.
+            use_xfel_out_format (bool): If enabled the output is in xfel
+                                        format.
             as_template (optional, bool): If enabled the channel is kept as a
                                           template instead of being filled in
                                           (default: False).
@@ -172,7 +173,8 @@ class GeneratePathsXfel(object):
 
         Args:
             base_dir: Base directory under which the output is stored.
-            use_xfel_out_format (bool): If enabled the output is in xfel format.
+            use_xfel_out_format (bool): If enabled the output is in xfel
+                                        format.
 
         Return:
             Join directory and file name, each as string.
@@ -229,7 +231,8 @@ class GeneratePathsCfel(object):
                       found.
             as_template (optional, bool): If enabled the channel is kept as a
                                           template instead of being filled in.
-                                          (default: True, but not implemented here)
+                                          (default: True,
+                                                    but not implemented here)
 
         Return:
             Raw directory and file name, each as string. The file name as
@@ -249,16 +252,17 @@ class GeneratePathsCfel(object):
                                 self.meas_in[self.meas_type],
                                 self.meas_spec)
 
-        #fname = ("{}_{}_{}_"
         prefix = ("{}*_{}_{}_"  # only module without location, e.g. M304
-                     .format(self.module,
-                             self.meas_type,
-                             self.meas_spec))
+                  .format(self.module,
+                          self.meas_type,
+                          self.meas_spec))
 
         if self.run_name is None:
             fname = prefix + "{run_number:05}_part{part:05}.nxs"
         elif len(self.run_name) == 1:
-            fname = prefix + self.run_name[0] + "_{run_number:05}_part{part:05}.nxs"
+            fname = (prefix
+                     + self.run_name[0]
+                     + "_{run_number:05}_part{part:05}.nxs")
         else:
             raise Exception("Run name is not unique.")
 
@@ -332,7 +336,8 @@ class GeneratePathsCfel(object):
                                         (not implemented).
             as_template (optional, bool): If enabled the channel is kept as a
                                           template instead of being filled in
-                                          (default: False, but not implemented here)
+                                          (default: False,
+                                                    but not implemented here)
 
         Return:
             Process directory and file name, each as string.
@@ -366,7 +371,8 @@ class GeneratePathsCfel(object):
 
         Args:
             base_dir: Base directory under which the output is stored.
-            use_xfel_out_format (bool): If enabled the output is in xfel format.
+            use_xfel_out_format (bool): If enabled the output is in xfel
+                                        format.
 
         Return:
             Join directory and file name, each as string.
@@ -388,5 +394,3 @@ class GeneratePathsCfel(object):
 #                            self.run_type)
 
 #        return fdir, fname
-
-

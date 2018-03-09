@@ -20,10 +20,11 @@ import utils  # noqa E402
 
 
 class PreprocessXfel(object):
-    def __init__(self, in_fname, out_fname):
+    def __init__(self, in_fname, out_fname, use_interleaved=False):
 
         self.in_fname = in_fname
         self.out_fname = out_fname
+        self.use_interleaved = use_interleaved
 
         self.n_channels = 16
         self.path_temp = {
@@ -75,7 +76,17 @@ class PreprocessXfel(object):
         with h5py.File(fname, "r") as f:
             in_data = f[read_in_path][()].astype(np.int)
 
-        return max(in_data)
+        n_memcells = max(in_data)
+
+        if self.use_interleaved:
+            # _n_memcells has to be an odd number because every memory cell
+            # need analog and digital data
+            if n_memcells % 2 != 0:
+                n_memcells += 1
+
+            n_memcells = n_memcells // 2
+
+        return n_memcells
 
     def evaluate_trainid(self):
         n_seqs = self.prop["general"]["n_seqs"]
