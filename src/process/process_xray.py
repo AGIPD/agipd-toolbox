@@ -11,17 +11,36 @@ class ProcessXray(ProcessBase):
         n_offsets = len(self.runs)
 
         self.shapes = {
-            "offset": (n_offsets,
-                       self.n_memcells,
-                       self.n_rows,
-                       self.n_cols)
+            "photon_spacing": (self.n_memcells,
+                               self.n_rows,
+                               self.n_cols)
         }
 
         self.result = {
-            "offset": {
-                "data": np.empty(self.shapes["offset"]),
-                "path": "offset",
-                "type": np.int
+            "photon_spacing": {
+                "data": np.empty(self.shapes["photon_spacing"]),
+                "path": "photon_spacing",
+                "type": np.int16
+            },
+            "spacing_error": {
+                "data": np.empty(self.shapes["photon_spacing"]),
+                "path": "spacing_error",
+                "type": np.int16
+            },
+            "peak_stddev": {
+                "data": np.empty(self.shapes["photon_spacing"]),
+                "path": "peak_stddev",
+                "type": np.float
+            },
+            "peak_error": {
+                "data": np.empty(self.shapes["photon_spacing"]),
+                "path": "peak_error",
+                "type": np.float
+            },
+            "quality": {
+                "data": np.empty(self.shapes["photon_spacing"]),
+                "path": "quality",
+                "type": np.int16
             }
         }
 
@@ -39,8 +58,29 @@ class ProcessXray(ProcessBase):
                                                          digital=digital)
             print("Done.")
 
-            print("Start computing means and standard deviations ... ",
+            print("Start computing photon spacing ... ",
                   end="", flush=True)
-            offset = np.mean(m_analog, axis=0).astype(np.int)
 
-            self.result["offset"]["data"][i, ...] = offset
+            for mc in range(self.n_memcells):
+                print("memcell {}".format(mc))
+                for row in range(self.n_rows):
+                    for col in range(self.n_cols):
+
+                        try:
+                            (photon_spacing, spacing_error, peak_stddev, peak_errors, quality) = self.get_photon_spacing(analog)
+                            idx = (mc, row, col)
+                            self.result["photon_spacing"]["data"][idx] = photon_spacing
+                            #self.result["spacing_error"]["data"][idx] = spacing_error
+                            self.result["peak_stddev"]["data"][idx] = peak_stddev
+                            #self.result["peak_error"]["data"][idx] = peak_error
+                            self.result["quality"]["data"][idx] = quality
+
+
+                        except:
+                            print("memcell, row, col", mc, row, col)
+                            print("analog.shape", analog.shape)
+                            raise
+
+
+
+            print("Done.")
