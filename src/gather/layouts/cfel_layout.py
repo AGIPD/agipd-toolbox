@@ -95,7 +95,15 @@ class CfelLayout(object):
                                                     part=0)
         # cfel file names have ...<module name>_<module position>...
         # -> the wildcard for the module position has to be filled
-        fname = glob.glob(fname_with_wildcard)[0]
+        print(fname_with_wildcard)
+        found_files = glob.glob(fname_with_wildcard)
+        try:
+            fname = found_files[0]
+        except:
+            if len(found_files) == 0:
+                print("No files found for fname {}".format(fname_with_wildcard))
+
+            raise
 
         module, self._channel = self._get_module_and_channel(
             fname,
