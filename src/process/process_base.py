@@ -4,7 +4,6 @@ import numpy as np
 import time
 import os
 from datetime import date
-import peakutils
 
 try:
     CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
