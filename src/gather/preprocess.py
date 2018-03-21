@@ -1,9 +1,10 @@
+import configparser
+import copy
+import glob
 import h5py
 import numpy as np
 import os
 import sys
-import configparser
-import glob
 
 try:
     CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -22,63 +23,73 @@ import utils  # noqa E402
 class PreprocessXfel(object):
     def __init__(self, in_fname, out_fname, use_interleaved=False):
 
-        self.in_fname = in_fname
-        self.out_fname = out_fname
-        self.use_interleaved = use_interleaved
+        self._in_fname = in_fname
+        self._out_fname = out_fname
+        self._use_interleaved = use_interleaved
 
-        self.n_channels = 16
-        self.path_temp = {
-            'status': ("INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
-                       "image/status"),
+        self._n_channels = 16
+        self._path = {
+            'image_first': ("INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
+                            "image/first"),
+            'train_count': ("INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
+                            "image/count"),
+            'trainid': ("INDEX/trainId"),
             'pulse_count': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
                             "header/pulseCount"),
-            'header_trainid': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
-                               "header/trainId")
+#            'status': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
+#                       "image/status"),
+            #'header_trainid': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
+            #                   "header/trainId")
         }
 
-        self.prop = {}
+        self._prop = {}
 
     def run(self):
 
-        self.prop["general"] = {
-            "n_seqs": self.get_n_seqs(),
-            "n_memcells": self.get_n_memcells(),
-            "shifting": np.zeros(self.n_channels, dtype=np.int),
-            "max_shifting": 0,
-            "n_trains": [],
-        }
-
-        for ch in range(self.n_channels):
-            self.prop["channel{:02}".format(ch)] = {
+        for ch in range(self._n_channels):
+            self._prop["channel{:02}".format(ch)] = {
+                "n_seqs": self.get_n_seqs(channel=ch),
+                "n_trains": [],
                 "train_pos": []
             }
+
+        self._prop["general"] = {
+            "n_memcells": self.get_n_memcells(),
+            "shifting": np.zeros(self._n_channels, dtype=np.int),
+            "max_shifting": 0,
+            "max_n_trains": [],
+            "max_n_seqs": max([self._prop["channel{:02}".format(ch)]["n_seqs"]
+                          for ch in range(self._n_channels)])
+        }
 
         self.evaluate_trainid()
 
         self.write()
 
-    def get_n_seqs(self):
-        split = self.in_fname.rsplit("-AGIPD", 1)
-        regex = split[0] + "-AGIPD00*"
+    def get_n_seqs(self, channel):
+        split = self._in_fname.rsplit("-AGIPD", 1)
+        regex = split[0] + "-AGIPD{:02}*"
 
-        parts = len(glob.glob(regex))
+        found_files = sorted(glob.glob(regex.format(channel)))
 
-        print("parts/sequences", parts)
+        parts = len(found_files)
+
+#        print("parts/sequences for channel {}: {}".format(channel, parts))
         return parts
 
     def get_n_memcells(self):
         seq = 0
         channel = 0
 
-        fname = self.in_fname.format(channel, part=seq)
-        read_in_path = self.path_temp['pulse_count'].format(channel)
+        fname = self._in_fname.format(channel, part=seq)
+        read_in_path = self._path['pulse_count'].format(channel)
 
         with h5py.File(fname, "r") as f:
             in_data = f[read_in_path][()].astype(np.int)
 
         n_memcells = max(in_data)
 
-        if self.use_interleaved:
+        if self._use_interleaved:
             # _n_memcells has to be an odd number because every memory cell
             # need analog and digital data
             if n_memcells % 2 != 0:
@@ -89,37 +100,76 @@ class PreprocessXfel(object):
         return n_memcells
 
     def evaluate_trainid(self):
-        n_seqs = self.prop["general"]["n_seqs"]
-        n_trains = self.prop["general"]["n_trains"]
+        max_n_seqs = self._prop["general"]["max_n_seqs"]
+        max_n_trains = self._prop["general"]["max_n_trains"]
 
-        seq_offset = [0 for ch in range(self.n_channels)]
+        seq_offset = [0 for ch in range(self._n_channels)]
 
-        for seq in range(n_seqs):
+        for seq in range(max_n_seqs):
             if seq == 0:
                 usable_start = 2
             else:
                 usable_start = 0
 
             trainids = []
-            for ch in range(self.n_channels):
-                fname = self.in_fname.format(ch, part=seq)
+            channels_with_trains = []
+            for ch in range(self._n_channels):
+                fname = self._in_fname.format(ch, part=seq)
 
-                status_path = self.path_temp['status'].format(ch)
-                trainid_path = self.path_temp['header_trainid'].format(ch)
+                #status_path = self._path['status'].format(ch)
+                trainid_path = self._path['trainid'].format(ch)
+                #firstpath = self._path['image_first'].format(ch)
+                countpath = self._path['train_count'].format(ch)
+
+                if self._prop["channel{:02}".format(ch)]["n_seqs"] <= seq:
+                    print("Channel {} does not have a sequence {}".format(ch, seq))
+                    continue
 
                 with h5py.File(fname, "r") as f:
-                    # number of trains actually stored for this
-                    # channel + sequence
-                    s = f[status_path][()].astype(np.int)
-                    n_tr = len(np.squeeze(np.where(s != 0)))
+                    count = f[countpath][()].astype(np.int)
+                    try:
+                        n_tr = len(np.squeeze(np.where(count != 0)))
+                    except:
+                        # if the file only contains one train which might as well be empty
+                        if len(count) == 1:
+                            n_tr = 0 if count == 0 else 1
+                        else:
+                            raise
 
-                    # do not read in the trailing zeros
-                    tr = f[trainid_path][:n_tr].astype(np.int)
+                    n_trains = self._prop["channel{:02}".format(ch)]["n_trains"]
+                    n_trains.append(n_tr)
+
+                    if n_tr == 0:
+                        continue
+
+                    channels_with_trains.append(ch)
+
+                    if len(count) == 1:
+                        # if the file only contains one train
+                        count_not_zero = [0, 0]
+                    else:
+                        count_not_zero = np.array(np.squeeze(np.where(count != 0)))
+
+                    first_index = count_not_zero[0]
+                    last_index = count_not_zero[-1] + 1
+#                    print("first_index", first_index)
+#                    print("last_index", last_index)
+
+                    # do not read in leading or trailing zeros
+                    tr = f[trainid_path][first_index:last_index].astype(np.int)
+#                    if seq == 0:
+#                        print("tr", tr[0])
 
                 trainids.append(tr)
 
+#            print("channels_with_trains", channels_with_trains)
+
+            if trainids == []:
+                max_n_trains.append(0)
+                continue
+
             # find the starting trainid
-            first_trainids = [tr[usable_start + 1] for tr in trainids]
+            first_trainids = [tr[usable_start] for tr in trainids]
             trainid_start = np.min(first_trainids)
 
             # find the channels which start with a different trainid
@@ -132,7 +182,7 @@ class PreprocessXfel(object):
 
             if seq == 0:
                 # determine shifting
-                shifting = self.prop["general"]["shifting"]
+                shifting = self._prop["general"]["shifting"]
                 for i in diff_first_train:
                     cond = trainids[corr_first_train[0]] == first_trainids[i]
                     idx = np.squeeze(np.where(cond))
@@ -143,74 +193,90 @@ class PreprocessXfel(object):
 
                     shifting[i] = idx
 
-                self.prop["general"]["max_shifting"] = max(shifting)
+                self._prop["general"]["max_shifting"] = max(shifting)
 
             else:
                 # check transition between sequences for train loss
                 first_trainid = [tr[0] for tr in trainids]
+                # some channels have lesser number of sequences
+                channels_still_with_data = [prev_channels_with_trains.index(i)
+                                            for i in channels_with_trains]
+                prev_last_trainid_mod = [tr for i, tr in enumerate(prev_last_trainid)
+                                         if i in channels_still_with_data]
                 seq_step = (np.array(first_trainid) -
-                            np.array(prev_last_trainid))  # noqa F821
+                            np.array(prev_last_trainid_mod))  # noqa F821
 
                 seq_offset = [
-                    self.prop["channel{:02}".format(ch)]["train_pos"][-1][-1]
-                    + seq_step[ch]
-                    for ch in range(self.n_channels)
+                    # last trainid of last sequence
+                    self._prop["channel{:02}".format(ch)]["train_pos"][-1][-1]
+                    + seq_step[i]
+                    for i, ch in enumerate(channels_with_trains)
                 ]
 
             prev_last_trainid = [tr[-1] for tr in trainids]  # noqa F841
+            prev_channels_with_trains = copy.copy(channels_with_trains)
 
-            for ch in range(self.n_channels):
-                p = self.prop["channel{:02}".format(ch)]
+            i  = 0
+            # finding train loss inside a sequence
+            for ch in range(self._n_channels):
+                p = self._prop["channel{:02}".format(ch)]
 
-                tr = trainids[ch]
+                n_tr = self._prop["channel{:02}".format(ch)]["n_trains"]
+                n_seqs = self._prop["channel{:02}".format(ch)]["n_seqs"]
+                if n_seqs <= seq or n_tr[seq] == 0:
+                    continue
+
+                tr = trainids[i]
                 # this also indicates train loss
                 train_number = tr - tr[usable_start] + usable_start
                 if seq == 0:
                     train_number[:usable_start] = range(usable_start)
                     train_number += shifting[ch]
 
-                train_number += seq_offset[ch]
+                train_number += seq_offset[i]
                 p["train_pos"].append(train_number)
 
-            train_pos_of_seq = [
-                self.prop["channel{:02}".format(ch)]["train_pos"][seq]
-                - seq_offset[ch]
-                - shifting[ch]
-                for ch in range(self.n_channels)
-            ]
+                i += 1
 
-            n_tr = 0
-            for trn in train_pos_of_seq:
-                # trn starts counting with 0
-                n_tr = max(n_tr, max(trn) + 1)
+            # determine max number of trains for each sequence
+            n_tr = max([self._prop["channel{:02}".format(ch)]["n_trains"][seq]
+                        for ch in channels_with_trains])
+            max_n_trains.append(n_tr)
 
-            n_trains.append(n_tr)
+        self._prop["general"]["n_trains_total"] = (
+            sum(max_n_trains) + self._prop["general"]["max_shifting"]
+        )
 
-            self.prop["general"]["n_trains_total"] = (
-                sum(n_trains) + self.prop["general"]["max_shifting"]
-            )
-
-        print("shifting:", self.prop["general"]["shifting"])
-        print("max_shifting", self.prop["general"]["max_shifting"])
-        print(self.prop["general"]["n_trains"])
+        print("shifting:", self._prop["general"]["shifting"])
+        print("max_shifting", self._prop["general"]["max_shifting"])
+        print("max_n_trains", self._prop["general"]["max_n_trains"])
 
     def write(self):
         config = configparser.RawConfigParser()
 
-        for section in self.prop:
+        write_order = ["general"]
+        write_order += sorted([s for s in self._prop if s != "general"])
+
+        for section in write_order:
             config.add_section(section)
 
-            for key in self.prop[section]:
-                value = self.prop[section][key]
+            for key in self._prop[section]:
+                value = self._prop[section][key]
 
-                if type(value) == np.ndarray:
-                    value = value.tolist()
-                elif type(value) == list and type(value[0]) == np.ndarray:
-                    value = [i.tolist() for i in value]
+                try:
+                    if type(value) == np.ndarray:
+                        value = value.tolist()
+                    elif type(value) == list and value == []:
+                        value = None
+                    elif type(value) == list and type(value[0]) == np.ndarray:
+                        value = [i.tolist() for i in value]
+                except:
+                    print(key, value)
+                    raise
 
                 config.set(section, key, value)
 
-        with open(self.out_fname, 'w') as configfile:
+        with open(self._out_fname, 'w') as configfile:
             config.write(configfile)
 
 
