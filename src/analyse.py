@@ -45,7 +45,8 @@ class Analyse(object):
                  use_interleaved,
                  current_list=None,
                  use_xfel_in_format=True,
-                 use_xfel_out_format=False):
+                 use_xfel_out_format=False,
+                 overwrite=False):
 
         print("started Analyse")
 
@@ -70,6 +71,7 @@ class Analyse(object):
 
         self.use_xfel_in_format = use_xfel_in_format
         self.use_xfel_out_format = use_xfel_out_format
+        self.overwrite = overwrite
 
         print("====== Configured parameter in class Analyse ======")
         print("type {}:".format(self.run_type))
@@ -89,6 +91,7 @@ class Analyse(object):
         print("current_list: ", self.current_list)
         print("use_xfel_in_format: ", self.use_xfel_in_format)
         print("use_xfel_out_format: ", self.use_xfel_out_format)
+        print("overwrite: ", self.overwrite)
         print("===================================================")
 
         # Usually the in directory and file names correspond to the
@@ -180,7 +183,7 @@ class Analyse(object):
         out_dir, out_file_name = self.generate_preproc_path(self.out_base_dir)
         out_fname = os.path.join(out_dir, out_file_name)
 
-        if os.path.exists(out_fname):
+        if not self.overwrite and os.path.exists(out_fname):
             print("output filename = {}".format(out_fname))
             print("WARNING: output file already exist. "
                   "Skipping preprocessing.")
@@ -216,7 +219,7 @@ class Analyse(object):
         out_dir, out_file_name = self.generate_gather_path(self.out_base_dir)
         out_fname = os.path.join(out_dir, out_file_name)
 
-        if os.path.exists(out_fname):
+        if not self.overwrite and os.path.exists(out_fname):
             print("output filename = {}".format(out_fname))
             print("WARNING: output file already exist. Skipping gather.")
         else:
@@ -281,7 +284,7 @@ class Analyse(object):
         )
         out_fname = os.path.join(out_dir, out_file_name)
 
-        if os.path.exists(out_fname):
+        if not self.overwrite and os.path.exists(out_fname):
             print("output filename = {}".format(out_fname))
             print("WARNING: output file already exist. Skipping process.")
         else:
@@ -400,7 +403,7 @@ class Analyse(object):
 #        )
 #        out_template = string.Template(out_template)
 #
-#        if os.path.exists(out_fname):
+#        if not self.overwrite and os.path.exists(out_fname):
 #            print("output filename = {}".format(out_fname))
 #            print("WARNING: output file already exist. Skipping gather.")
 #        else:
