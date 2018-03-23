@@ -172,10 +172,10 @@ class ProcessBase(object):
 
     def write_data(self):
         with h5py.File(self._out_fname, "w", libver='latest') as f:
-            for key in self.result:
-                f.create_dataset(self.result[key]['path'],
-                                 data=self.result[key]['data'],
-                                 dtype=self.result[key]['type'])
+            for key, dset in self.result.items():
+                f.create_dataset(dset['path'],
+                                 data=dset['data'],
+                                 dtype=dset['type'])
 
             # convert into unicode
             if type(self.runs[0]) == str:

@@ -42,6 +42,10 @@ class PreprocessXfel(object):
             #                   "header/trainId")
         }
 
+        # trainids which are jumping by this amount are seen as outlier and
+        # are being removed
+        self._outlier_threshold = 1000
+
         self._prop = {}
 
     def run(self):
@@ -50,7 +54,8 @@ class PreprocessXfel(object):
             self._prop["channel{:02}".format(ch)] = {
                 "n_seqs": self.get_n_seqs(channel=ch),
                 "n_trains": [],
-                "train_pos": []
+                "train_pos": [],
+                "trainid_outliers": []
             }
 
         self._prop["general"] = {
@@ -119,14 +124,14 @@ class PreprocessXfel(object):
                 #status_path = self._path['status'].format(ch)
                 trainid_path = self._path['trainid'].format(ch)
                 #firstpath = self._path['image_first'].format(ch)
-                countpath = self._path['train_count'].format(ch)
+                count_path = self._path['train_count'].format(ch)
 
                 if self._prop["channel{:02}".format(ch)]["n_seqs"] <= seq:
                     print("Channel {} does not have a sequence {}".format(ch, seq))
                     continue
 
                 with h5py.File(fname, "r") as f:
-                    count = f[countpath][()].astype(np.int)
+                    count = f[count_path][()].astype(np.int)
                     try:
                         n_tr = len(np.squeeze(np.where(count != 0)))
                     except:
@@ -221,8 +226,8 @@ class PreprocessXfel(object):
             for ch in range(self._n_channels):
                 p = self._prop["channel{:02}".format(ch)]
 
-                n_tr = self._prop["channel{:02}".format(ch)]["n_trains"]
-                n_seqs = self._prop["channel{:02}".format(ch)]["n_seqs"]
+                n_tr = p["n_trains"]
+                n_seqs = p["n_seqs"]
                 if n_seqs <= seq or n_tr[seq] == 0:
                     continue
 
@@ -233,23 +238,72 @@ class PreprocessXfel(object):
                     train_number[:usable_start] = range(usable_start)
                     train_number += shifting[ch]
 
+                outliers = self._find_outlier_trainids(train_number)
+
+                p["trainid_outliers"].append(outliers)
+
+                # outliers should not be seen as trains
+                n_trains = self._prop["channel{:02}".format(ch)]["n_trains"]
+                n_trains[seq] -= len(outliers)
+
                 train_number += seq_offset[i]
                 p["train_pos"].append(train_number)
 
                 i += 1
 
+#            n_tr = max([self._prop["channel{:02}".format(ch)]["n_trains"][seq]
+#                        for ch in channels_with_trains])
+
             # determine max number of trains for each sequence
-            n_tr = max([self._prop["channel{:02}".format(ch)]["n_trains"][seq]
-                        for ch in channels_with_trains])
+            # use train_pos instead of n_trains to also cover lost trains
+            train_pos_of_seq = [
+                self._prop["channel{:02}".format(ch)]["train_pos"][seq]
+                - seq_offset[i]
+                - shifting[i]
+                for i, ch in enumerate(channels_with_trains)
+            ]
+
+            n_tr = 0
+            for i, trn in enumerate(train_pos_of_seq):
+                # get rid of outliers
+                ch = self._prop["channel{:02}".format(channels_with_trains[i])]
+                outliers = ch["trainid_outliers"][seq]
+                trn[outliers] = 0
+
+                # trn starts counting with 0
+                n_tr = max(n_tr, max(trn) + 1)
+
             max_n_trains.append(n_tr)
 
-        self._prop["general"]["n_trains_total"] = (
-            sum(max_n_trains) + self._prop["general"]["max_shifting"]
-        )
+        # determine number of total trains
+        n_trains_individual = [
+            np.sum(self._prop["channel{:02}".format(ch)]["n_trains"])
+            for ch in range(self._n_channels)
+        ]
+
+        self._prop["general"]["n_trains_total"] = np.max(n_trains_individual)
 
         print("shifting:", self._prop["general"]["shifting"])
-        print("max_shifting", self._prop["general"]["max_shifting"])
-        print("max_n_trains", self._prop["general"]["max_n_trains"])
+        print("max_shifting:", self._prop["general"]["max_shifting"])
+        print("max_n_trains:", self._prop["general"]["max_n_trains"])
+        print("n_trains_total:", self._prop["general"]["n_trains_total"])
+
+    def _find_outlier_trainids(self, train_number):
+        outliers = []
+
+        tr_diff = np.diff(train_number)
+        pot_outliers = np.squeeze(np.where(tr_diff > self._outlier_threshold))
+        # diff is refering to the index before the actual outlier
+        pot_outliers += 1
+
+        if pot_outliers.size == 1:
+            pot_outliers = [int(pot_outliers)]
+
+        for p_o in pot_outliers:
+            if train_number[p_o - 1] + 1 == train_number[p_o + 1]:
+                outliers.append(p_o)
+
+        return outliers
 
     def write(self):
         config = configparser.RawConfigParser()
@@ -260,7 +314,8 @@ class PreprocessXfel(object):
         for section in write_order:
             config.add_section(section)
 
-            for key in self._prop[section]:
+            subsec_order = sorted(list(self._prop[section].keys()))
+            for key in subsec_order:
                 value = self._prop[section][key]
 
                 try:
