@@ -74,6 +74,10 @@ def get_arguments():
                              "(e.g. temperature_m25C).\n"
                              "This is only used in cfel mode")
 
+    parser.add_argument("--overwrite",
+                        action="store_true",
+                        help="Overwrite existing output file(s)")
+
     parser.add_argument("--no_slurm",
                         action="store_true",
                         help="The job(s) are not submitted to slurm but run "
@@ -103,6 +107,7 @@ class SubmitJobs(object):
         # add argument to command line; default should always be XFEL case
         self.use_xfel = not args.cfel
         self.no_slurm = args.no_slurm
+        self.overwrite = args.overwrite
 
         if self.use_xfel:
             self.config_file = "xfel"
@@ -610,6 +615,9 @@ class SubmitJobs(object):
 
         if self.use_interleaved:
             self.script_params += ["--use_interleaved"]
+
+        if self.overwrite:
+            self.script_params += ["--overwrite"]
 
     def start_job(self, run_type, meas_spec, dep_jobs):
         global BATCH_JOB_DIR

@@ -127,6 +127,10 @@ def get_arguments():
                         default=False,
                         help="Flag describing if the output data should be "
                              "stored in xfel format")
+    parser.add_argument("--overwrite",
+                        action="store_true",
+                        default=False,
+                        help="Overwrite existing output file(s)")
 
     args = parser.parse_args()
 
@@ -209,6 +213,7 @@ class StartAnalyse(object):
         self.energy = args.energy
         self.use_xfel_in_format = args.use_xfel_in_format
         self.use_xfel_out_format = args.use_xfel_out_format
+        self.overwrite = args.overwrite
 
         print("====== Configured parameter in class StartAnalyse ======")
         print("meas_type {}:".format(self.meas_type))
@@ -229,6 +234,7 @@ class StartAnalyse(object):
         print("energy: ", self.energy)
         print("use_xfel_in_format: ", self.use_xfel_in_format)
         print("use_xfel_out_format: ", self.use_xfel_out_format)
+        print("overwrite: ", self.overwrite)
         print("========================================================")
         self.run()
 
@@ -252,7 +258,8 @@ class StartAnalyse(object):
             use_interleaved=self.use_interleaved,
             current_list=self.current_list,
             use_xfel_in_format=self.use_xfel_in_format,
-            use_xfel_out_format=self.use_xfel_out_format
+            use_xfel_out_format=self.use_xfel_out_format,
+            overwrite=self.overwrite
         )
 
         # TODO check for required parameters and stop if they are not set

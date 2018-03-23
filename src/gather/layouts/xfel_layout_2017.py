@@ -37,9 +37,10 @@ class Layout(object):
         self._asic = asic
 
         self._path_temp = {
+            'status': "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/status",
             'image_first': ("INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
                             "image/first"),
-            'train_count': ("INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/count"),
+            'image_last': "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/last",
 
             'data': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/data",
             'cellid': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
@@ -51,14 +52,13 @@ class Layout(object):
 
         self._channel = None
 
-        self._train_pos_per_run = []
-        self._trainid_outlier = []
+        self._train_pos_per_run = [[] for i in range(len(self._runs))]
 
         self._n_memcells = None
         self._raw_shape = None
 
     def get_preproc_res(self, run):
-        """Get and return the preprocessing results of a run.
+        """Return the preprocessing results a run.
 
         Args:
             run: Run number to get preprocessing results for.
@@ -103,17 +103,16 @@ class Layout(object):
         module, self._channel = self._get_module_and_channel()
         print("channel", self._channel)
 
-        n_memcells_per_run = []
-        n_trains_per_run = []
+        n_memcells_per_run = [[] for i in range(len(self._runs))]
+        n_trains_per_run = [[] for i in range(len(self._runs))]
         for i, run in enumerate(self._runs):
             preproc = self.get_preproc_res(run=run)
 
-            n_memcells_per_run.append(preproc['general']['n_memcells'])
-            n_trains_per_run.append(preproc['general']['n_trains_total'])
+            n_memcells_per_run[i] = preproc['general']['n_memcells']
+            n_trains_per_run[i] = preproc['general']['n_trains_total']
 
             ch = "channel{:02}".format(self._channel)
-            self._train_pos_per_run.append(preproc[ch]['train_pos'])
-            self._trainid_outlier.append(preproc[ch]['trainid_outliers'])
+            self._train_pos_per_run[i] = preproc[ch]['train_pos']
 
         self._n_memcells = max(n_memcells_per_run)
 
@@ -134,9 +133,6 @@ class Layout(object):
 
         print("Number of memory cells found", self._n_memcells)
         print("n_frames_total", n_frames_total)
-        print("Runs with no data for this channel",
-              [run for i, run in enumerate(self._runs)
-               if self._train_pos_per_run[i] == None])
 
         for key in self._path_temp:
             self._path[key] = self._path_temp[key].format(self._channel)
@@ -197,23 +193,17 @@ class Layout(object):
         """
 
         train_pos = self._train_pos_per_run[run_idx]
-        outliers = self._trainid_outlier[run_idx]
 
         with h5py.File(fname, "r") as f:
             raw_data = f[self._path['data']][()]
 
-#            status = utils.as_nparray(f[self._path['status']][()], np.int)
+            status = utils.as_nparray(f[self._path['status']][()], np.int)
             first = utils.as_nparray(f[self._path['image_first']][()], np.int)
-            count = utils.as_nparray(f[self._path['train_count']][()], np.int)
-#            last = utils.as_nparray(f[self._path['image_last']][()], np.int)
+            last = utils.as_nparray(f[self._path['image_last']][()], np.int)
             cellid = utils.as_nparray(f[self._path['cellid']][()], np.int)
 
         print("raw_data.shape", raw_data.shape)
         print("self._raw_shape", self._raw_shape)
-
-        if np.all(count == 0):
-            print("Run does not contain data for this channel")
-            return
 
         utils.check_data_type(raw_data)
 
@@ -227,21 +217,11 @@ class Layout(object):
         raw_data = utils.convert_to_agipd_format(module=self._channel,
                                                  data=raw_data)
 
-        if len(count) == 1:
-            # if the file only contains one train
-            count_not_zero = [0, 0]
-        else:
-            count_not_zero = np.array(np.squeeze(np.where(count != 0)))
+        last_index = np.array(np.squeeze(np.where(status != 0)))[-1]
+        print("last_index", last_index)
 
-        first_index = count_not_zero[0]
-        last_index = count_not_zero[-1]
-
-        for i, source_fidx in enumerate(first[first_index:last_index + 1]):
-            if i in outliers[seq]:
-                print("outlier detected at position", i)
-                continue
-
-            source_lidx = source_fidx + count[first_index:last_index + 1][i]
+        for i, source_fidx in enumerate(first[:last_index + 1]):
+            source_lidx = last[i] + 1
 
             # Get train position (taken care of train loss)
             target_fidx = train_pos[seq][i] * self._n_memcells_to_iterate
@@ -281,8 +261,8 @@ class Layout(object):
                     except:
                         print("tmp_data.shape", tmp_data.shape)
                         print("raw_data.shape", raw_data.shape)
-                        print("source_idx", source_idx)
                         print("target_idx", target_idx)
+                        print("source_idx", source_idx)
                         raise
 
                 source_interval[0] = source_interval[1]

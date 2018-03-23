@@ -7,7 +7,7 @@ matplotlib.use('Agg')  # Must be before importing matplotlib.pyplot or pylab!
 import matplotlib.pyplot as plt  # noqa E402
 
 
-def gerenate_data_hist(scaled_x_values, analog, digital,
+def generate_data_hist(scaled_x_values, analog, digital,
                        plot_title, plot_name):
 
     nbins = 30

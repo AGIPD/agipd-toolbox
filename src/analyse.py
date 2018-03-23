@@ -12,17 +12,21 @@ import utils
 from convert_format import ConvertFormat
 from join_constants import JoinConstants
 
-BASE_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-print("BASE_PATH", BASE_PATH)
-SRC_PATH = os.path.join(BASE_PATH, "src")
-GATHER_PATH = os.path.join(SRC_PATH, "gather")
-PROCESS_PATH = os.path.join(SRC_PATH, "process")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+print("BASE_DIR", BASE_DIR)
+SRC_DIR = os.path.join(BASE_DIR, "src")
+PREPROCESS_DIR = os.path.join(SRC_DIR, "preprocess")
+GATHER_DIR = os.path.join(SRC_DIR, "gather")
+PROCESS_DIR = os.path.join(SRC_DIR, "process")
 
-if GATHER_PATH not in sys.path:
-    sys.path.insert(0, GATHER_PATH)
+if PREPROCESS_DIR not in sys.path:
+    sys.path.insert(0, PREPROCESS_DIR)
 
-if PROCESS_PATH not in sys.path:
-    sys.path.insert(0, PROCESS_PATH)
+if GATHER_DIR not in sys.path:
+    sys.path.insert(0, GATHER_DIR)
+
+if PROCESS_DIR not in sys.path:
+    sys.path.insert(0, PROCESS_DIR)
 
 
 class Analyse(object):
@@ -45,7 +49,8 @@ class Analyse(object):
                  use_interleaved,
                  current_list=None,
                  use_xfel_in_format=True,
-                 use_xfel_out_format=False):
+                 use_xfel_out_format=False,
+                 overwrite=False):
 
         print("started Analyse")
 
@@ -70,6 +75,7 @@ class Analyse(object):
 
         self.use_xfel_in_format = use_xfel_in_format
         self.use_xfel_out_format = use_xfel_out_format
+        self.overwrite = overwrite
 
         print("====== Configured parameter in class Analyse ======")
         print("type {}:".format(self.run_type))
@@ -89,6 +95,7 @@ class Analyse(object):
         print("current_list: ", self.current_list)
         print("use_xfel_in_format: ", self.use_xfel_in_format)
         print("use_xfel_out_format: ", self.use_xfel_out_format)
+        print("overwrite: ", self.overwrite)
         print("===================================================")
 
         # Usually the in directory and file names correspond to the
@@ -130,6 +137,10 @@ class Analyse(object):
             use_xfel_out_format=self.use_xfel_out_format
         )
 
+        self.preproc_module, self.layout_module = (
+            generate_paths.get_layout_versions(self.in_base_dir)
+        )
+
         self.generate_raw_path = generate_paths.raw
         self.generate_preproc_path = generate_paths.preproc
         self.generate_gather_path = generate_paths.gather
@@ -159,7 +170,7 @@ class Analyse(object):
         print("took time: ", time.time() - t)
 
     def run_preprocess(self):
-        from gather.preprocess import PreprocessXfel as Preprocess
+        Preprocess = __import__(self.preproc_module).Preprocess
 
         if len(self.runs) != 1:
             raise Exception("Preprocessing can only be done per run")
@@ -180,7 +191,7 @@ class Analyse(object):
         out_dir, out_file_name = self.generate_preproc_path(self.out_base_dir)
         out_fname = os.path.join(out_dir, out_file_name)
 
-        if os.path.exists(out_fname):
+        if not self.overwrite and os.path.exists(out_fname):
             print("output filename = {}".format(out_fname))
             print("WARNING: output file already exist. "
                   "Skipping preprocessing.")
@@ -216,7 +227,7 @@ class Analyse(object):
         out_dir, out_file_name = self.generate_gather_path(self.out_base_dir)
         out_fname = os.path.join(out_dir, out_file_name)
 
-        if os.path.exists(out_fname):
+        if not self.overwrite and os.path.exists(out_fname):
             print("output filename = {}".format(out_fname))
             print("WARNING: output file already exist. Skipping gather.")
         else:
@@ -230,7 +241,7 @@ class Analyse(object):
             print("preproc_fname", preproc_fname)
             print("max_part=", self.max_part)
             print("asic=", self.asic)
-            print("use_xfel_in_format=", self.use_xfel_in_format)
+            print("layout=", self.layout_module)
             print()
             obj = Gather(in_fname=in_fname,
                          out_fname=out_fname,
@@ -240,7 +251,7 @@ class Analyse(object):
                          preproc_fname=preproc_fname,
                          max_part=self.max_part,
                          asic=self.asic,
-                         use_xfel_format=self.use_xfel_in_format)
+                         layout=self.layout_module)
             obj.run()
 
     def run_process(self):
@@ -281,7 +292,7 @@ class Analyse(object):
         )
         out_fname = os.path.join(out_dir, out_file_name)
 
-        if os.path.exists(out_fname):
+        if not self.overwrite and os.path.exists(out_fname):
             print("output filename = {}".format(out_fname))
             print("WARNING: output file already exist. Skipping process.")
         else:
@@ -289,7 +300,6 @@ class Analyse(object):
 
             # generate out_put
             print("Used parameter for process:")
-            print("channel", self.channel)
             print("in_fname=", in_fname)
             print("out_fname", out_fname)
             print("runs", run_list)
@@ -400,7 +410,7 @@ class Analyse(object):
 #        )
 #        out_template = string.Template(out_template)
 #
-#        if os.path.exists(out_fname):
+#        if not self.overwrite and os.path.exists(out_fname):
 #            print("output filename = {}".format(out_fname))
 #            print("WARNING: output file already exist. Skipping gather.")
 #        else:
