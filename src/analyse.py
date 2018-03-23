@@ -78,11 +78,11 @@ class Analyse(object):
         self.overwrite = overwrite
 
         print("====== Configured parameter in class Analyse ======")
-        print("type {}:".format(self.run_type))
+        print("run_type: {}".format(self.run_type))
         print("module: ", self.module)
         print("channel: ", self.channel)
         print("temperature: ", self.temperature)
-        print("type: ", self.meas_type)
+        print("measurement: ", self.meas_type)
         print("meas_spec: ", self.meas_spec)
         print("asic: ", self.asic)
         print("asic_list: ", self.asic_list)
@@ -137,9 +137,10 @@ class Analyse(object):
             use_xfel_out_format=self.use_xfel_out_format
         )
 
-        self.preproc_module, self.layout_module = (
-            generate_paths.get_layout_versions(self.in_base_dir)
-        )
+        if self.run_type in ["preprocess", "gather"]:
+            self.preproc_module, self.layout_module = (
+                generate_paths.get_layout_versions(self.in_base_dir)
+            )
 
         self.generate_raw_path = generate_paths.raw
         self.generate_preproc_path = generate_paths.preproc
