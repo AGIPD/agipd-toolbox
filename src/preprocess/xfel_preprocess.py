@@ -20,7 +20,7 @@ if SRC_PATH not in sys.path:
 import utils  # noqa E402
 
 
-class PreprocessXfel(object):
+class Preprocess(object):
     def __init__(self, in_fname, out_fname, use_interleaved=False):
 
         self._in_fname = in_fname
@@ -356,5 +356,5 @@ if __name__ == "__main__":
 #    preprocessing_file = os.path.join(BASE_PATH, "preprocessing.result")
     print("preprocessing_file", preprocessing_file)
 
-    p = PreprocessXfel(file_raw_temp, preprocessing_file)
+    p = Preprocess(file_raw_temp, preprocessing_file)
     p.run()

@@ -19,7 +19,7 @@ import utils  # noqa E402
 import cfel_optarg  # noqa E402
 
 
-class XfelLayout(object):
+class Layout(object):
     def __init__(self,
                  in_fname,
                  runs,

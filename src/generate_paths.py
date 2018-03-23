@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import h5py
 import os
 
 
@@ -31,6 +32,53 @@ class GeneratePathsXfel(object):
         self.run_name = run_name
 
         self.use_xfel_out_format = use_xfel_out_format
+
+    def get_layout_versions(self, base_dir):
+        """ Detects which file structure version of the raw files.
+
+        Args:
+            base_dir: Base directory under which the raw directory can be
+                      found.
+
+        Return:
+            The preprocess and layout module to use.
+        """
+
+        # current version can only be detected by checking if certain entries
+        # are contained in the hdf5 file because there is no versioning
+
+        if type(self.channel) == list:
+            fdir, fname = self.raw(base_dir=base_dir, as_template=True)
+            raw_fname = os.path.join(fdir, fname)
+
+            # partially substitute the string
+            split = raw_fname.rsplit("-AGIPD{:02}", 1)
+            raw_fname = (
+                split[0] +
+                "-AGIPD{:02}".format(self.channel[0]) +
+                split[1]
+            )
+        else:
+            fdir, fname = self.raw(base_dir=base_dir)
+            raw_fname = os.path.join(fdir, fname)
+
+        raw_fname = raw_fname.format(run_number=self.runs[0], part=0)
+
+        entry_to_test = "INDEX/SPB_DET_AGIPD1M-1/DET/0CH0:xtdf/image/last"
+
+        with h5py.File(raw_fname, "r") as f:
+            try:
+                f[entry_to_test]
+                print("found")
+                version = 2017
+            except KeyError:
+                print("Entry {} not found".format(entry_to_test))
+                version = 2018
+
+        if version == 2017:
+            return "xfel_preprocess_2017", "xfel_layout_2017"
+        else:
+            return "xfel_preprocess", "xfel_layout"
 
     def raw(self, base_dir, as_template=False):
         """Generates raw path.
@@ -222,6 +270,18 @@ class GeneratePathsCfel(object):
         self.run_name = run_name
 
         self.use_xfel_out_format = use_xfel_out_format
+
+    def get_layout_versions(self, base_dir):
+        """ Detects which file structure version of the raw files.
+
+        Args:
+            base_dir: Base directory under which the raw directory can be
+                      found.
+
+        Return:
+            The preprocess and layout module to use.
+        """
+        return None, "cfel_layout"
 
     def raw(self, base_dir, as_template=True):
         """Generates raw path.

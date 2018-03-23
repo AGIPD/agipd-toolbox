@@ -11,14 +11,19 @@ try:
 except:
     CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
 
-BASE_PATH = os.path.dirname(os.path.dirname(CURRENT_DIR))
-SRC_PATH = os.path.join(BASE_PATH, "src")
+BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
+SRC_DIR = os.path.join(BASE_DIR, "src")
+GATHER_DIR = os.path.join(SRC_DIR, "gather")
+LAYOUT_DIR = os.path.join(GATHER_DIR, "layouts")
 
-if SRC_PATH not in sys.path:
-    sys.path.insert(0, SRC_PATH)
+if SRC_DIR not in sys.path:
+    sys.path.insert(0, SRC_DIR)
 
 import utils  # noqa E402
 import cfel_optarg  # noqa E402
+
+if LAYOUT_DIR not in sys.path:
+    sys.path.insert(0, LAYOUT_DIR)
 
 
 class GatherBase(object):
@@ -31,7 +36,7 @@ class GatherBase(object):
                  preproc_fname=None,
                  max_part=False,
                  asic=None,
-                 use_xfel_format=False,
+                 layout="xfel_layout",
                  backing_store=True):
 
         self._in_fname = in_fname
@@ -45,17 +50,14 @@ class GatherBase(object):
         self._asic = asic
         self._backing_store = backing_store
 
-        if use_xfel_format:
-            from layouts.xfel_layout import XfelLayout as layout
-        else:
-            from layouts.cfel_layout import CfelLayout as layout
-            if not self._use_interleaved:
+        Layout = __import__(layout).Layout
+        if layout.startswith("cfel") and not self._use_interleaved:
                 print("ERROR: CFEL only supports interleaved mode.")
 
         self._n_rows_total = self._properties["n_rows_total"]
         self._n_cols_total = self._properties["n_cols_total"]
 
-        self.layout = layout(
+        self.layout = Layout(
             in_fname=self._in_fname,
             runs=self.runs,
             use_interleaved=self._use_interleaved,
