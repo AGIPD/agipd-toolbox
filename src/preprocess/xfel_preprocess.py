@@ -21,11 +21,12 @@ import utils  # noqa E402
 
 
 class Preprocess(object):
-    def __init__(self, in_fname, out_fname, use_interleaved=False):
+    def __init__(self, in_fname, out_fname, use_interleaved=False, interactive=False):
 
         self._in_fname = in_fname
         self._out_fname = out_fname
         self._use_interleaved = use_interleaved
+        self._interactive = interactive
 
         self._n_channels = 16
         self._path = {
@@ -52,14 +53,14 @@ class Preprocess(object):
 
         for ch in range(self._n_channels):
             self._prop["channel{:02}".format(ch)] = {
-                "n_seqs": self.get_n_seqs(channel=ch),
+                "n_seqs": self._get_n_seqs(channel=ch),
                 "n_trains": [],
                 "train_pos": [],
                 "trainid_outliers": []
             }
 
         self._prop["general"] = {
-            "n_memcells": self.get_n_memcells(),
+            "n_memcells": self._get_n_memcells(),
             "shifting": np.zeros(self._n_channels, dtype=np.int),
             "max_shifting": 0,
             "max_n_trains": [],
@@ -67,11 +68,14 @@ class Preprocess(object):
                           for ch in range(self._n_channels)])
         }
 
-        self.evaluate_trainid()
+        self._evaluate_trainid()
 
-        self.write()
+        if self._interactive:
+            return self._prop
+        else:
+            self._write()
 
-    def get_n_seqs(self, channel):
+    def _get_n_seqs(self, channel):
         split = self._in_fname.rsplit("-AGIPD", 1)
         regex = split[0] + "-AGIPD{:02}*"
 
@@ -82,7 +86,7 @@ class Preprocess(object):
 #        print("parts/sequences for channel {}: {}".format(channel, parts))
         return parts
 
-    def get_n_memcells(self):
+    def _get_n_memcells(self):
         seq = 0
         channel = 0
 
@@ -104,7 +108,7 @@ class Preprocess(object):
 
         return n_memcells
 
-    def evaluate_trainid(self):
+    def _evaluate_trainid(self):
         max_n_seqs = self._prop["general"]["max_n_seqs"]
         max_n_trains = self._prop["general"]["max_n_trains"]
 
@@ -305,7 +309,7 @@ class Preprocess(object):
 
         return outliers
 
-    def write(self):
+    def _write(self):
         config = configparser.RawConfigParser()
 
         write_order = ["general"]
@@ -336,8 +340,8 @@ class Preprocess(object):
 
 
 if __name__ == "__main__":
-    run = 709
-    beamtime = "201730/p900009"
+    run = 459
+    beamtime = "201830/p900019"
 
     base_path = "/gpfs/exfel/exp/SPB"
     subdir = "scratch/user/kuhnm/tmp"
@@ -354,7 +358,11 @@ if __name__ == "__main__":
                                       "{}-preprocessing.result"
                                       .format(run_subdir.upper()))
 #    preprocessing_file = os.path.join(BASE_PATH, "preprocessing.result")
-    print("preprocessing_file", preprocessing_file)
 
-    p = Preprocess(file_raw_temp, preprocessing_file)
-    p.run()
+
+    p = Preprocess(in_fname=file_raw_temp,
+                   out_fname=preprocessing_file,
+                   interactive=True)
+    my_result = p.run()
+
+    print(my_result.keys())
