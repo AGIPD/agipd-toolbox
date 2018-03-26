@@ -531,8 +531,17 @@ class SubmitJobs(object):
 
         # work_dir is the directory where the sbatch log files are stored
         if self.use_xfel:
+            subdir = "-".join(list(map(str, self.run_list)))
+
+            # getting date and time
+            now = datetime.datetime.now()
+            dt = now.strftime("%Y-%m-%d_%H:%M")
+
+            subdir += "_" + dt
+
             work_dir = os.path.join(self.output_dir[run_type],
-                                    "sbatch_out")
+                                    "sbatch_out",
+                                    subdir)
         else:
             work_dir = os.path.join(self.output_dir[run_type],
                                     self.panel,
