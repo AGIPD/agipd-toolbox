@@ -291,7 +291,10 @@ class Preprocess(object):
             for ch in range(self._n_channels)
         ]
 
-        self._prop["general"]["n_trains_total"] = np.max(n_trains_individual)
+        self._prop["general"]["n_trains_total"] = (
+            np.max(n_trains_individual)
+            + self._prop["general"]["max_shifting"]
+        )
 
         print("shifting:", self._prop["general"]["shifting"])
         print("max_shifting:", self._prop["general"]["max_shifting"])

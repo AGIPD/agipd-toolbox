@@ -242,6 +242,9 @@ class Layout(object):
                 continue
 
             source_lidx = source_fidx + count[first_index:last_index + 1][i]
+            if source_lidx == source_fidx:
+                print("WARNING: train loss detected: trainId {}".format(source_fidx))
+                continue
 
             # Get train position (taken care of train loss)
             target_fidx = train_pos[seq][i] * self._n_memcells_to_iterate
