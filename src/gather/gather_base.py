@@ -22,6 +22,8 @@ if SRC_DIR not in sys.path:
 import utils  # noqa E402
 import cfel_optarg  # noqa E402
 
+from _version import __version__
+
 if LAYOUT_DIR not in sys.path:
     sys.path.insert(0, LAYOUT_DIR)
 
@@ -238,13 +240,21 @@ class GatherBase(object):
 
     def _write_data(self):
 
+        collection = {
+            "module": str(self._module),
+            "channel": str(self._channel),
+            "version": str(__version__)
+        }
+
         print("out_fname = {}".format(self._out_fname))
         with h5py.File(self._out_fname, "w", libver='latest') as f:
             f.create_dataset("analog", data=self._analog, dtype=np.uint16)
             f.create_dataset("digital", data=self._digital, dtype=np.uint16)
 
-            f.create_dataset("module", data=str(self._module))
-            f.create_dataset("channel", data=str(self._channel))
+            prefix = "collection"
+            for key, value in collection.items():
+                name = "{}/{}".format(prefix, key)
+                f.create_dataset(name, data=value)
 
             # sort metadata entries before writing them into a file
             keys = [key for key in self.metadata]

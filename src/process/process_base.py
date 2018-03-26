@@ -17,6 +17,7 @@ if SRC_PATH not in sys.path:
     sys.path.insert(0, SRC_PATH)
 
 import utils  # noqa E402
+from _version import __version__
 
 
 class ProcessBase(object):
@@ -56,8 +57,8 @@ class ProcessBase(object):
     def _get_module_and_channel(self, in_fname):
 
         with h5py.File(in_fname, "r") as f:
-            module = f['module'][()]
-            channel = f['channel'][()]
+            module = f['collection/module'][()]
+            channel = f['collection/channel'][()]
 
 #        self.channel = int(in_fname.rsplit("/", 1)[1].split("AGIPD")[1][:2])
 
@@ -171,25 +172,29 @@ class ProcessBase(object):
                                              self.shapes[key]))
 
     def write_data(self):
+
+        # convert into unicode
+        if type(self.runs[0]) == str:
+            used_run_numbers = [run.encode('utf8') for run in self.runs]
+        else:
+            used_run_numbers = ["r{:04d}".format(run).encode('utf8')
+                                for run in self.runs]
+
+        collection = {
+            "run_number": used_run_numbers,
+            "creation_date": str(date.today()),
+            "version": __version__
+        }
+
         with h5py.File(self._out_fname, "w", libver='latest') as f:
             for key, dset in self.result.items():
                 f.create_dataset(dset['path'],
                                  data=dset['data'],
                                  dtype=dset['type'])
 
-            # convert into unicode
-            if type(self.runs[0]) == str:
-                used_run_numbers = [run.encode('utf8') for run in self.runs]
-            else:
-                used_run_numbers = ["r{:04d}".format(run).encode('utf8')
-                                    for run in self.runs]
-
-            today = str(date.today())
-            metadata_base_path = "collection"
-
-            f.create_dataset("{}/run_number".format(metadata_base_path),
-                             data=used_run_numbers)
-            f.create_dataset("{}/creation_date".format(metadata_base_path),
-                             data=today)
+            prefix = "collection"
+            for key, value in collection.items():
+                name = "{}/{}".format(prefix, key)
+                f.create_dataset(name, data=value)
 
             f.flush()

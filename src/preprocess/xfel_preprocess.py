@@ -19,6 +19,8 @@ if SRC_PATH not in sys.path:
 
 import utils  # noqa E402
 
+from _version import __version__
+
 
 class Preprocess(object):
     def __init__(self, in_fname, out_fname, use_interleaved=False, interactive=False):
@@ -58,6 +60,10 @@ class Preprocess(object):
                 "train_pos": [],
                 "trainid_outliers": []
             }
+
+        self._prop["software"] = {
+            "version": __version__
+        }
 
         self._prop["general"] = {
             "n_memcells": self._get_n_memcells(),
@@ -312,8 +318,9 @@ class Preprocess(object):
     def _write(self):
         config = configparser.RawConfigParser()
 
-        write_order = ["general"]
-        write_order += sorted([s for s in self._prop if s != "general"])
+        write_order = ["software", "general"]
+        write_order += sorted([s for s in self._prop
+                               if s not in ["software", "general"]])
 
         for section in write_order:
             config.add_section(section)
