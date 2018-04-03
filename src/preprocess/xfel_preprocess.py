@@ -30,6 +30,9 @@ class Preprocess(object):
         self._use_interleaved = use_interleaved
         self._interactive = interactive
 
+        self._usable_start_first_seq = 0
+        #self._usable_start_first_seq = 2
+
         self._n_channels = 16
         self._path = {
             'image_first': ("INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
@@ -58,7 +61,7 @@ class Preprocess(object):
                 "n_seqs": self._get_n_seqs(channel=ch),
                 "n_trains": [],
                 "train_pos": [],
-                "trainid_outliers": []
+                "trainid_outliers": [],
             }
 
         self._prop["software"] = {
@@ -71,7 +74,7 @@ class Preprocess(object):
             "max_shifting": 0,
             "max_n_trains": [],
             "max_n_seqs": max([self._prop["channel{:02}".format(ch)]["n_seqs"]
-                          for ch in range(self._n_channels)])
+                               for ch in range(self._n_channels)])
         }
 
         self._evaluate_trainid()
@@ -122,7 +125,7 @@ class Preprocess(object):
 
         for seq in range(max_n_seqs):
             if seq == 0:
-                usable_start = 2
+                usable_start = self._usable_start_first_seq
             else:
                 usable_start = 0
 
@@ -137,21 +140,18 @@ class Preprocess(object):
                 count_path = self._path['train_count'].format(ch)
 
                 if self._prop["channel{:02}".format(ch)]["n_seqs"] <= seq:
-                    print("Channel {} does not have a sequence {}".format(ch, seq))
+                    print("Channel {} does not have a sequence {}"
+                          .format(ch, seq))
                     continue
 
                 with h5py.File(fname, "r") as f:
                     count = f[count_path][()].astype(np.int)
-                    try:
-                        n_tr = len(np.squeeze(np.where(count != 0)))
-                    except:
-                        # if the file only contains one train which might as well be empty
-                        if len(count) == 1:
-                            n_tr = 0 if count == 0 else 1
-                        else:
-                            raise
 
-                    n_trains = self._prop["channel{:02}".format(ch)]["n_trains"]
+                    count_not_zero = np.where(count != 0)[0]
+                    n_tr = len(count_not_zero)
+
+                    ch_str = "channel{:02}".format(ch)
+                    n_trains = self._prop[ch_str]["n_trains"]
                     n_trains.append(n_tr)
 
                     if n_tr == 0:
@@ -159,21 +159,19 @@ class Preprocess(object):
 
                     channels_with_trains.append(ch)
 
-                    if len(count) == 1:
-                        # if the file only contains one train
-                        count_not_zero = [0, 0]
-                    else:
-                        count_not_zero = np.array(np.squeeze(np.where(count != 0)))
-
                     first_index = count_not_zero[0]
-                    last_index = count_not_zero[-1] + 1
+                    if n_tr == 1:
+                        # if the file only contains one train
+                        last_index = count_not_zero[0] + 1
+                    else:
+                        last_index = count_not_zero[-1] + 1
 #                    print("first_index", first_index)
 #                    print("last_index", last_index)
 
                     # do not read in leading or trailing zeros
                     tr = f[trainid_path][first_index:last_index].astype(np.int)
 #                    if seq == 0:
-#                        print("tr", tr[0])
+#                        print("ch", ch, "tr", tr[0])
 
                 trainids.append(tr)
 
@@ -204,11 +202,14 @@ class Preprocess(object):
 
                     if idx.size != 1:
                         raise Exception("trainid was found more than once")
-                    idx = int(idx) - usable_start - 1
+                    idx = int(idx) - usable_start
+                    #idx = int(idx) - usable_start - 1
 
                     shifting[i] = idx
 
                 self._prop["general"]["max_shifting"] = max(shifting)
+                if self._prop["general"]["max_shifting"] != 0:
+                    print("first_trainids", first_trainids)
 
             else:
                 # check transition between sequences for train loss
@@ -216,8 +217,10 @@ class Preprocess(object):
                 # some channels have lesser number of sequences
                 channels_still_with_data = [prev_channels_with_trains.index(i)
                                             for i in channels_with_trains]
-                prev_last_trainid_mod = [tr for i, tr in enumerate(prev_last_trainid)
-                                         if i in channels_still_with_data]
+                prev_last_trainid_mod = [
+                    tr for i, tr in enumerate(prev_last_trainid)
+                    if i in channels_still_with_data
+                ]
                 seq_step = (np.array(first_trainid) -
                             np.array(prev_last_trainid_mod))  # noqa F821
 

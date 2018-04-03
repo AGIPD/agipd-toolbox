@@ -212,7 +212,7 @@ class Layout(object):
         print("self._raw_shape", self._raw_shape)
 
         if np.all(count == 0):
-            print("Run does not contain data for this channel")
+            print("Sequence does not contain data for this channel")
             return
 
         utils.check_data_type(raw_data)
@@ -227,23 +227,26 @@ class Layout(object):
         raw_data = utils.convert_to_agipd_format(module=self._channel,
                                                  data=raw_data)
 
-        if len(count) == 1:
-            # if the file only contains one train
-            count_not_zero = [0, 0]
-        else:
-            count_not_zero = np.array(np.squeeze(np.where(count != 0)))
+        count_not_zero = np.where(count != 0)[0]
 
         first_index = count_not_zero[0]
-        last_index = count_not_zero[-1]
+        if len(count_not_zero) == 1:
+            # if the file only contains one train
+            last_index = count_not_zero[0] + 1
+        else:
+            last_index = count_not_zero[-1] + 1
 
-        for i, source_fidx in enumerate(first[first_index:last_index + 1]):
+        for i, source_fidx in enumerate(first[first_index:last_index]):
             if i in outliers[seq]:
                 print("outlier detected at position", i)
                 continue
 
-            source_lidx = source_fidx + count[first_index:last_index + 1][i]
+            source_lidx = source_fidx + count[first_index:last_index][i]
             if source_lidx == source_fidx:
-                print("WARNING: train loss detected: trainId {}".format(source_fidx))
+#                print("count_not_zero", count_not_zero)
+#                print("first_index", first_index)
+#                print("last_index", last_index)
+                print("WARNING: train loss detected at index {}".format(source_fidx))
                 continue
 
             # Get train position (taken care of train loss)

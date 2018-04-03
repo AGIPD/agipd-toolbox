@@ -521,8 +521,8 @@ class SubmitJobs(object):
                                       d_o["jobnum"],
                                       d_o["deb_jobs"]))
 
-        print("\nCurrent status:\n")
-        os.system("squeue --user $USER")
+#        print("\nCurrent status:\n")
+#        os.system("squeue --user $USER")
 
     def create_job(self, run_type, runs, run_name, dep_jobs):
         print("runs", runs, type(runs))
