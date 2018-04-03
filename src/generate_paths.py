@@ -58,13 +58,20 @@ class GeneratePathsXfel(object):
                 "-AGIPD{:02}".format(self.channel[0]) +
                 split[1]
             )
+
+            channel = self.channel[0]
         else:
             fdir, fname = self.raw(base_dir=base_dir)
             raw_fname = os.path.join(fdir, fname)
 
-        raw_fname = raw_fname.format(run_number=self.runs[0], part=0)
+            channel = self.channel
 
-        entry_to_test = "INDEX/SPB_DET_AGIPD1M-1/DET/0CH0:xtdf/image/last"
+        entry_to_test = (
+            "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/last"
+            .format(channel)
+        )
+
+        raw_fname = raw_fname.format(run_number=self.runs[0], part=0)
 
         with h5py.File(raw_fname, "r") as f:
             try:
