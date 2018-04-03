@@ -548,7 +548,7 @@ class SubmitJobs(object):
                                     self.temperature,
                                     "sbatch_out")
 
-        if not os.path.exists(work_dir):
+        if not os.path.exists(work_dir) and not self.no_slurm:
             os.makedirs(work_dir)
             print("Creating sbatch working dir: {}\n".format(work_dir))
 
