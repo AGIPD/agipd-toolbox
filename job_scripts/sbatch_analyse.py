@@ -566,6 +566,7 @@ class SubmitJobs(object):
 
             print("start_job ({}) for {}".format(run_type, meas_spec))
             jobnum = self.start_job(run_type=run_type,
+                                    runs=runs,
                                     meas_spec=meas_spec,
                                     dep_jobs=dep_jobs)
         return jobnum
@@ -628,19 +629,19 @@ class SubmitJobs(object):
         if self.overwrite:
             self.script_params += ["--overwrite"]
 
-    def start_job(self, run_type, meas_spec, dep_jobs):
+    def start_job(self, run_type, runs, meas_spec, dep_jobs):
         global BATCH_JOB_DIR
-
-        # getting date and time
-        now = datetime.datetime.now()
-        dt = now.strftime("%Y-%m-%d_%H:%M:%S")
 
         print("run asic_lists", self.asic_lists)
         for asic_set in self.asic_lists:
             if self.use_xfel:
-                job_name = ("{}_{}_{}"
+                if type(runs) == list:
+                    runs = "-".join(list(map(str, runs)))
+
+                job_name = ("{}_{}_{}_ch{}"
                             .format(run_type,
                                     self.measurement,
+                                    runs,
                                     self.panel))
 
             else:
@@ -659,10 +660,12 @@ class SubmitJobs(object):
                 print("Starting job for asics {}\n".format(asic_set))
                 job_name = job_name + "_{}".format(asic_set)
 
+            log_name = "{}_%j".format(job_name)
+
             self.sbatch_params += [
                 "--job-name", job_name,
-                "--output", "{}_{}_%j.out".format(job_name, dt),
-                "--error", "{}_{}_%j.err".format(job_name, dt)
+                "--output", log_name + ".out",
+                "--error", log_name + ".err"
             ]
 
 #            #shell_script = os.path.join(BATCH_JOB_DIR, "analyse.sh")
@@ -687,7 +690,7 @@ class SubmitJobs(object):
                     ]
 
                 cmd = ["sbatch"] + self.sbatch_params + cmd
-                # print("submitting job with command:", cmd)
+#                print("submitting job with command:", cmd)
 
                 jobnum = self.submit_job(cmd, "{} job".format(run_type))
             else:
