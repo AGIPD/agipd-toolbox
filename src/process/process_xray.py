@@ -2,7 +2,7 @@ import numpy as np
 from process_base import ProcessBase
 from scipy.signal import convolve
 from scipy.optimize import curve_fit
-#import peakutils
+
 
 class ProcessXray(ProcessBase):
     def __init__(self, **kwargs):
@@ -325,6 +325,3 @@ class ProcessXray(ProcessBase):
 #
 #
 ########################################################################################
-
-
-
