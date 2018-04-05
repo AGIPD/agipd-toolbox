@@ -187,7 +187,7 @@ class Preprocess(object):
 
             # find the channels which start with a different trainid
             cond = first_trainids != trainid_start
-            diff_first_train = np.squeeze(np.where(cond))
+            diff_first_train = np.where(cond)[0]
             corr_first_train = np.array(
                 [i for i in range(len(first_trainids))
                  if i not in diff_first_train]
@@ -200,7 +200,21 @@ class Preprocess(object):
                     cond = trainids[corr_first_train[0]] == first_trainids[i]
                     idx = np.squeeze(np.where(cond))
 
-                    if idx.size != 1:
+                    if idx.size < 1:
+                        print("in_fname", self._in_fname)
+                        print("corr_first_train", corr_first_train)
+                        print("first_trainids", first_trainids[i])
+                        for i in range(len(trainids)):
+                            print("ch", i, "tr", trainids[i][0])
+#                        print(trainids[0])
+
+                        raise Exception("trainid was not found")
+                    if idx.size > 1:
+                        print("i", i)
+                        print("corr_first_train", corr_first_train)
+                        print("trainids", trainids[corr_first_train[0]])
+                        print("first_trainids", first_trainids[i])
+                        print("idx", idx)
                         raise Exception("trainid was found more than once")
                     idx = int(idx) - usable_start
                     #idx = int(idx) - usable_start - 1
