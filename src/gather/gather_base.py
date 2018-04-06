@@ -118,6 +118,11 @@ class GatherBase(object):
              self.a_col_stop) = utils.determine_asic_border(mapped_asic,
                                                             self.asic_size)
 
+        # (frames, mem_cells, rows, columns)
+        # is transposed to
+        # (rows, columns, mem_cells, frames)
+        self.transpose_order = (2, 3, 1, 0)
+
         self._intiate()
 
         print("\n\n\n"
@@ -235,8 +240,15 @@ class GatherBase(object):
         tmp_data.shape = self._tmp_shape
         print("tmp_data.shape", tmp_data.shape)
 
-        self._analog = tmp_data[:, :, 0, ...]
-        self._digital = tmp_data[:, :, 1, ...]
+        analog = tmp_data[:, :, 0, ...]
+        digital = tmp_data[:, :, 1, ...]
+
+        # reorder data
+        print("\nStart transposing")
+        t = time.time()
+        self._analog = analog.transpose(self.transpose_order)
+        self._digital = digital.transpose(self.transpose_order)
+        print("took time: {}".format(time.time() - t))
 
     def _write_data(self):
 
