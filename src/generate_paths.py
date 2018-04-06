@@ -174,20 +174,26 @@ class GeneratePathsXfel(object):
 
             print("run_subdir", run_subdir)
             print("channel", self.channel)
-            fname = ("{}-AGIPD{:02}-gathered.h5"
-                     .format(run_subdir.upper(), self.channel))
+            prefix = ("{}-AGIPD{:02}"
+                      .format(run_subdir.upper(), self.channel))
 
         # TODO fill run_number + for what is this 'else' (what cases)?
         else:
             run_subdir = "r{run_number:04}"
 
-            fname = ("R{run_number:04}-" +
-                     "AGIPD{:02}-gathered.h5".format(self.channel))
+            prefix = ("R{run_number:04}-" +
+                      "AGIPD{:02}".format(self.channel))
 
         fdir = os.path.join(base_dir,
                             self.meas_type,
                             run_subdir,
                             "gather")
+
+
+        if self.asic is None:
+            fname = prefix + "_gathered.h5"
+        else:
+            fname = prefix + "_asic{:02}_gathered.h5".format(self.asic)
 
         return fdir, fname
 
@@ -214,9 +220,9 @@ class GeneratePathsXfel(object):
                             "process")
 
         if use_xfel_out_format:
-            fname = self.meas_type + "_AGIPD{:02}_xfel.h5"
+            fname = self.meas_type + "-AGIPD{:02}_xfel.h5"
         else:
-            fname = self.meas_type + "_AGIPD{:02}_agipd.h5"
+            fname = self.meas_type + "-AGIPD{:02}_agipd.h5"
 
         if not as_template:
             fname = fname.format(self.channel)

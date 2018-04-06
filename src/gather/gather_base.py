@@ -100,6 +100,11 @@ class GatherBase(object):
             msg += "in_fname={}".format(self._in_fname)
             raise Exception(msg)
 
+        # (frames, mem_cells, rows, columns)
+        # is transposed to
+        # (rows, columns, mem_cells, frames)
+        self.transpose_order = (2, 3, 1, 0)
+
         if self._asic is None:
             self.n_rows = self._n_rows_total
             self.n_cols = self._n_cols_total
@@ -107,21 +112,6 @@ class GatherBase(object):
             print("asic {}".format(self._asic))
             self.n_rows = self.asic_size
             self.n_cols = self.asic_size
-
-            asic_order = utils.get_asic_order()
-            mapped_asic = utils.calculate_mapped_asic(asic_order)
-            print("mapped_asic={}".format(mapped_asic))
-
-            (self.a_row_start,
-             self.a_row_stop,
-             self.a_col_start,
-             self.a_col_stop) = utils.determine_asic_border(mapped_asic,
-                                                            self.asic_size)
-
-        # (frames, mem_cells, rows, columns)
-        # is transposed to
-        # (rows, columns, mem_cells, frames)
-        self.transpose_order = (2, 3, 1, 0)
 
         self._intiate()
 
@@ -157,6 +147,8 @@ class GatherBase(object):
             self._n_parts = 1
 
     def _intiate(self):
+        print("n_rows", self.n_rows)
+        print("n_cols", self.n_cols)
         init_results = self.layout.initiate(n_rows=self.n_rows,
                                             n_cols=self.n_cols)
 
@@ -169,6 +161,21 @@ class GatherBase(object):
         self._data_path = init_results['data_path']
 
         self.define_needed_data_paths()
+
+        if self._asic is not None:
+            asic_order = init_results['asic_order']
+            mapped_asic = utils.calculate_mapped_asic(asic=self._asic,
+                                                      asic_order=asic_order)
+            print("mapped_asic={}".format(mapped_asic))
+
+            (self.a_row_start,
+             self.a_row_stop,
+             self.a_col_start,
+             self.a_col_stop) = utils.determine_asic_border(
+                mapped_asic=mapped_asic,
+                asic_size=self.asic_size,
+                asic_order=asic_order
+            )
 
         # tmp data is already converted into agipd format
         if self._use_interleaved:

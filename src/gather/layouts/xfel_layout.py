@@ -149,6 +149,7 @@ class Layout(object):
             'n_frames_total': n_frames_total,
             'raw_shape': self._raw_shape,
             'data_path': self._path['data'],
+            'asic_order': utils.get_asic_order_xfel(self._channel)
         }
 
         return results
@@ -200,7 +201,8 @@ class Layout(object):
         outliers = self._trainid_outlier[run_idx]
 
         with h5py.File(fname, "r") as f:
-            raw_data = f[self._path['data']][()]
+            raw_data = f[self._path['data']][..., load_idx_rows, load_idx_cols]
+            #raw_data = f[self._path['data']][()]
 
 #            status = utils.as_nparray(f[self._path['status']][()], np.int)
             first = utils.as_nparray(f[self._path['image_first']][()], np.int)
@@ -225,7 +227,12 @@ class Layout(object):
             raw_data = raw_data[:, 0, ...]
 
         raw_data = utils.convert_to_agipd_format(module=self._channel,
-                                                 data=raw_data)
+                                                 data=raw_data,
+                                                 # because checking works by
+                                                 # comparing dim of rows and
+                                                 # columns to 128 and 512 this
+                                                 # does not work on asic level
+                                                 check=False)
 
         count_not_zero = np.where(count != 0)[0]
 

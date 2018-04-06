@@ -89,7 +89,32 @@ def get_asic_order():
     return asic_order
 
 
-def located_in_wing2(channel):
+def get_asic_order_xfel(channel):
+    # how the asics are located on the module depends of the wing they are
+    # pluged in
+    if located_in_wing1(channel):
+        asic_order = [[9, 8],
+                      [10, 7],
+                      [11, 6],
+                      [12, 5],
+                      [13, 4],
+                      [14, 3],
+                      [15, 2],
+                      [16, 1]]
+    else:
+        asic_order = [[16, 1],
+                      [15, 2],
+                      [14, 3],
+                      [13, 4],
+                      [12, 5],
+                      [11, 6],
+                      [10, 7],
+                      [9, 8]]
+
+    return asic_order
+
+
+def located_in_wing1(channel):
     channel_order = get_channel_order()
 
     if int(channel) in channel_order[1]:
@@ -133,23 +158,23 @@ def convert_dtype(data, dtype):
         data = (data + 2**15).astype(np.uint16)
 
 
-def convert_to_agipd_format(module, data):
+def convert_to_agipd_format(module, data, check=True):
 
     if isinstance(data, np.ndarray):
-        if not is_xfel_format(data.shape):
+        if check and not is_xfel_format(data.shape):
             pass
 
         else:
-            in_wing2 = located_in_wing2(module)
+            in_wing1 = located_in_wing1(module)
 
             data_dim = len(data.shape)
             if data_dim == 2:
-                if in_wing2:
+                if in_wing1:
                     data = data[::-1, :]
                 else:
                     data = data[:, ::-1]
             elif data_dim > 2:
-                if in_wing2:
+                if in_wing1:
                     data = data[..., ::-1, :]
                 else:
                     data = data[..., :, ::-1]
@@ -161,7 +186,7 @@ def convert_to_agipd_format(module, data):
             data = np.swapaxes(data, last, last - 1)
 
     elif isinstance(data, tuple):
-        if is_xfel_format(data):
+        if check and not is_xfel_format(data):
             pass
 
         else:
@@ -181,7 +206,7 @@ def convert_to_xfel_format(channel, data):
             pass
 
         else:
-            in_wing2 = located_in_wing2(channel)
+            in_wing1 = located_in_wing1(channel)
 
             # converts (..., 128, 512) to (..., 512, 128)
             last = len(data.shape) - 1
@@ -189,12 +214,12 @@ def convert_to_xfel_format(channel, data):
 
             data_dim = len(data.shape)
             if data_dim == 2:
-                if in_wing2:
+                if in_wing1:
                     data = data[::-1, :]
                 else:
                     data = data[:, ::-1]
             elif data_dim > 2:
-                if in_wing2:
+                if in_wing1:
                     data = data[..., ::-1, :]
                 else:
                     data = data[..., :, ::-1]
@@ -290,6 +315,29 @@ def calculate_mapped_asic(asic, asic_order):
      |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
      |____|____|____|____|____|____|____|____|
 
+    or if ordering like this
+
+        wing 2            wing 1
+       _________        _________          _________
+      |    |    |      |    |    |        |    |    |
+      | 16 |  1 |      |  9 |  8 |        |  0 |  1 |
+      |____|____|      |____|____|        |____|____|
+      | 15 |  2 |      | 10 |  7 |        |  2 |  3 |
+      |____|____|      |____|____|        |____|____|
+      | 14 |  3 |      | 11 |  6 |        |  4 |  5 |
+      |____|__ _|      |____|____|        |____|____|
+      | 13 |  4 |      | 12 |  5 |  into  |  6 |  7 |
+      |____|____|      |____|____|        |____|____|
+      | 12 |  5 |      | 13 |  4 |        |  8 |  9 |
+      |____|____|      |____|____|        |____|____|
+      | 11 |  6 |      | 14 |  3 |        | 10 | 11 |
+      |____|____|      |____|____|        |____|____|
+      | 10 |  7 |      | 15 |  2 |        | 12 | 13 |
+      |____|____|      |____|____|        |____|____|
+      |  9 |  8 |      | 16 |  2 |        | 14 | 15 |
+      |____|____|      |____|____|        |____|____|
+
+
     Args:
         asic: Asic to be mapped.
         asic_order: Desciption of how the asics are numbered on the module,
@@ -324,7 +372,7 @@ def determine_asic_border(mapped_asic,
     """Determines the start and end point of an asic.
 
     Determines on which row and col the asic starts and stops according to
-    the following layout:
+    the layout defined, default layout is the this one:
            ____ ____ ____ ____ ____ ____ ____ ____
      0x64 |    |    |    |    |    |    |    |    |
           |  0 |  1 | 2  | 3  |  4 |  5 |  6 |  7 |
@@ -332,6 +380,28 @@ def determine_asic_border(mapped_asic,
           |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
      2x64 |____|____|____|____|____|____|____|____|
           0*64 1x64 2x64 3x64 4x64 5x64 6x64 7x64 8x64
+
+    Another example would be the xfel layout:
+
+           _________
+     0x64 |    |    |
+          |  0 |  1 |
+     1x64 |____|____|
+          |  2 |  3 |
+     2x64 |____|____|
+          |  4 |  5 |
+     3x64 |____|____|
+          |  6 |  7 |
+     4x64 |____|____|
+          |  8 |  9 |
+     5x64 |____|____|
+          | 10 | 11 |
+     6x64 |____|____|
+          | 12 | 13 |
+     7x64 |____|____|
+          | 14 | 15 |
+     1x64 |____|____|
+          0*64 1x64
 
     Args:
         mapped_asic: Asic number in the internernal numbering scheme
@@ -357,6 +427,7 @@ def determine_asic_border(mapped_asic,
 
     if asic_order is None:
         asic_order = get_asic_order()
+
     asics_per_module = [len(asic_order), len(asic_order[0])]
 
     row_progress = int(mapped_asic / asics_per_module[1])

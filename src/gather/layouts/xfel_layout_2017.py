@@ -145,6 +145,7 @@ class Layout(object):
             'n_frames_total': n_frames_total,
             'raw_shape': self._raw_shape,
             'data_path': self._path['data'],
+            'asic_order': utils.get_asic_order_xfel(self._channel)
         }
 
         return results
