@@ -23,6 +23,10 @@ class ProcessDark(ProcessBase):
                           self.n_cols)
         }
 
+        self.transpose_order = (self._memcell_location,
+                                self._row_location,
+                                self._col_location)
+
         self.result = {
             "offset": {
                 "data": np.empty(self.shapes["offset"]),
@@ -62,15 +66,27 @@ class ProcessDark(ProcessBase):
 
             print("Start computing means and standard deviations ... ",
                   end="", flush=True)
-            offset = np.mean(m_analog, axis=0).astype(np.int)
-            gainlevel_mean = np.mean(m_digital, axis=0).astype(np.int)
-
+            offset = np.mean(m_analog, axis=self._frame_location)
+            offset = offset.astype(np.int)
+            offset = offset.transpose(self.transpose_order)
             self.result["offset"]["data"][i, ...] = offset
+
+            gainlevel_mean = np.mean(m_digital, axis=self._frame_location)
+            gainlevel_mean = gainlevel_mean.astype(np.int)
+            gainlevel_mean = gainlevel_mean.transpose(self.transpose_order)
             self.result["gainlevel_mean"]["data"][i, ...] = gainlevel_mean
 
             s = self.result["stddev"]["data"][i, ...]
             for cell in np.arange(self.n_memcells):
-                s[cell, ...] = m_analog[:, cell, :, :].std(axis=0)
+                # generic way to be independend from gathered data reordering
+                data_slice = [slice(None), slice(None), slice(None), slice(None)]
+                data_slice[self._memcell_location] = cell
+
+                # if the frames are stored after the memory cells
+                if self._frame_location > self._memcell_location:
+                    fr_loc  = self._frame_location - 1
+
+                s[cell, ...] = m_analog[data_slice].std(axis=fr_loc)
             print("Done.")
             print()
 
