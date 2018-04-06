@@ -35,9 +35,15 @@ class ProcessBase(object):
         self.n_rows = 128
         self.n_cols = 512
 
+        self._row_location = None
+        self._col_location = None
+        self._memcell_location = None
+        self._frame_location = None
+        self._set_data_order()
+
         in_fname = self.in_fname.format(run_number=self.runs[0])
         with h5py.File(in_fname, "r") as f:
-            self.n_memcells = f['analog'].shape[1]
+            self.n_memcells = f['analog'].shape[self._memcell_location]
 
         self.shapes = {}
         self.result = {}
@@ -63,6 +69,18 @@ class ProcessBase(object):
 #        self.channel = int(in_fname.rsplit("/", 1)[1].split("AGIPD")[1][:2])
 
         return module, channel
+
+    def _set_data_order(self):
+        """Set the locations where the data is stored
+
+        This give the different process methods the posibility to act genericly
+        to data reordering.
+
+        """
+        self._row_location = 0
+        self._col_location = 1
+        self._memcell_location = 2
+        self._frame_location = 3
 
     def load_data(self, in_fname):
         with h5py.File(in_fname, "r") as f:
