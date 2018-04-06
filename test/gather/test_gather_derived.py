@@ -20,8 +20,8 @@ if GATHER_PATH not in sys.path:
 
 import utils  # noqa
 
-from gather_pcdrs import AgipdGatherPcdrs  # noqa E402
-from gather_drscs import AgipdGatherDrscs  # noqa E402
+from gather_pcdrs import GatherPcdrs  # noqa E402
+from gather_drscs import GatherDrscs  # noqa E402
 
 
 #
@@ -31,7 +31,7 @@ class GatherPcdrsTests(unittest.TestCase):
     # per test
     def setUp(self):
 
-        class Gather(AgipdGatherPcdrs):
+        class Gather(GatherPcdrs):
             def __init__(self):
                 self.n_runs = 8
 
@@ -74,7 +74,7 @@ class GatherPcdrsTests(unittest.TestCase):
 #
 # DRSCS
 #
-class GatherDrscsTest(AgipdGatherDrscs):
+class GatherDrscsTest(GatherDrscs):
     def __init__(self, asic):
         self.asic = asic
 

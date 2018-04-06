@@ -18,21 +18,21 @@ if PROCESS_PATH not in sys.path:
 
 import utils  # noqa E402
 
-from process_dark import AgipdProcessDark  # noqa E402
-from process_pcdrs import AgipdProcessPcdrs  # noqa E402
+from process_dark import ProcessDark  # noqa E402
+from process_pcdrs import ProcessPcdrs  # noqa E402
 
 
-def call_xfel_mode(run_type,
+def call_xfel_mode(measurement,
                    in_base_dir,
                    out_base_dir,
                    run_list,
                    channel,
                    use_xfel_format=True):
 
-    if run_type == "dark":
-        Process = AgipdProcessDark
-    elif run_type == "pcdrs":
-        Process = AgipdProcessPcdrs
+    if measurement == "dark":
+        Process = ProcessDark
+    elif measurement == "pcdrs":
+        Process = ProcessPcdrs
 
     in_file_name = ("R{run_number:04d}-" +
                     "AGIPD{:02d}-gathered.h5".format(channel))
@@ -41,17 +41,17 @@ def call_xfel_mode(run_type,
                             "gather",
                             in_file_name)
 
-    out_dir = os.path.join(out_base_dir, run_type)
+    out_dir = os.path.join(out_base_dir, measurement)
     utils.create_dir(out_dir)
 
     if use_xfel_format:
-        fname = "{}_AGIPD{:02d}_xfel.h5".format(run_type, channel)
+        fname = "{}_AGIPD{:02d}_xfel.h5".format(measurement, channel)
     else:
-        fname = "{}_AGIPD{:02d}_agipd.h5".format(run_type, channel)
+        fname = "{}_AGIPD{:02d}_agipd.h5".format(measurement, channel)
 
     out_fname = os.path.join(out_dir, fname)
 
-    print("Used parameter for {} run:".format(run_type))
+    print("Used parameter for {} run:".format(measurement))
     print("in_fname=", in_fname)
     print("out_fname", out_fname)
     print("runs", run_list)
@@ -64,7 +64,7 @@ def call_xfel_mode(run_type,
             use_xfel_format=use_xfel_format)
 
 
-def call_cfel_mode(run_type,
+def call_cfel_mode(measurement,
                    in_base_dir,
                    out_base_dir,
                    module,
@@ -73,17 +73,17 @@ def call_cfel_mode(run_type,
                    run_names,
                    use_xfel_format=False):
 
-    if run_type == "dark":
-        Process = AgipdProcessDark
-    elif run_type == "pcdrs":
-        Process = AgipdProcessPcdrs
+    if measurement == "dark":
+        Process = ProcessDark
+    elif measurement == "pcdrs":
+        Process = ProcessPcdrs
 
-    in_file_name = ("{}_{}_".format(module, run_type) +
+    in_file_name = ("{}_{}_".format(module, measurement) +
                     "{run_number}_gathered.h5")
     in_fname = os.path.join(in_base_dir,
                             module,
                             temperature,
-                            run_type,
+                            measurement,
                             meas_spec,
                             "gather",
                             in_file_name)
@@ -91,14 +91,14 @@ def call_cfel_mode(run_type,
     out_dir = os.path.join(out_base_dir,
                            module,
                            temperature,
-                           run_type,
+                           measurement,
                            meas_spec)
     utils.create_dir(out_dir)
 
-    fname = "{}_{}_agipd.h5".format(run_type, module)
+    fname = "{}_{}_agipd.h5".format(measurement, module)
     out_fname = os.path.join(out_dir, fname)
 
-    print("Used parameter for {} run:".format(run_type))
+    print("Used parameter for {} run:".format(measurement))
     print("in_fname", in_fname)
     print("out_fname", out_fname)
     print("runs", run_names)
@@ -113,7 +113,7 @@ def call_cfel_mode(run_type,
 
 # TESTS
 def test_dark(use_xfel_format):
-    run_type = "dark"
+    measurement = "dark"
 
     if use_xfel_format:
         use_xfel_output_format = True
@@ -126,7 +126,7 @@ def test_dark(use_xfel_format):
         channel = 0
         print("channel", channel)
 
-        call_xfel_mode(run_type=run_type,
+        call_xfel_mode(measurement=measurement,
                        in_base_dir=in_base_dir,
                        out_base_dir=in_base_dir,
                        run_list=run_list,
@@ -144,7 +144,7 @@ def test_dark(use_xfel_format):
         run_names = ["high", "med", "low"]
 #        run_names = ["high"]
 
-        call_cfel_mode(run_type=run_type,
+        call_cfel_mode(measurement=measurement,
                        in_base_dir=in_base_dir,
                        out_base_dir=in_base_dir,
                        module=module,
@@ -157,7 +157,7 @@ def test_pcdrs():
     in_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm"
 #    out_base_dir = in_base_dir
     run_list = ["r0488-r0489-r0490-r0491-r0492-r0493-r0494-r0495"]
-    run_type = "pcdrs"
+    measurement = "pcdrs"
 
     use_xfel_format = False
 #    use_xfel_format = True
@@ -165,7 +165,7 @@ def test_pcdrs():
     channel = 1
     print("channel", channel)
 
-    call_xfel_mode(run_type=run_type,
+    call_xfel_mode(measurement=measurement,
                    in_base_dir=in_base_dir,
                    out_base_dir=in_base_dir,
                    run_list=run_list,

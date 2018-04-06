@@ -20,8 +20,8 @@ if GATHER_PATH not in sys.path:
 
 import utils  # noqa E402
 
-from gather_base import AgipdGatherBase  # noqa E402
-from gather_pcdrs import AgipdGatherPcdrs  # noqa E402
+from gather_base import GatherBase  # noqa E402
+from gather_pcdrs import GatherPcdrs  # noqa E402
 
 
 def call_cfel_mode(measurement,
@@ -36,9 +36,9 @@ def call_cfel_mode(measurement,
         use_xfel_format = False  # input_format
 
         if measurement == "dark":
-            Gather = AgipdGatherBase
+            Gather = GatherBase
         elif measurement == "pcdrs":
-            Gather = AgipdGatherPcdrs
+            Gather = GatherPcdrs
 
         in_file_name = ("{}*_{}_{}_"
                         .format(module, measurement, meas_spec)
@@ -87,7 +87,7 @@ def call_cfel_mode(measurement,
                      use_interleaved=use_interleaved,
                      max_part=max_part,
                      asic=asic,
-                     use_xfel_format=use_xfel_format)
+                     layout="cfel_layout")
         return obj
 
 

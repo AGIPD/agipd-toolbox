@@ -18,11 +18,11 @@ if SRC_PATH not in sys.path:
 if GATHER_PATH not in sys.path:
     sys.path.insert(0, GATHER_PATH)
 
-from gather_base import AgipdGatherBase  # noqa E402
-from gather_pcdrs import AgipdGatherPcdrs  # noqa E402
+from gather_base import GatherBase  # noqa E402
+from gather_pcdrs import GatherPcdrs  # noqa E402
 
 
-def call_xfel_mode(run_type,
+def call_xfel_mode(measurement,
                    base_dir,
                    runs,
                    subdir,
@@ -30,11 +30,12 @@ def call_xfel_mode(run_type,
                    asic):
 
         use_xfel_format = True  # input_format
+        use_interleaved = True
 
-        if run_type == "dark":
-            Gather = AgipdGatherBase
-        elif run_type == "pcdrs":
-            Gather = AgipdGatherPcdrs
+        if measurement == "dark":
+            Gather = GatherBase
+        elif measurement == "pcdrs":
+            Gather = GatherPcdrs
 
         in_file_name = ("RAW-R{run_number:04}-" +
                         "AGIPD{:02}".format(channel) +
@@ -48,14 +49,14 @@ def call_xfel_mode(run_type,
         run_subdir = "r" + "-r".join(str(r).zfill(4) for r in runs)
         out_dir = os.path.join(base_dir,
                                subdir,
-                               run_type,
+                               measurement,
                                run_subdir,
                                "gather")
 #        utils.create_dir(out_dir)
 
         preproc_fname = os.path.join(base_dir,
                                      subdir,
-                                     run_type,
+                                     measurement,
                                      "r{run:04}",
                                      "R{run:04}-preprocessing.result")
         print("preproc_fname", preproc_fname)
@@ -66,10 +67,19 @@ def call_xfel_mode(run_type,
                                  out_file_name)
         print("out_fname", out_fname)
 
-        print("Used parameter for {} run:".format(run_type))
+        properties = {
+            "measurement": measurement,
+            "n_rows_total": 128,
+            "n_cols_total": 512,
+            "max_pulses": 704,
+            "n_memcells": 352
+        }
+
+        print("Used parameter for {} run:".format(measurement))
         print("in_fname=", in_fname)
         print("out_fname", out_fname)
         print("runs", runs)
+        print("use_interleaved", use_interleaved)
         print("preproc_fname", preproc_fname)
         print("use_xfel_format=", use_xfel_format)
         print()
@@ -77,10 +87,12 @@ def call_xfel_mode(run_type,
         obj = Gather(in_fname=in_fname,
                      out_fname=out_fname,
                      runs=runs,
+                     properties=properties,
+                     use_interleaved=use_interleaved,
                      preproc_fname=preproc_fname,
                      max_part=False,
                      asic=None,
-                     use_xfel_format=use_xfel_format)
+                     layout="xfel_layout_2017")
 
         return obj
 
@@ -89,7 +101,7 @@ class GatherBaseXfelTests(unittest.TestCase):
 
     # per test
     def setUp(self):
-        run_type = "dark"
+        measurement = "dark"
 
         # base_dir = "/gpfs/exfel/exp/SPB/201730/p900009"
         # run_list = [["0428"], ["0429"], ["0430"]]
@@ -106,7 +118,7 @@ class GatherBaseXfelTests(unittest.TestCase):
         channel = 1
         asic = None
 
-        self.gather_obj = call_xfel_mode(run_type=run_type,
+        self.gather_obj = call_xfel_mode(measurement=measurement,
                                          base_dir=base_dir,
                                          runs=runs,
                                          subdir=subdir,
@@ -136,7 +148,7 @@ class GatherPcdrsXfelTests(unittest.TestCase):
 
     # per test
     def setUp(self):
-        run_type = "pcdrs"
+        measurement = "pcdrs"
 
         base_dir = "/gpfs/exfel/exp/SPB/201730/p900009"
 #        runs = [488]
@@ -149,7 +161,7 @@ class GatherPcdrsXfelTests(unittest.TestCase):
         channel = 1
         asic = None
 
-        self.gather_obj = call_xfel_mode(run_type=run_type,
+        self.gather_obj = call_xfel_mode(measurement=measurement,
                                          base_dir=base_dir,
                                          runs=runs,
                                          subdir=subdir,
