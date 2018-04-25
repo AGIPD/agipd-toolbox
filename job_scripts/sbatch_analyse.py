@@ -228,7 +228,7 @@ class SubmitJobs(object):
                 self.input_dir[run_type] = self.config['all']['input_dir']
                 self.output_dir[run_type] = self.config['all']['output_dir']
 
-            # the runs which are following in the chain and work on the ourput
+            # the runs which are following in the chain and work on the output
             # of the bevious ones
             for run_type in run_type_list:
                 first_rtl = self.run_type_list[0]
@@ -326,7 +326,7 @@ class SubmitJobs(object):
                 c_run_type['input_dir'] = (args.input_dir
                                            or c_run_type['input_dir'])
         except KeyError:
-            raise Exception("No input_dir specified. Abort.".format(run_type))
+            raise Exception("No input_dir specified. Abort.")
             sys.exit(1)
 
         try:

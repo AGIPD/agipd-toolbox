@@ -31,26 +31,16 @@ class ProcessBase(object):
 
         self.runs = runs
 
-        # TODO extract n_cols and n_rows from raw_shape
-        self.n_rows = 128
-        self.n_cols = 512
-
         self._row_location = None
         self._col_location = None
         self._memcell_location = None
         self._frame_location = None
         self._set_data_order()
 
-        in_fname = self.in_fname.format(run_number=self.runs[0])
-        with h5py.File(in_fname, "r") as f:
-            self.n_memcells = f['analog'].shape[self._memcell_location]
+        self._set_dims_and_metadata()
 
         self.shapes = {}
         self.result = {}
-
-        in_fname = self.in_fname.format(run_number=self.runs[0])
-
-        self.module, self.channel = self._get_module_and_channel(in_fname)
 
         print("\n\n\nStart process")
         print("in_fname:", self.in_fname)
@@ -59,16 +49,6 @@ class ProcessBase(object):
         print()
 
         self.run()
-
-    def _get_module_and_channel(self, in_fname):
-
-        with h5py.File(in_fname, "r") as f:
-            module = f['collection/module'][()]
-            channel = f['collection/channel'][()]
-
-#        self.channel = int(in_fname.rsplit("/", 1)[1].split("AGIPD")[1][:2])
-
-        return module, channel
 
     def _set_data_order(self):
         """Set the locations where the data is stored
@@ -81,6 +61,18 @@ class ProcessBase(object):
         self._col_location = 1
         self._memcell_location = 2
         self._frame_location = 3
+
+    def _set_dims_and_metadata(self):
+        in_fname = self.in_fname.format(run_number=self.runs[0])
+        with h5py.File(in_fname, "r") as f:
+            shape = f['analog'].shape
+
+            self.module = f['collection/module'][()]
+            self.channel = f['collection/channel'][()]
+
+        self.n_rows = shape[self._row_location]
+        self.n_cols = shape[self._col_location]
+        self.n_memcells = shape[self._memcell_location]
 
     def load_data(self, in_fname):
         with h5py.File(in_fname, "r") as f:

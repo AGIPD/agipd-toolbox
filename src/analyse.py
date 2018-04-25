@@ -381,7 +381,8 @@ class Analyse(object):
         obj = JoinConstants(in_fname, out_fname)
         obj.run()
 
-#    def run_merge_drscs(self):
+    def run_merge_drscs(self):
+        pass
 #
 #        base_path = self.in_base_dir
 #        asic_list = self.asic_list

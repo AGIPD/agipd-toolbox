@@ -219,13 +219,18 @@ class GeneratePathsXfel(object):
                             run_subdir,
                             "process")
 
-        if use_xfel_out_format:
-            fname = self.meas_type + "-AGIPD{:02}_xfel.h5"
-        else:
-            fname = self.meas_type + "-AGIPD{:02}_agipd.h5"
+        prefix = self.meas_type + "-AGIPD{:02}"
 
         if not as_template:
-            fname = fname.format(self.channel)
+            prefix = prefix.format(self.channel)
+
+        if self.asic is not None:
+            prefix = prefix + "_asic{:02}".format(self.asic)
+
+        if use_xfel_out_format:
+            fname = prefix + "_xfel.h5"
+        else:
+            fname = prefix + "_agipd.h5"
 
         return fdir, fname
 
