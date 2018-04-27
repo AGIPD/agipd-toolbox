@@ -451,11 +451,65 @@ def determine_asic_border(mapped_asic,
     return row_start, row_stop, col_start, col_stop
 
 
+def build_module(data):
+    """Rebuilds module from a a set of asic data sets.
+
+    Args:
+        data (dict): A dictionary with the data of each asic of the form
+                    {<asic_nr>: <asic data>, ...}
+
+    Returns:
+        A numpy array containing the joined asic data.
+        Missing asics are filled up with NAN.
+    """
+    if "all" in data:
+        return data["all"]
+
+    asic_order = get_asic_order()
+    n_asics_y = len(asic_order)
+    n_asics_x = len(asic_order[0])
+
+    # initialize joined data set
+    any_key = list(data.keys())[0]
+    d_shape = data[any_key].shape
+
+    asic_size = d_shape[2]
+
+    new_shape = (d_shape[0],
+                 d_shape[1],
+                 asic_size * n_asics_y,
+                 asic_size * n_asics_x)
+
+    joined_data = np.empty(new_shape) * np.nan
+
+    # put the data on the correct place
+    for asic, value in data.items():
+        mapped_asic = calculate_mapped_asic(asic, asic_order)
+        (row_start,
+         row_stop,
+         col_start,
+         col_stop) = determine_asic_border(mapped_asic=mapped_asic,
+                                           asic_size=asic_size,
+                                           asic_order=asic_order,
+                                           verbose=False)
+#        print("asic", asic, "borders", row_start, row_stop, col_start, col_stop)
+        target_idx = (Ellipsis,
+                      slice(row_start, row_stop),
+                      slice(col_start, col_stop))
+        joined_data[target_idx] = value
+
+    return joined_data
+
+
 def concatenate_to_module(data, row_axis=2, col_axis=1):
 
-    # datra was not splitted into asics but contained the whole module
+    # data was not splitted into asics but contained the whole module
     if len(data) == 1:
         return data[0]
+
+    print("len data", len(data))
+    if len(data) != 16:
+        print("Missing asics (only found {})".format(len(data)))
 
     asic_order = get_asic_order()
     # upper row

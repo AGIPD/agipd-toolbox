@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
-import os
-import h5py
 import argparse
 import glob
+import h5py
+import os
 
 import utils
 
@@ -35,13 +35,14 @@ def get_arguments():
 
 class JoinConstants(object):
     def __init__(self, in_fname, out_fname):
-        self.in_fname = in_fname
-        self.out_fname = out_fname
-
-        self.source_content = None
+        self._in_fname = in_fname
+        self._out_fname = out_fname
 
     def get_file_names(self):
-        fname = self.in_fname.replace("{:02}", "*")
+        fname = self._in_fname.replace("AGIPD{:02}", "AGIPD[0-9][0-9]")
+
+        if "asic" in self._in_fname:
+            fname = fname.replace("asic{:02}", "asic[0-9][0-9]")
 
         file_list = glob.glob(fname)
         file_list.sort()
@@ -51,20 +52,56 @@ class JoinConstants(object):
     def run(self):
         file_list = self.get_file_names()
 
-        with h5py.File(self.out_fname, "w") as f:
+        files = {}
+        for fname in file_list:
+            channel = int(fname.split("AGIPD")[1][:2])
+
+            if channel in files:
+                files[channel].append(fname)
+            else:
+                files[channel] = [fname]
+
+        data = {}
+        # collect data and prepare for concatenation to module
+        for channel, file_list in files.items():
+            data[channel] = {}
+            data_to_be_concatenated = {}
             for fname in file_list:
-                channel = int(fname.split("AGIPD")[1][:2])
+                split_res = fname.split("asic")
+                if len(split_res) == 1:
+                    asic = "all"
+                else:
+                    asic = int(fname.split("asic")[1][:2])
 
                 print("channel{}: loading content of file {}"
                       .format(channel, fname))
                 file_content = utils.load_file_content(fname)
 
-                prefix = "channel{:02d}".format(channel)
-                for key in file_content:
-                    f.create_dataset(prefix + "/" + key,
-                                     data=file_content[key])
+                for key, value in file_content.items():
+                    # metadata does not have to be concatenated
+                    if key.startswith("collection"):
+                        # entry is redundant for the other asics
+                        if key not in data[channel]:
+                            data[channel][key] = value
 
-                f.flush()
+                    # mark to be concatenated
+                    else:
+                        if key not in data_to_be_concatenated:
+                            data_to_be_concatenated[key] = {}
+
+                        data_to_be_concatenated[key][asic] = value
+
+            # rebuild the module from the asic data
+            for key, value in data_to_be_concatenated.items():
+                data[channel][key] = utils.build_module(value)
+
+        # write
+        with h5py.File(self._out_fname, "w") as f:
+            for channel, data_channel in data.items():
+                prefix = "channel{:02d}".format(channel)
+                for key, value in data_channel.items():
+                    f.create_dataset(prefix + "/" + key, data=value)
+                    f.flush()
 
 
 if __name__ == "__main__":

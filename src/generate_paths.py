@@ -19,19 +19,19 @@ class GeneratePathsXfel(object):
                  run_name,
                  use_xfel_out_format):
 
-        self.run_type = run_type
-        self.meas_type = meas_type
-        self.out_base_dir = out_base_dir
-        self.module = module
-        self.channel = channel
-        self.temperature = temperature
-        self.meas_spec = meas_spec
-        self.meas_in = meas_in
-        self.asic = asic
-        self.runs = runs
-        self.run_name = run_name
+        self._run_type = run_type
+        self._meas_type = meas_type
+        self._out_base_dir = out_base_dir
+        self._module = module
+        self._channel = channel
+        self._temperature = temperature
+        self._meas_spec = meas_spec
+        self._meas_in = meas_in
+        self._asic = asic
+        self._runs = runs
+        self._run_name = run_name
 
-        self.use_xfel_out_format = use_xfel_out_format
+        self._use_xfel_out_format = use_xfel_out_format
 
     def get_layout_versions(self, base_dir):
         """ Detects which file structure version of the raw files.
@@ -47,7 +47,7 @@ class GeneratePathsXfel(object):
         # current version can only be detected by checking if certain entries
         # are contained in the hdf5 file because there is no versioning
 
-        if type(self.channel) == list:
+        if type(self._channel) == list:
             fdir, fname = self.raw(base_dir=base_dir, as_template=True)
             raw_fname = os.path.join(fdir, fname)
 
@@ -55,23 +55,23 @@ class GeneratePathsXfel(object):
             split = raw_fname.rsplit("-AGIPD{:02}", 1)
             raw_fname = (
                 split[0] +
-                "-AGIPD{:02}".format(self.channel[0]) +
+                "-AGIPD{:02}".format(self._channel[0]) +
                 split[1]
             )
 
-            channel = self.channel[0]
+            channel = self._channel[0]
         else:
             fdir, fname = self.raw(base_dir=base_dir)
             raw_fname = os.path.join(fdir, fname)
 
-            channel = self.channel
+            channel = self._channel
 
         entry_to_test = (
             "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/last"
             .format(channel)
         )
 
-        raw_fname = raw_fname.format(run_number=self.runs[0], part=0)
+        raw_fname = raw_fname.format(run_number=self._runs[0], part=0)
 
         with h5py.File(raw_fname, "r") as f:
             try:
@@ -104,7 +104,7 @@ class GeneratePathsXfel(object):
         if as_template:
             channel = "{:02}"
         else:
-            channel = str(self.channel).zfill(2)
+            channel = str(self._channel).zfill(2)
 
         # define in files
         fdir = os.path.join(base_dir,
@@ -131,28 +131,28 @@ class GeneratePathsXfel(object):
             string.
         """
 
-        if self.meas_type == "pcdrs" or len(self.runs) == 1:
+        if self._meas_type == "pcdrs" or len(self._runs) == 1:
             run_subdir = "r" + "-r".join(str(r).zfill(4)
-                                         for r in self.runs)
+                                         for r in self._runs)
 
         else:
             print("WARNING: generate paths, preproc is running in 'else'. "
                   "Why?")
-            print("self.runs={}".format(self.runs))
-            run_subdir = "r{:04}".format(self.runs[0])
+            print("self._runs={}".format(self._runs))
+            run_subdir = "r{:04}".format(self._runs[0])
 
         if as_template:
             fdir = os.path.join(base_dir,
-                                self.meas_type,
+                                self._meas_type,
                                 "r{run:04}")
 
             fname = "R{run:04}-preprocessing.result"
         else:
             fdir = os.path.join(base_dir,
-                                self.meas_type,
+                                self._meas_type,
                                 run_subdir)
 
-            fname = "R{:04}-preprocessing.result".format(self.runs[0])
+            fname = "R{:04}-preprocessing.result".format(self._runs[0])
 
         return fdir, fname
 
@@ -168,32 +168,32 @@ class GeneratePathsXfel(object):
 
         # TODO: concider additing this into out_base_dir (joined) and
         #       create subdirs for gathered files
-        if self.meas_type == "pcdrs" or len(self.runs) == 1:
+        if self._meas_type == "pcdrs" or len(self._runs) == 1:
             run_subdir = "r" + "-r".join(str(r).zfill(4)
-                                         for r in self.runs)
+                                         for r in self._runs)
 
             print("run_subdir", run_subdir)
-            print("channel", self.channel)
+            print("channel", self._channel)
             prefix = ("{}-AGIPD{:02}"
-                      .format(run_subdir.upper(), self.channel))
+                      .format(run_subdir.upper(), self._channel))
 
         # TODO fill run_number + for what is this 'else' (what cases)?
         else:
             run_subdir = "r{run_number:04}"
 
             prefix = ("R{run_number:04}-" +
-                      "AGIPD{:02}".format(self.channel))
+                      "AGIPD{:02}".format(self._channel))
 
         fdir = os.path.join(base_dir,
-                            self.meas_type,
+                            self._meas_type,
                             run_subdir,
                             "gather")
 
 
-        if self.asic is None:
+        if self._asic is None:
             fname = prefix + "_gathered.h5"
         else:
-            fname = prefix + "_asic{:02}_gathered.h5".format(self.asic)
+            fname = prefix + "_asic{:02}_gathered.h5".format(self._asic)
 
         return fdir, fname
 
@@ -212,25 +212,25 @@ class GeneratePathsXfel(object):
             Process directory and file name, each as string.
         """
 
-        run_subdir = "r" + "-r".join(str(r).zfill(4) for r in self.runs)
+        run_subdir = "r" + "-r".join(str(r).zfill(4) for r in self._runs)
 
         fdir = os.path.join(base_dir,
-                            self.meas_type,
+                            self._meas_type,
                             run_subdir,
                             "process")
 
-        prefix = self.meas_type + "-AGIPD{:02}"
+        prefix = self._meas_type + "-AGIPD{:02}"
 
-        if not as_template:
-            prefix = prefix.format(self.channel)
-
-        if self.asic is not None:
-            prefix = prefix + "_asic{:02}".format(self.asic)
+        if self._asic is not None:
+            prefix = prefix + "_asic{:02}"
 
         if use_xfel_out_format:
             fname = prefix + "_xfel.h5"
         else:
             fname = prefix + "_agipd.h5"
+
+        if not as_template:
+            prefix = prefix.format(self._channel, self._asic)
 
         return fdir, fname
 
@@ -246,16 +246,16 @@ class GeneratePathsXfel(object):
             Join directory and file name, each as string.
         """
 
-        run_subdir = "r" + "-r".join(str(r).zfill(4) for r in self.runs)
+        run_subdir = "r" + "-r".join(str(r).zfill(4) for r in self._runs)
 
         fdir = os.path.join(base_dir,
-                            self.meas_type,
+                            self._meas_type,
                             run_subdir)
 
         if use_xfel_out_format:
-            fname = "{}_joined_constants_xfel.h5".format(self.meas_type)
+            fname = "{}_joined_constants_xfel.h5".format(self._meas_type)
         else:
-            fname = "{}_joined_constants_agipd.h5".format(self.meas_type)
+            fname = "{}_joined_constants_agipd.h5".format(self._meas_type)
 
         return fdir, fname
 
@@ -275,19 +275,19 @@ class GeneratePathsCfel(object):
                  run_name,
                  use_xfel_out_format):
 
-        self.run_type = run_type
-        self.meas_type = meas_type
-        self.out_base_dir = out_base_dir
-        self.module = module
-        self.channel = channel
-        self.temperature = temperature
-        self.meas_spec = meas_spec
-        self.meas_in = meas_in
-        self.asic = asic
-        self.runs = runs
-        self.run_name = run_name
+        self._run_type = run_type
+        self._meas_type = meas_type
+        self._out_base_dir = out_base_dir
+        self._module = module
+        self._channel = channel
+        self._temperature = temperature
+        self._meas_spec = meas_spec
+        self._meas_in = meas_in
+        self._asic = asic
+        self._runs = runs
+        self._run_name = run_name
 
-        self.use_xfel_out_format = use_xfel_out_format
+        self._use_xfel_out_format = use_xfel_out_format
 
     def get_layout_versions(self, base_dir):
         """ Detects which file structure version of the raw files.
@@ -321,25 +321,25 @@ class GeneratePathsCfel(object):
 
         # define in files
         fdir = os.path.join(base_dir,
-                            self.temperature,
-                            self.meas_in[self.meas_type])
+                            self._temperature,
+                            self._meas_in[self._meas_type])
 
-        if self.meas_type not in ["dark", "xray"]:
+        if self._meas_type not in ["dark", "xray"]:
             fdir = os.path.join(base_dir,
-                                self.temperature,
-                                self.meas_in[self.meas_type],
-                                self.meas_spec)
+                                self._temperature,
+                                self._meas_in[self._meas_type],
+                                self._meas_spec)
 
         prefix = ("{}*_{}_{}_"  # only module without location, e.g. M304
-                  .format(self.module,
-                          self.meas_type,
-                          self.meas_spec))
+                  .format(self._module,
+                          self._meas_type,
+                          self._meas_spec))
 
-        if self.run_name is None:
+        if self._run_name is None:
             fname = prefix + "{run_number:05}_part{part:05}.nxs"
-        elif len(self.run_name) == 1:
+        elif len(self._run_name) == 1:
             fname = (prefix
-                     + self.run_name[0]
+                     + self._run_name[0]
                      + "_{run_number:05}_part{part:05}.nxs")
         else:
             raise Exception("Run name is not unique.")
@@ -376,32 +376,32 @@ class GeneratePathsCfel(object):
 
         # define out files
         fdir = os.path.join(base_dir,
-                            self.module,
-                            self.temperature,
-                            self.meas_type,
-                            self.meas_spec,
+                            self._module,
+                            self._temperature,
+                            self._meas_type,
+                            self._meas_spec,
                             "gather")
 
-        if self.run_name is None:
+        if self._run_name is None:
             prefix = ("{}_{}"
-                      .format(self.module,
-                              self.meas_type))
+                      .format(self._module,
+                              self._meas_type))
 
         else:
-            if len(self.runs) == 1:
-                name = "-".join(self.run_name)
+            if len(self._runs) == 1:
+                name = "-".join(self._run_name)
             else:
                 name = "{run_number}"
 
             prefix = ("{}_{}_{}"
-                      .format(self.module,
-                              self.meas_type,
+                      .format(self._module,
+                              self._meas_type,
                               name))
 
-        if self.asic is None:
+        if self._asic is None:
             fname = prefix + "_gathered.h5"
         else:
-            fname = prefix + "_asic{:02}_gathered.h5".format(self.asic)
+            fname = prefix + "_asic{:02}_gathered.h5".format(self._asic)
 
         return fdir, fname
 
@@ -421,24 +421,24 @@ class GeneratePathsCfel(object):
             Process directory and file name, each as string.
         """
 
-        fdir = os.path.join(self.out_base_dir,
-                            self.module,
-                            self.temperature,
-                            self.meas_type,
-                            self.meas_spec,
-                            self.run_type)
+        fdir = os.path.join(self._out_base_dir,
+                            self._module,
+                            self._temperature,
+                            self._meas_type,
+                            self._meas_spec,
+                            self._run_type)
 
-        if self.asic is None:
+        if self._asic is None:
             fname = ("{}_{}_{}_processed.h5"
-                     .format(self.module,
-                             self.meas_type,
-                             self.meas_spec))
+                     .format(self._module,
+                             self._meas_type,
+                             self._meas_spec))
         else:
             fname = ("{}_{}_{}_asic{:02}_processed.h5"
-                     .format(self.module,
-                             self.meas_type,
-                             self.meas_spec,
-                             self.asic))
+                     .format(self._module,
+                             self._meas_type,
+                             self._meas_spec,
+                             self._asic))
 
         print("process fname", fname)
 
@@ -457,18 +457,18 @@ class GeneratePathsCfel(object):
         """
         raise Exception("CFEL gpfs not supported for join at the moment")
 #        fname = ("{}_{}_{}_asic{:02d}_processed.h5"
-#                 .format(self.module,
-#                         self.meas_type,
-#                         self.meas_spec,
-#                         self.asic))
+#                 .format(self._module,
+#                         self._meas_type,
+#                         self._meas_spec,
+#                         self._asic))
 
 #        print("process fname", fname)
 
-#        fdir = os.path.join(self.out_base_dir,
-#                            self.module,
-#                            self.temperature,
-#                            self.meas_type,
-#                            self.meas_spec,
-#                            self.run_type)
+#        fdir = os.path.join(self._out_base_dir,
+#                            self._module,
+#                            self._temperature,
+#                            self._meas_type,
+#                            self._meas_spec,
+#                            self._run_type)
 
 #        return fdir, fname
