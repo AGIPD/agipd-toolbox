@@ -1,10 +1,10 @@
 #!/usr/bin/python3
 
+import datetime
+import json
 import os
 import sys
-import datetime
 import time
-# import glob
 
 import utils
 # from merge_drscs import ParallelMerge
@@ -30,73 +30,19 @@ if PROCESS_DIR not in sys.path:
 
 
 class Analyse(object):
-    def __init__(self,
-                 run_type,
-                 meas_type,
-                 in_base_dir,
-                 out_base_dir,
-                 n_processes,
-                 module,
-                 channel,
-                 temperature,
-                 meas_spec,
-                 asic,
-                 asic_list,
-                 safety_factor,
-                 runs,
-                 run_name,
-                 max_part,
-                 use_interleaved,
-                 current_list=None,
-                 use_xfel_in_format=True,
-                 use_xfel_out_format=False,
-                 overwrite=False):
-
+    def __init__(self, config):
         print("started Analyse")
 
-        self.run_type = run_type
-        self.meas_type = meas_type
-        self.in_base_dir = in_base_dir
-        self.out_base_dir = out_base_dir
-        self.n_processes = n_processes
-        self.module = module
-        self.temperature = temperature
-        self.meas_spec = meas_spec
-        self.asic = asic
-        self.asic_list = asic_list
-        self.safety_factor = safety_factor
-        self.runs = runs
-        self.run_name = run_name
-        self.current_list = current_list
-        self.channel = channel
-
-        self.max_part = max_part
-        self.use_interleaved = use_interleaved
-
-        self.use_xfel_in_format = use_xfel_in_format
-        self.use_xfel_out_format = use_xfel_out_format
-        self.overwrite = overwrite
+        # add all entries of config into the class namespace
+        for k, v in config.items():
+            setattr(self, k, v)
 
         print("====== Configured parameter in class Analyse ======")
-        print("run_type: {}".format(self.run_type))
-        print("module: ", self.module)
-        print("channel: ", self.channel)
-        print("temperature: ", self.temperature)
-        print("measurement: ", self.meas_type)
-        print("meas_spec: ", self.meas_spec)
-        print("asic: ", self.asic)
-        print("asic_list: ", self.asic_list)
-        print("in_dir: ", self.in_base_dir)
-        print("out_dir: ", self.out_base_dir)
-        print("runs: ", self.runs)
-        print("run_name: ", self.run_name)
-        print("max_part: ", self.max_part)
-        print("use_interleaved", self.use_interleaved)
-        print("current_list: ", self.current_list)
-        print("use_xfel_in_format: ", self.use_xfel_in_format)
-        print("use_xfel_out_format: ", self.use_xfel_out_format)
-        print("overwrite: ", self.overwrite)
+        print(json.dumps(vars(self), sort_keys=True, indent=4))
         print("===================================================")
+
+        self.runs = self.run_list
+        del self.run_list
 
         # Usually the in directory and file names correspond to the
         # meas_type
@@ -125,7 +71,7 @@ class Analyse(object):
         generate_paths = GeneratePaths(
             run_type=self.run_type,
             meas_type=self.meas_type,
-            out_base_dir=self.out_base_dir,
+            out_base_dir=self.output_dir,
             module=self.module,
             channel=self.channel,
             temperature=self.temperature,
@@ -139,7 +85,7 @@ class Analyse(object):
 
         if self.run_type in ["preprocess", "gather"]:
             self.preproc_module, self.layout_module = (
-                generate_paths.get_layout_versions(self.in_base_dir)
+                generate_paths.get_layout_versions(self.input_dir)
             )
 
         self.generate_raw_path = generate_paths.raw
@@ -177,7 +123,7 @@ class Analyse(object):
             raise Exception("Preprocessing can only be done per run")
 
         # define in files
-        in_dir, in_file_name = self.generate_raw_path(self.in_base_dir,
+        in_dir, in_file_name = self.generate_raw_path(self.input_dir,
                                                       as_template=True)
         in_fname = os.path.join(in_dir, in_file_name)
         # partially substitute the string
@@ -189,7 +135,7 @@ class Analyse(object):
         )
 
         # define out files
-        out_dir, out_file_name = self.generate_preproc_path(self.out_base_dir)
+        out_dir, out_file_name = self.generate_preproc_path(self.output_dir)
         out_fname = os.path.join(out_dir, out_file_name)
 
         if not self.overwrite and os.path.exists(out_fname):
@@ -212,12 +158,12 @@ class Analyse(object):
             from gather.gather_base import GatherBase as Gather
 
         # define in files
-        in_dir, in_file_name = self.generate_raw_path(self.in_base_dir)
+        in_dir, in_file_name = self.generate_raw_path(self.input_dir)
         in_fname = os.path.join(in_dir, in_file_name)
 
         # define preprocess files
         preproc_dir, preproc_file_name = (
-            self.generate_preproc_path(self.out_base_dir, as_template=True)
+            self.generate_preproc_path(self.output_dir, as_template=True)
         )
         if preproc_dir is not None:
             preproc_fname = os.path.join(preproc_dir, preproc_file_name)
@@ -225,7 +171,7 @@ class Analyse(object):
             preproc_fname = None
 
         # define out files
-        out_dir, out_file_name = self.generate_gather_path(self.out_base_dir)
+        out_dir, out_file_name = self.generate_gather_path(self.output_dir)
         out_fname = os.path.join(out_dir, out_file_name)
 
         if not self.overwrite and os.path.exists(out_fname):
@@ -283,12 +229,12 @@ class Analyse(object):
 
         # define out files
         # the in files for processing are the out ones from gather
-        in_dir, in_file_name = self.generate_gather_path(self.in_base_dir)
+        in_dir, in_file_name = self.generate_gather_path(self.input_dir)
         in_fname = os.path.join(in_dir, in_file_name)
 
         # define out files
         out_dir, out_file_name = (
-            self.generate_process_path(self.out_base_dir,
+            self.generate_process_path(self.output_dir,
                                        self.use_xfel_out_format)
         )
         out_fname = os.path.join(out_dir, out_file_name)
@@ -320,7 +266,7 @@ class Analyse(object):
     #                            out_fname)
 
         c_out_dir, c_out_file_name = (
-            self.generate_process_path(self.out_base_dir,
+            self.generate_process_path(self.output_dir,
                                        not self.use_xfel_out_format)
         )
         c_out_fname = os.path.join(c_out_dir, c_out_file_name)
@@ -349,14 +295,14 @@ class Analyse(object):
         # join constants in agipd format as well as the xfel format
 
         in_dir, in_file_name = (
-            self.generate_process_path(self.in_base_dir,
+            self.generate_process_path(self.input_dir,
                                        self.use_xfel_out_format,
                                        as_template=True)
         )
         in_fname = os.path.join(in_dir, in_file_name)
 
         out_dir, out_file_name = (
-            self.generate_join_path(self.out_base_dir,
+            self.generate_join_path(self.output_dir,
                                     self.use_xfel_out_format)
         )
         out_fname = os.path.join(out_dir, out_file_name)
@@ -366,14 +312,14 @@ class Analyse(object):
 
         # now do the other format
         in_dir, in_file_name = (
-            self.generate_process_path(self.in_base_dir,
+            self.generate_process_path(self.input_dir,
                                        not self.use_xfel_out_format,
                                        as_template=True)
         )
         in_fname = os.path.join(in_dir, in_file_name)
 
         out_dir, out_file_name = (
-            self.generate_join_path(self.out_base_dir,
+            self.generate_join_path(self.output_dir,
                                     not self.use_xfel_out_format)
         )
         out_fname = os.path.join(out_dir, out_file_name)
@@ -384,7 +330,7 @@ class Analyse(object):
     def run_merge_drscs(self):
         pass
 #
-#        base_path = self.in_base_dir
+#        base_path = self.input_dir
 #        asic_list = self.asic_list
 #
 #        in_path = os.path.join(base_path,

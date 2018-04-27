@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 
+import argparse
+import json
+import multiprocessing
 import os
 import sys
-import argparse
-import multiprocessing
 
 BASE_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 print("BASE_PATH", BASE_PATH)
@@ -194,88 +195,35 @@ class StartAnalyse(object):
     def __init__(self):
         args = get_arguments()
 
-        self.run_type = args.run_type
-        self.meas_type = args.type
-        self.in_base_dir = args.input_dir
-        self.out_base_dir = args.output_dir
-        self.run_list = args.run_list
-        self.run_name = args.run_name
-        self.n_processes = args.n_processes
-        self.module = args.module
-        self.channel = args.channel
-        self.temperature = args.temperature
-        self.meas_spec = args.meas_spec
-        self.asic_list = args.asic_list or [None]
-        self.safety_factor = args.safety_factor
-        self.max_part = args.max_part
-        self.use_interleaved = args.use_interleaved
-        self.current_list = args.current_list if args.current_list else None
-        self.energy = args.energy
-        self.use_xfel_in_format = args.use_xfel_in_format
-        self.use_xfel_out_format = args.use_xfel_out_format
-        self.overwrite = args.overwrite
+        # add all entries of config into the class namespace
+        for k, v in vars(args).items():
+            setattr(self, k, v)
+
+        self.asic_list = self.asic_list or[None]
+        self.current_list = self.current_list if self.current_list else None
+        self.meas_type = self.type
 
         print("====== Configured parameter in class StartAnalyse ======")
-        print("meas_type {}:".format(self.meas_type))
-        print("module: ", self.module)
-        print("channel: ", self.channel)
-        print("in_dir: ", self.in_base_dir)
-        print("out_dir: ", self.out_base_dir)
-        print("run_list: ", self.run_list)
-        print("run_name: ", self.run_name)
-        print("n_processes: ", self.n_processes)
-        print("temperature: ", self.temperature)
-        print("meas_spec: ", self.meas_spec)
-        print("asic_list: ", self.asic_list)
-        print("safety_factor: ", self.safety_factor)
-        print("max_part: ", self.max_part)
-        print("use_interleaved", self.use_interleaved)
-        print("current_list: ", self.current_list)
-        print("energy: ", self.energy)
-        print("use_xfel_in_format: ", self.use_xfel_in_format)
-        print("use_xfel_out_format: ", self.use_xfel_out_format)
-        print("overwrite: ", self.overwrite)
-        print("========================================================")
+        print(json.dumps(vars(self), sort_keys=True, indent=4))
+        print("===================================================")
+
         self.run()
 
     def run(self):
-        kwargs = dict(
-            run_type=self.run_type,
-            meas_type=self.meas_type,
-            in_base_dir=self.in_base_dir,
-            out_base_dir=self.out_base_dir,
-            n_processes=self.n_processes,
-            module=self.module,
-            channel=self.channel,
-            temperature=self.temperature,
-            meas_spec=self.meas_spec,
-            asic=None,
-            asic_list=self.asic_list,
-            safety_factor=self.safety_factor,
-            runs=self.run_list,
-            run_name=self.run_name,
-            max_part=self.max_part,
-            use_interleaved=self.use_interleaved,
-            current_list=self.current_list,
-            use_xfel_in_format=self.use_xfel_in_format,
-            use_xfel_out_format=self.use_xfel_out_format,
-            overwrite=self.overwrite
-        )
-
-        # TODO check for required parameters and stop if they are not set
+        args = vars(self)
 
         jobs = []
         if self.run_type == "merge":
-            Analyse(**kwargs)
+            Analyse(args)
 
         elif self.run_type == "preprocess":
             for run in self.run_list:
                 print("Starting script for run {}\n".format(run))
 
-                kwargs["asic"] = 0
-                kwargs["runs"] = [run]
+                args["asic"] = 0
+                args["runs"] = [run]
 
-                p = multiprocessing.Process(target=Analyse, kwargs=kwargs)
+                p = multiprocessing.Process(target=Analyse, args=args)
                 jobs.append(p)
                 p.start()
 
@@ -287,11 +235,11 @@ class StartAnalyse(object):
                     print("Starting script for module {} and asic {}\n"
                           .format(m, asic))
 
-                    kwargs["module"] = m
-                    kwargs["channel"] = None
-                    kwargs["asic"] = asic
+                    args["module"] = m
+                    args["channel"] = None
+                    args["asic"] = asic
 
-                    p = multiprocessing.Process(target=Analyse, kwargs=kwargs)
+                    p = multiprocessing.Process(target=Analyse, args=args)
                     jobs.append(p)
                     p.start()
 
@@ -300,11 +248,12 @@ class StartAnalyse(object):
                     print("Starting script for channel {} and asic {}\n"
                           .format(ch, asic))
 
-                    kwargs["module"] = None
-                    kwargs["channel"] = ch
-                    kwargs["asic"] = asic
+                    args["module"] = None
+                    args["channel"] = ch
+                    args["asic"] = asic
 
-                    p = multiprocessing.Process(target=Analyse, kwargs=kwargs)
+                    print(args)
+                    p = multiprocessing.Process(target=Analyse, args=(args,))
                     jobs.append(p)
                     p.start()
 
