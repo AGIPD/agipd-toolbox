@@ -169,7 +169,7 @@ class Drscs(Measurement):
 
             # comma seperated string into into list
             current_list = [c.split()[0] for c in c_current.split(",")]
-            self.meas_type = current_list
+            self.measurement = current_list
 
             return self.meas_spec
 

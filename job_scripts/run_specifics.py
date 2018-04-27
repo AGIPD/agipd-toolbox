@@ -1,5 +1,6 @@
 from collections import namedtuple
 import glob
+import json
 import os
 import sys
 
@@ -24,7 +25,7 @@ class RunType(object):
     def get_channel_list(self, c_channel):
         if self._use_xfel:
             # convert str into list
-            channel_list = c_channel.split(" ")
+            channel_list = json.loads(c_channel)
         else:
             channel_list = []
 
@@ -35,7 +36,7 @@ class RunType(object):
             module_list = []
         else:
             # convert str into list
-            module_list = c_module.split(" ")
+            module_list = json.loads(c_module)
 
         return module_list
 
@@ -76,7 +77,7 @@ class RunType(object):
 
         generate_paths = GeneratePaths(
             run_type=None,
-            meas_type=measurement,
+            measurement=measurement,
             out_base_dir=None,
             module=module_list[0],
             channel=None,
@@ -182,7 +183,7 @@ class Preprocess(RunType):
             # preprocess only should run once and not for every channel
             # -> because the channel is not used in prepocess at all use
             # channel 0 as placeholder
-            channel_list = ["0"]
+            channel_list = [0]
         else:
             channel_list = super().get_channel_list(conf=conf)
 

@@ -390,15 +390,15 @@ if __name__ == "__main__":
         max_part = False
         out_base_path = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm"
         out_subdir = "tmp/cfel"
-        meas_type = "dark"
+        measurement = "dark"
         meas_spec = {
             "dark": "tint150ns",
         }
 
         in_file_name = ("{}*_{}_{}_"
                         .format(module,
-                                meas_type,
-                                meas_spec[meas_type]) +
+                                measurement,
+                                meas_spec[measurement]) +
                         "{run_number:05}_part{part:05}.nxs")
         in_fname = os.path.join(in_base_path,
                                 in_subdir,
@@ -412,13 +412,13 @@ if __name__ == "__main__":
         if asic is None:
             out_file_name = ("{}_{}_{}.h5"
                              .format(module.split("_")[0],
-                                     meas_type,
-                                     meas_spec[meas_type]))
+                                     measurement,
+                                     meas_spec[measurement]))
         else:
             out_file_name = ("{}_{}_{}_asic{:02}.h5"
                              .format(module.split("_")[0],
-                                     meas_type,
-                                     meas_spec[meas_type],
+                                     measurement,
+                                     meas_spec[measurement],
                                      asic))
         out_fname = os.path.join(out_dir, out_file_name)
 

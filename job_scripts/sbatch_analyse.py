@@ -3,6 +3,7 @@
 import argparse
 import copy
 import datetime
+import json
 import os
 import subprocess
 import sys
@@ -213,7 +214,7 @@ class SubmitJobs(object):
                 c_run_type = self.config[run_type]
 
                 self.n_jobs[run_type] = int(c_run_type['n_jobs'])
-                self.n_processes[run_type] = c_run_type['n_processes']
+                self.n_processes[run_type] = int(c_run_type['n_processes'])
                 self.time_limit[run_type] = c_run_type['time_limit']
 
             runs_using_all_conf = [self.run_type_list[0]]
@@ -239,7 +240,7 @@ class SubmitJobs(object):
             c_run_type = self.config[self.run_type]
 
             self.n_jobs[self.run_type] = int(c_run_type["n_jobs"])
-            self.n_processes[self.run_type] = c_run_type["n_processes"]
+            self.n_processes[self.run_type] = int(c_run_type["n_processes"])
             self.time_limit[self.run_type] = c_run_type["time_limit"]
 
             self.input_dir[self.run_type] = c_run_type["input_dir"]
@@ -475,6 +476,8 @@ class SubmitJobs(object):
 
         # jobs concering single panel
         for panel in self.panel_list:
+            panel = str(panel)
+
             self.dep_overview[panel] = {}
 
             for run_type in rtl.per_panel:
@@ -486,6 +489,7 @@ class SubmitJobs(object):
             self.dep_overview["all_after"][run_type] = {}
 
     def fill_overview(self, group_name, runs, run_type, jn, jobs):
+        group_name = str(group_name)
 
         if type(runs) == list:
             runs_string = "-".join(list(map(str, runs)))
@@ -694,49 +698,32 @@ class SubmitJobs(object):
                 "--mail-user", self.mail_address
             ]
 
-        self.script_params = [
-            "--run_type", run_type,
-            "--type", self.measurement,
-            "--input_dir", self.input_dir[run_type],
-            "--output_dir", self.output_dir[run_type],
-            "--n_processes", self.n_processes[run_type],
-        ]
-        if type(runs) == list:
-            self.script_params += ["--run_list"] + [str(r) for r in runs]
-        else:
-            self.script_params += ["--run_list", str(runs)]
-
-        if run_name is not None:
-            if type(run_name) == list:
-                self.script_params += (["--run_name"]
-                                       + [str(r) for r in run_name])
-            else:
-                self.script_params += ["--run_name", str(run_name)]
+        self.script_params = dict(
+            run_type=run_type,
+            measurement=self.measurement,
+            meas_spec=None,
+            input_dir=self.input_dir[run_type],
+            output_dir=self.output_dir[run_type],
+            n_processes=self.n_processes[run_type],
+            run_list=runs,
+            run_name=run_name,
+            temperature=self.temperature,
+            safety_factor=self.safety_factor,
+            max_part=self.max_part,
+            use_interleaved=self.use_interleaved,
+            current_list=None,
+            use_xfel_out_format=False,
+            overwrite=self.overwrite,
+        )
 
         if self.use_xfel:
-            self.script_params += [
-                "--channel", self.panel,
-                "--use_xfel_in_format"
-            ]
+            self.script_params["channel"] = [self.panel]
+            self.script_params["use_xfel_in_format"] = True
+            self.script_params["module"] = []
         else:
-            self.script_params += ["--module", self.panel]
-
-        # parameter which are None raise an error in subprocess
-        # -> do not add them
-        if self.temperature is not None:
-            self.script_params += ["--temperature", self.temperature]
-
-        if self.safety_factor is not None:
-            self.script_params += ["--safety_factor", self.safety_factor]
-
-        if self.max_part is not None:
-            self.script_params += ["--max_part", self.max_part]
-
-        if self.use_interleaved:
-            self.script_params += ["--use_interleaved"]
-
-        if self.overwrite:
-            self.script_params += ["--overwrite"]
+            self.script_params["channel"] = []
+            self.script_params["use_xfel_in_format"] = False
+            self.script_params["module"] = [self.panel]
 
     def start_job(self, run_type, runs, meas_spec, dep_jobs):
         global BATCH_JOB_DIR
@@ -777,18 +764,11 @@ class SubmitJobs(object):
                 "--error", log_name + ".err"
             ]
 
-#            #shell_script = os.path.join(BATCH_JOB_DIR, "analyse.sh")
-
-            # split of the cmd is unneccessary but easier for debugging
-            # (e.g. no job should be launched)
-#            cmd = [shell_script] + self.script_params + \
-#                  [asic_set]
+            self.script_params["asic_list"] = asic_set
+            script_params = json.dumps(self.script_params)
 
             shell_script = os.path.join(BATCH_JOB_DIR, "start_analyse.sh")
-            cmd = [shell_script, BATCH_JOB_DIR] + self.script_params
-
-            if asic_set is not None:
-                cmd += ["--asic_list", asic_set]
+            cmd = [shell_script, BATCH_JOB_DIR, script_params]
 
             jobnum = None
             if not self.no_slurm:
