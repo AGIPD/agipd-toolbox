@@ -149,7 +149,10 @@ def get_channel_order():
 
 
 def get_asic_order():
-    # how the asics are located on the module
+    """The order of the ASICS.
+
+    How the asics are located on the module.
+    """
     asic_order = [[16, 15, 14, 13, 12, 11, 10, 9],
                   [1, 2, 3, 4, 5, 6, 7, 8]]
 
@@ -157,8 +160,10 @@ def get_asic_order():
 
 
 def get_asic_order_xfel(channel):
-    # how the asics are located on the module depends of the wing they are
-    # pluged in
+    """The order of the ASICS in XFEL layout.
+
+    How the asics are located on the module depends of the wing they are plugged in.
+    """
     if located_in_wing1(channel):
         asic_order = [[9, 8],
                       [10, 7],
@@ -188,6 +193,14 @@ def located_in_wing1(channel):
         return True
     else:
         return False
+
+def located_in_upper_half(asic):
+    """If the ASIC is located in the upper half of the module or not.
+    """
+
+    asic_order = get_asic_order()
+
+    return asic in asic_order[0]
 
 
 def is_xfel_format(data_shape):

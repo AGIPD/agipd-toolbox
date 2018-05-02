@@ -137,8 +137,10 @@ class GatherBaseCfelTests(unittest.TestCase):
         ref_row = slice(None)
         ref_col = slice(None)
 
+        asis = None
+
         # get result calculated by set_pos_indices
-        res = self.gather_obj.set_pos_indices(run_idx)
+        res = self.gather_obj.set_pos_indices(run_idx, asic)
         res = res[0]
 
         # compare result to reference

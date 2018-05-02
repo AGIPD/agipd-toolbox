@@ -48,8 +48,10 @@ class GatherPcdrsTests(unittest.TestCase):
                    64, 72, 80, 88, 96, 104, 112, 120]
         ref_col = slice(None)
 
+        asic = None
+
         # get result calculated by set_pos_indices
-        res = self.gather_obj.set_pos_indices(run_idx)[0]
+        res = self.gather_obj.set_pos_indices(run_idx, asic)[0]
 
         # compare result to reference
         self.assertTrue(np.all(res[0] == ref_row))
@@ -63,8 +65,10 @@ class GatherPcdrsTests(unittest.TestCase):
                    65, 73, 81, 89, 97, 105, 113, 121]
         ref_col = slice(None)
 
+        asic = None
+
         # get result calculated by set_pos_indices
-        res = self.gather_obj.set_pos_indices(run_idx)[0]
+        res = self.gather_obj.set_pos_indices(run_idx, asic)[0]
 
         # compare result to reference
         self.assertTrue(np.all(res[0] == ref_row))
@@ -152,8 +156,10 @@ class GatherDrscsTests(unittest.TestCase):
                           448, 452, 456, 460, 464, 468, 472, 476,
                           480, 484, 488, 492, 496, 500, 504, 508]
 
+        asic = None
+
         # get result calculated by set_pos_indices
-        res = self.gather_obj.set_pos_indices(run_idx)
+        res = self.gather_obj.set_pos_indices(run_idx, asic)
 
         # compare result to reference
         self.assertTrue(np.all(res[0][0] == ref_row_top))
@@ -201,8 +207,10 @@ class GatherDrscsTests(unittest.TestCase):
                           449, 453, 457, 461, 465, 469, 473, 477,
                           481, 485, 489, 493, 497, 501, 505, 509]
 
+        asic = None
+
         # get result calculated by set_pos_indices
-        res = self.gather_obj.set_pos_indices(run_idx)
+        res = self.gather_obj.set_pos_indices(run_idx, asic)
 
         # compare result to reference
         self.assertTrue(np.all(res[0][0] == ref_row_top))
@@ -227,8 +235,10 @@ class GatherDrscsTests(unittest.TestCase):
         ref_col = [0, 4, 8, 12, 16, 20, 24, 28,
                    32, 36, 40, 44, 48, 52, 56, 60]
 
+        asic = None
+
         # get result calculated by set_pos_indices
-        res = self.gather_obj.set_pos_indices(run_idx)[0]
+        res = self.gather_obj.set_pos_indices(run_idx, asic)[0]
 
         # compare result to reference
         self.assertTrue(np.all(res[0] == ref_row))
@@ -243,8 +253,10 @@ class GatherDrscsTests(unittest.TestCase):
         ref_col = [1, 5, 9, 13, 17, 21, 25, 29,
                    33, 37, 41, 45, 49, 53, 57, 61]
 
+        asic = None
+
         # get result calculated by set_pos_indices
-        res = self.gather_obj.set_pos_indices(run_idx)[0]
+        res = self.gather_obj.set_pos_indices(run_idx, asic)[0]
 
         # compare result to reference
         self.assertTrue(np.all(res[0] == ref_row))
@@ -259,8 +271,10 @@ class GatherDrscsTests(unittest.TestCase):
         ref_col = [3, 7, 11, 15, 19, 23, 27, 31,
                    35, 39, 43, 47, 51, 55, 59, 63]
 
+        asic = None
+
         # get result calculated by set_pos_indices
-        res = self.gather_obj.set_pos_indices(run_idx)[0]
+        res = self.gather_obj.set_pos_indices(run_idx, asic)[0]
 
         # compare result to reference
         self.assertTrue(np.all(res[0] == ref_row))
@@ -275,8 +289,10 @@ class GatherDrscsTests(unittest.TestCase):
         ref_col = [2, 6, 10, 14, 18, 22, 26, 30,
                    34, 38, 42, 46, 50, 54, 58, 62]
 
+        asic = None
+
         # get result calculated by set_pos_indices
-        res = self.gather_obj.set_pos_indices(run_idx)[0]
+        res = self.gather_obj.set_pos_indices(run_idx, asic)[0]
 
         # compare result to reference
         self.assertTrue(np.all(res[0] == ref_row))

@@ -216,7 +216,7 @@ class GatherBase(object):
         for run_idx, run_number in enumerate(self.runs):
             print("\n\nrun {}".format(run_number))
 
-            self.pos_idxs = self.set_pos_indices(run_idx)
+            self.pos_idxs = self.set_pos_indices(run_idx, self._asic)
             print("pos_idxs", self.pos_idxs)
 
             load_idx_rows = slice(self.a_row_start, self.a_row_stop)
@@ -301,7 +301,7 @@ class GatherBase(object):
 
             f.flush()
 
-    def set_pos_indices(self, run_idx):
+    def set_pos_indices(self, run_idx, asic):
         pos_idx_rows = slice(None)
         pos_idx_cols = slice(None)
 
@@ -310,6 +310,8 @@ class GatherBase(object):
         # e.g. top half should use these cols and bottom half those ones
         return [[pos_idx_rows, pos_idx_cols]]
 
+    def asic_in_upper_half(self):
+        return utils.located_in_upper_half(self._asic)
 
 if __name__ == "__main__":
 

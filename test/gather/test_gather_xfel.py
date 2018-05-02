@@ -132,8 +132,10 @@ class GatherBaseXfelTests(unittest.TestCase):
         ref_row = slice(None)
         ref_col = slice(None)
 
+        asic = None
+
         # get result calculated by set_pos_indices
-        res = self.gather_obj.set_pos_indices(run_idx)
+        res = self.gather_obj.set_pos_indices(run_idx, asic)
         res = res[0]
 
         # compare result to reference
@@ -176,8 +178,10 @@ class GatherPcdrsXfelTests(unittest.TestCase):
                    65, 73, 81, 89, 97, 105, 113, 121]
         ref_col = slice(None)
 
+        asic = None
+
         # get result calculated by set_pos_indices
-        res = self.gather_obj.set_pos_indices(run_idx)[0]
+        res = self.gather_obj.set_pos_indices(run_idx, asic)[0]
 
         # compare result to reference
         self.assertTrue(np.all(res[0] == ref_row))
@@ -191,8 +195,10 @@ class GatherPcdrsXfelTests(unittest.TestCase):
                    66, 74, 82, 90, 98, 106, 114, 122]
         ref_col = slice(None)
 
+        asic = None
+
         # get result calculated by set_pos_indices
-        res = self.gather_obj.set_pos_indices(run_idx)[0]
+        res = self.gather_obj.set_pos_indices(run_idx, asic)[0]
 
         # compare result to reference
         self.assertTrue(np.all(res[0] == ref_row))

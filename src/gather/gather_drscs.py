@@ -25,7 +25,7 @@ class GatherDrscs(GatherBase):
 
         super().__init__(**kwargs)
 
-    def set_pos_indices(self, run_idx):
+    def set_pos_indices(self, run_idx, asic):
 
         pos_idxs = []
 
