@@ -6,6 +6,7 @@ import logging
 from logging.config import dictConfig
 import numpy as np
 import sys
+import yaml
 
 
 def create_dir(directory_name):
@@ -42,8 +43,8 @@ def check_file_exists(file_name, quit=True):
         print("Output file: ok")
 
 
-def load_config(config, ini_file):
-    """ Loads the config from a ini_file and overwrites already exsiting config.
+def load_config_ini(config, ini_file):
+    """ Loads the config from a ini file and overwrites already exsiting config.
 
     Overwriting an existing configuration dictionary enables multi-layered
     configs.
@@ -68,6 +69,42 @@ def load_config(config, ini_file):
         for key, key_value in sec_value.items():
             config[section][key] = key_value
 
+
+def load_config(config_file, config={}):
+    """ Loads the config from a yaml file and overwrites already exsiting config.
+
+    Overwriting an existing configuration dictionary enables multi-layered
+    configs.
+
+    Args:
+        config_file (str): Name of the yaml file from which the config should be
+                           loaded.
+        config (optional, dict): Dictionary with already existing config to be
+                                 overwritten.
+
+    Return:
+        Configuration dictionary. Values in the config file onverwrite the ones
+        in the passed config dictionary.
+    """
+
+    with open(config_file) as f:
+        new_config = yaml.load(f)
+
+    # check for "None" entries
+    for key, value in new_config.items():
+        if type(value) == dict:
+            for k, v in value.items():
+                if v == "None":
+                    new_config[key][k] = None
+
+    # update only subdicts of old config
+    for key, value in new_config.items():
+        if key in config:
+            config[key].update(value)
+        else:
+            config[key] = value
+
+    return config
 
 def get_channel_order():
     """Default channel order on system.

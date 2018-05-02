@@ -117,23 +117,21 @@ class SubmitJobs(object):
             self.config_file = "cfel"
 
         # load base config
-        ini_file = os.path.join(CONF_DIR, "base.ini")
+        yaml_file = os.path.join(CONF_DIR, "base.yaml")
         self.config = dict()
-        utils.load_config(self.config, ini_file)
+        utils.load_config(yaml_file, self.config)
 
         # override base config with values of user config file
         config_name = args.config_file or self.config_file
-        ini_file = os.path.join(CONF_DIR, "{}.ini".format(config_name))
-        print("Using ini_file: {}".format(ini_file))
-        utils.load_config(self.config, ini_file)
+        yaml_file = os.path.join(CONF_DIR, "{}.yaml".format(config_name))
+        print("Using yaml_file: {}".format(yaml_file))
+        utils.load_config(yaml_file, self.config)
 
         # override user config file with command line arguments
         self.insert_args_in_config(args)
 
         print("\nsbatch uses config:")
-        for key in self.config:
-            print(key, self.config[key])
-        print()
+        print(json.dumps(self.config, sort_keys=True, indent=4))
 
         try:
             self.mail_address = self.config["general"]["mail_address"]
@@ -143,6 +141,8 @@ class SubmitJobs(object):
         self.run_type = self.config["general"]["run_type"]
         self.measurement = self.config["general"]["measurement"]
         self.partition = self.config["general"]["partition"]
+        self.asic_set = self.config["general"]["asic_set"]
+        self.use_interleaved = self.config["general"]["use_interleaved"]
 
         if self.run_type == "preprocess":
             self.run_conf = run_specifics.Preprocess(self.use_xfel)
@@ -175,13 +175,7 @@ class SubmitJobs(object):
         self.run_type_list = self.meas_conf.get_run_type_list()
 
         try:
-            # convert str into list
-            run_name = self.config[self.measurement]["run_name"]
-            if run_name == "None":
-                self.run_name = None
-            else:
-                self.run_name = (self.config[self.measurement]["run_name"]
-                                 .split(", "))
+            self.run_name = self.config[self.measurement]["run_name"]
         except KeyError:
             self.run_name = None
 
@@ -195,12 +189,6 @@ class SubmitJobs(object):
         self.channel_list = rconf.get_channel_list(c_general["channel"])
         self.temperature = rconf.get_temperature(c_general["temperature"])
         self.max_part = rconf.get_max_part(self.config)
-
-        self.use_interleaved = self.config["general"]["use_interleaved"]
-        # convert string to bool
-        self.use_interleaved = (True
-                                if self.use_interleaved == "True"
-                                else False)
 
         self.panel_list = self.module_list + self.channel_list
 
@@ -257,12 +245,6 @@ class SubmitJobs(object):
             meas_conf=self.meas_conf,
             run_name=self.run_name
         )
-
-        if self.config["general"]["asic_set"] == "None":
-            self.asic_set = None
-        else:
-            conf_asic_set = self.config["general"]["asic_set"]
-            self.asic_set = json.loads(conf_asic_set)
 
         self.dep_overview = {}
 

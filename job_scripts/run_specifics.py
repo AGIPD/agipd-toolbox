@@ -22,31 +22,23 @@ class RunType(object):
         self._use_xfel = use_xfel
         self.run_type = None
 
-    def get_channel_list(self, c_channel):
+    def get_channel_list(self, l):
         if self._use_xfel:
-            # convert str into list
-            channel_list = json.loads(c_channel)
+            return l
         else:
-            channel_list = []
+            return []
 
-        return channel_list
-
-    def get_module_list(self, c_module):
+    def get_module_list(self, l):
         if self._use_xfel:
-            module_list = []
+            return []
         else:
-            # convert str into list
-            module_list = json.loads(c_module)
-
-        return module_list
+            return l
 
     def get_temperature(self, config):
         if self._use_xfel:
-            temperature = None
+            return None
         else:
-            temperature = config
-
-        return temperature
+            return config
 
     def get_max_part(self, config):
         return None
