@@ -262,10 +262,7 @@ class SubmitJobs(object):
             self.asic_set = None
         else:
             conf_asic_set = self.config["general"]["asic_set"]
-            # convert str into list
-            self.asic_set = conf_asic_set[1:-1].split(", ")
-            # convert list entries into ints
-            self.asic_set = list(map(int, self.asic_set))
+            self.asic_set = json.loads(conf_asic_set)
 
         self.dep_overview = {}
 
@@ -366,6 +363,7 @@ class SubmitJobs(object):
             stop = len(asic_set)
             self.asic_lists += [asic_set[i:i + size + 1]
                                 for i in range(start, stop, size + 1)]
+
 
     def run(self):
 
@@ -712,17 +710,16 @@ class SubmitJobs(object):
             max_part=self.max_part,
             use_interleaved=self.use_interleaved,
             current_list=None,
-            use_xfel_out_format=False,
             overwrite=self.overwrite,
         )
 
         if self.use_xfel:
             self.script_params["channel"] = [self.panel]
-            self.script_params["use_xfel_in_format"] = True
+            self.script_params["use_xfel_layout"] = True
             self.script_params["module"] = []
         else:
             self.script_params["channel"] = []
-            self.script_params["use_xfel_in_format"] = False
+            self.script_params["use_xfel_layout"] = False
             self.script_params["module"] = [self.panel]
 
     def start_job(self, run_type, runs, meas_spec, dep_jobs):
@@ -751,8 +748,6 @@ class SubmitJobs(object):
                                     meas_spec))
 
             if asic_set is not None:
-                # map to string to be able to call shell script
-                asic_set = " ".join(map(str, asic_set))
                 print("Starting job for asics {}\n".format(asic_set))
                 job_name = job_name + "_{}".format(asic_set)
 

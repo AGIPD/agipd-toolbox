@@ -63,7 +63,7 @@ class Analyse(object):
             self.properties["max_pulses"] = 704
             self.properties["n_memcells"] = 352
 
-        if self.use_xfel_in_format:
+        if self.use_xfel_layout:
             from generate_paths import GeneratePathsXfel as GeneratePaths
         else:
             from generate_paths import GeneratePathsCfel as GeneratePaths
@@ -79,8 +79,7 @@ class Analyse(object):
             meas_in=self.meas_in,
             asic=self.asic,
             runs=self.runs,
-            run_name=self.run_name,
-            use_xfel_out_format=self.use_xfel_out_format
+            run_name=self.run_name
         )
 
         if self.run_type in ["preprocess", "gather"]:
@@ -163,7 +162,8 @@ class Analyse(object):
 
         # define preprocess files
         preproc_dir, preproc_file_name = (
-            self.generate_preproc_path(self.output_dir, as_template=True)
+            self.generate_preproc_path(base_dir=self.output_dir,
+                                       as_template=True)
         )
         if preproc_dir is not None:
             preproc_fname = os.path.join(preproc_dir, preproc_file_name)
@@ -171,7 +171,9 @@ class Analyse(object):
             preproc_fname = None
 
         # define out files
-        out_dir, out_file_name = self.generate_gather_path(self.output_dir)
+        out_dir, out_file_name = self.generate_gather_path(
+            base_dir=self.output_dir
+        )
         out_fname = os.path.join(out_dir, out_file_name)
 
         if not self.overwrite and os.path.exists(out_fname):
@@ -206,7 +208,7 @@ class Analyse(object):
         if self.measurement == "dark":
             from process_dark import ProcessDark as Process
 
-            if self.use_xfel_in_format or self.run_name is None:
+            if self.use_xfel_layout or self.run_name is None:
                 run_list = self.runs
             else:
                 run_list = self.run_name
@@ -220,7 +222,7 @@ class Analyse(object):
         elif self.measurement == "drscs":
             from process_pcdrs import AgipdProcessDrscs as Process
 
-            if not self.use_xfel_in_format:
+            if not self.use_xfel_layout:
                 run_list = self.runs
 
         else:
@@ -229,13 +231,15 @@ class Analyse(object):
 
         # define out files
         # the in files for processing are the out ones from gather
-        in_dir, in_file_name = self.generate_gather_path(self.input_dir)
+        in_dir, in_file_name = self.generate_gather_path(
+            base_dir=self.input_dir
+        )
         in_fname = os.path.join(in_dir, in_file_name)
 
         # define out files
-        out_dir, out_file_name = (
-            self.generate_process_path(self.output_dir,
-                                       self.use_xfel_out_format)
+        out_dir, out_file_name = self.generate_process_path(
+            base_dir=self.output_dir,
+            use_xfel_format=False
         )
         out_fname = os.path.join(out_dir, out_file_name)
 
@@ -250,11 +254,9 @@ class Analyse(object):
             print("in_fname=", in_fname)
             print("out_fname", out_fname)
             print("runs", run_list)
-            print("use_xfel_out_format=", self.use_xfel_out_format)
             Process(in_fname=in_fname,
                     out_fname=out_fname,
-                    runs=run_list,
-                    use_xfel_format=self.use_xfel_out_format)
+                    runs=run_list)
 
     #            ParallelProcess(self.asic,
     #                            in_fname,
@@ -266,8 +268,8 @@ class Analyse(object):
     #                            out_fname)
 
         c_out_dir, c_out_file_name = (
-            self.generate_process_path(self.output_dir,
-                                       not self.use_xfel_out_format)
+            self.generate_process_path(base_dir=self.output_dir,
+                                       use_xfel_format=True)
         )
         c_out_fname = os.path.join(c_out_dir, c_out_file_name)
 
@@ -278,16 +280,10 @@ class Analyse(object):
             if os.path.exists(c_out_fname):
                 print("WARNING: output file already exist. Skipping convert.")
             else:
-                if self.use_xfel_out_format:
-                    c_obj = ConvertFormat(out_fname,
-                                          c_out_fname,
-                                          "agipd",
-                                          self.channel)
-                else:
-                    c_obj = ConvertFormat(out_fname,
-                                          c_out_fname,
-                                          "xfel",
-                                          self.channel)
+                c_obj = ConvertFormat(out_fname,
+                                      c_out_fname,
+                                      "xfel",
+                                      self.channel)
 
                 c_obj.run()
 
@@ -295,15 +291,15 @@ class Analyse(object):
         # join constants in agipd format as well as the xfel format
 
         in_dir, in_file_name = (
-            self.generate_process_path(self.input_dir,
-                                       self.use_xfel_out_format,
+            self.generate_process_path(base_dir=self.input_dir,
+                                       use_xfel_format=False,
                                        as_template=True)
         )
         in_fname = os.path.join(in_dir, in_file_name)
 
         out_dir, out_file_name = (
-            self.generate_join_path(self.output_dir,
-                                    self.use_xfel_out_format)
+            self.generate_join_path(base_dir=self.output_dir,
+                                    use_xfel_format=False)
         )
         out_fname = os.path.join(out_dir, out_file_name)
 
@@ -312,15 +308,15 @@ class Analyse(object):
 
         # now do the other format
         in_dir, in_file_name = (
-            self.generate_process_path(self.input_dir,
-                                       not self.use_xfel_out_format,
+            self.generate_process_path(base_dir=self.input_dir,
+                                       use_xfel_format=True,
                                        as_template=True)
         )
         in_fname = os.path.join(in_dir, in_file_name)
 
         out_dir, out_file_name = (
-            self.generate_join_path(self.output_dir,
-                                    not self.use_xfel_out_format)
+            self.generate_join_path(base_dir=self.output_dir,
+                                    use_xfel_format=True)
         )
         out_fname = os.path.join(out_dir, out_file_name)
 
@@ -385,7 +381,7 @@ class Analyse(object):
 #            part = int(data_fname[-8:-3])
 #            print("part", part)
 #
-#            if self.use_xfel_in_format:
+#            if self.use_xfel_layout:
 #                fname_prefix = "dark_AGIPD{}_xfel".format(self.module)
 #            else:
 #                fname_prefix = "dark_AGIPD{}_agipd_".format(self.module)
@@ -398,7 +394,7 @@ class Analyse(object):
 #                sys.exit(1)
 #            print(dark_fname)
 #
-#            if self.use_xfel_in_format:
+#            if self.use_xfel_layout:
 #                fname_prefix = "gain_AGIPD{}_xfel".format(self.module)
 #            else:
 #                fname_prefix = "gain_AGIPD{}_agipd_".format(self.module)
@@ -423,8 +419,7 @@ class Analyse(object):
 #                    None,
 #                    # gain_fname,
 #                    out_fname,
-#                    self.energy,
-#                    self.use_xfel_out_format)
+#                    self.energy)
 #
 #    def cleanup(self):
 #        # remove gather dir

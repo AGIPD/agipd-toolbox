@@ -32,7 +32,7 @@ def get_arguments():
                    "(each containing 2 columns)")
             parser.error(msg)
 
-    if (not args["use_xfel_in_format"] and
+    if (not args["use_xfel_layout"] and
             (args["measurement"] == "dark" and
                 args["measurement"] == "xray" and
                 args["measurement"] == "drscs")

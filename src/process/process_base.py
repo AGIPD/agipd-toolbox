@@ -21,10 +21,9 @@ from _version import __version__
 
 
 class ProcessBase(object):
-    def __init__(self, in_fname, out_fname, runs, use_xfel_format=False):
+    def __init__(self, in_fname, out_fname, runs):
 
         self._out_fname = out_fname
-        self._use_xfel_format = use_xfel_format
 
         # public attributes for use in inherited classes
         self.in_fname = in_fname
@@ -91,9 +90,6 @@ class ProcessBase(object):
         self.initiate()
 
         self.calculate()
-
-        if self._use_xfel_format:
-            self.convert_to_xfel_format()
 
         print("Start saving results at {} ... ".format(self._out_fname),
               end='')
@@ -167,19 +163,6 @@ class ProcessBase(object):
         res = np.linalg.lstsq(A, y)
 
         return res
-
-    def convert_to_xfel_format(self):
-        print("Convert to XFEL format")
-
-        for key in self.result:
-            self.result[key]['data'] = (
-                utils.convert_to_xfel_format(self.channel,
-                                             self.result[key]['data']))
-
-        for key in self.shapes:
-            self.shapes[key] = (
-                utils.convert_to_xfel_format(self.channel,
-                                             self.shapes[key]))
 
     def write_data(self):
 

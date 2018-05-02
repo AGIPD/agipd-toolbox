@@ -16,8 +16,7 @@ class GeneratePathsXfel(object):
                  meas_in,
                  asic,
                  runs,
-                 run_name,
-                 use_xfel_out_format):
+                 run_name):
 
         self._run_type = run_type
         self._measurement = measurement
@@ -30,8 +29,6 @@ class GeneratePathsXfel(object):
         self._asic = asic
         self._runs = runs
         self._run_name = run_name
-
-        self._use_xfel_out_format = use_xfel_out_format
 
     def get_layout_versions(self, base_dir):
         """ Detects which file structure version of the raw files.
@@ -197,13 +194,13 @@ class GeneratePathsXfel(object):
 
         return fdir, fname
 
-    def process(self, base_dir, use_xfel_out_format, as_template=False):
+    def process(self, base_dir, use_xfel_format, as_template=False):
         """Generate the process file path.
 
         Args:
             base_dir: Base directory under which the output is stored.
-            use_xfel_out_format (bool): If enabled the output is in xfel
-                                        format.
+            use_xfel_format (bool): If enabled the output is in xfel
+                                    format.
             as_template (optional, bool): If enabled the channel is kept as a
                                           template instead of being filled in
                                           (default: False).
@@ -224,7 +221,7 @@ class GeneratePathsXfel(object):
         if self._asic is not None:
             prefix = prefix + "_asic{:02}"
 
-        if use_xfel_out_format:
+        if use_xfel_format:
             fname = prefix + "_xfel.h5"
         else:
             fname = prefix + "_agipd.h5"
@@ -234,13 +231,13 @@ class GeneratePathsXfel(object):
 
         return fdir, fname
 
-    def join(self, base_dir, use_xfel_out_format):
+    def join(self, base_dir, use_xfel_format):
         """Generates the join file path.
 
         Args:
             base_dir: Base directory under which the output is stored.
-            use_xfel_out_format (bool): If enabled the output is in xfel
-                                        format.
+            use_xfel_format (bool): If enabled the output is in xfel
+                                    format.
 
         Return:
             Join directory and file name, each as string.
@@ -252,7 +249,7 @@ class GeneratePathsXfel(object):
                             self._measurement,
                             run_subdir)
 
-        if use_xfel_out_format:
+        if use_xfel_format:
             fname = "{}_joined_constants_xfel.h5".format(self._measurement)
         else:
             fname = "{}_joined_constants_agipd.h5".format(self._measurement)
@@ -272,8 +269,7 @@ class GeneratePathsCfel(object):
                  meas_in,
                  asic,
                  runs,
-                 run_name,
-                 use_xfel_out_format):
+                 run_name):
 
         self._run_type = run_type
         self._measurement = measurement
@@ -286,8 +282,6 @@ class GeneratePathsCfel(object):
         self._asic = asic
         self._runs = runs
         self._run_name = run_name
-
-        self._use_xfel_out_format = use_xfel_out_format
 
     def get_layout_versions(self, base_dir):
         """ Detects which file structure version of the raw files.
@@ -405,13 +399,13 @@ class GeneratePathsCfel(object):
 
         return fdir, fname
 
-    def process(self, base_dir, use_xfel_out_format, as_template=False):
+    def process(self, base_dir, use_xfel_format, as_template=False):
         """Generate the process file path.
 
         Args:
             base_dir: Base directory under which the output is stored.
-            use_xfel_out_format (bool): If enabled the output is in xfel format
-                                        (not implemented).
+            use_xfel_format (bool): If enabled the output is in xfel format
+                                    (not implemented).
             as_template (optional, bool): If enabled the channel is kept as a
                                           template instead of being filled in
                                           (default: False,
@@ -444,31 +438,15 @@ class GeneratePathsCfel(object):
 
         return fdir, fname
 
-    def join(self, base_dir, use_xfel_out_format):
+    def join(self, base_dir, use_xfel_format):
         """Generates the join file path. NOT IMPLEMENTED.
 
         Args:
             base_dir: Base directory under which the output is stored.
-            use_xfel_out_format (bool): If enabled the output is in xfel
-                                        format.
+            use_xfel_format (bool): If enabled the output is in xfel
+                                    format.
 
         Return:
             Join directory and file name, each as string.
         """
         raise Exception("CFEL gpfs not supported for join at the moment")
-#        fname = ("{}_{}_{}_asic{:02d}_processed.h5"
-#                 .format(self._module,
-#                         self._measurement,
-#                         self._meas_spec,
-#                         self._asic))
-
-#        print("process fname", fname)
-
-#        fdir = os.path.join(self._out_base_dir,
-#                            self._module,
-#                            self._temperature,
-#                            self._measurement,
-#                            self._meas_spec,
-#                            self._run_type)
-
-#        return fdir, fname

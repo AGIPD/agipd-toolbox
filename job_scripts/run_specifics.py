@@ -86,8 +86,7 @@ class RunType(object):
             meas_in={measurement: measurement},
             asic=None,
             runs=None,
-            run_name=None,
-            use_xfel_out_format=None
+            run_name=None
         )
 
         raw_dir, raw_fname = generate_paths.raw(input_dir['gather'])
