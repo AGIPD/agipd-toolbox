@@ -722,6 +722,46 @@ class SubmitJobs(object):
             self.script_params["use_xfel_layout"] = False
             self.script_params["module"] = [self.panel]
 
+        # checks if the necessary parameters are set
+        self.check_config(self.script_params)
+
+    def check_config(self, conf):
+        class WrongConfiguration(Exception):
+            pass
+
+        if conf["measurement"] == "drscs":
+            if len(conf["run_list"]) != 4:
+                msg = ("There have to be 4 runs defined "
+                       "(each containing 2 columns)")
+                raise WrongConfiguration(msg)
+
+        if (not conf["use_xfel_layout"]
+                and (conf["measurement"] == "dark"
+                    and conf["measurement"] == "xray"
+                    and conf["measurement"] == "drscs")
+                and not conf["meas_spec"]):
+            msg = "The meas_spec must be defined!"
+            raise WrongConfiguration(msg)
+
+        if (conf["measurement"] == "dark"
+                and conf["measurement"] == "gather"
+                and len(conf["run_list"]) != 1):
+            msg = ("Gathering only one run at a time for type dark. Quitting.")
+            raise WrongConfiguration(msg)
+
+        if (conf["measurement"] == "dark"
+                and conf["measurement"] == "process"
+                and len(conf["run_list"]) != 3):
+            msg = ("Runs for all 3 gain stages are required to calculate dark "
+                   "constants. Quitting.")
+            raise WrongConfiguration(msg)
+
+        if (conf["measurement"] == "pcdrs"
+                and len(conf["run_list"]) != 8):
+            msg = ("Pulse capacitor requires 8 runs to calculate constants. "
+                   "Quitting.")
+            raise WrongConfiguration(msg)
+
     def start_job(self, run_type, runs, meas_spec, dep_jobs):
         global BATCH_JOB_DIR
 

@@ -26,36 +26,6 @@ def get_arguments():
 
     args = json.loads(args.params)
 
-    if args["measurement"] == "drscs":
-        if len(args["run_list"]) != 4:
-            msg = ("There have to be 4 runs defined "
-                   "(each containing 2 columns)")
-            parser.error(msg)
-
-    if (not args["use_xfel_layout"] and
-            (args["measurement"] == "dark" and
-                args["measurement"] == "xray" and
-                args["measurement"] == "drscs")
-            and not args["meas_spec"]):
-        msg = "The meas_spec must be defined!"
-        parser.error(msg)
-
-    if (args["measurement"] == "dark" and
-            args["measurement"] == "gather" and (len(args["run_list"]) != 1)):
-        msg = ("Gathering only one run at a time for type dark. Quitting.")
-        parser.error(msg)
-
-    if (args["measurement"] == "dark" and
-            args["measurement"] == "process" and (len(args["run_list"]) != 3)):
-        msg = ("Runs for all 3 gain stages are required to calculate dark "
-               "constants. Quitting.")
-        parser.error(msg)
-
-    if args["measurement"] == "pcdrs" and (len(args["run_list"]) != 8):
-        msg = ("Pulse capacitor requires 8 runs to calculate constants. "
-               "Quitting.")
-        parser.error(msg)
-
     return args
 
 
