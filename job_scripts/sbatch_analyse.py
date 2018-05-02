@@ -524,7 +524,7 @@ class SubmitJobs(object):
             input_dir=self.input_dir[run_type],
             output_dir=self.output_dir[run_type],
             n_processes=self.n_processes[run_type],
-            run_list=runs,
+            runs=runs,
             run_name=run_name,
             temperature=self.temperature,
             safety_factor=self.safety_factor,
@@ -551,7 +551,7 @@ class SubmitJobs(object):
             pass
 
         if conf["measurement"] == "drscs":
-            if len(conf["run_list"]) != 4:
+            if len(conf["runs"]) != 4:
                 msg = ("There have to be 4 runs defined "
                        "(each containing 2 columns)")
                 raise WrongConfiguration(msg)
@@ -566,19 +566,19 @@ class SubmitJobs(object):
 
         if (conf["measurement"] == "dark"
                 and conf["measurement"] == "gather"
-                and len(conf["run_list"]) != 1):
+                and len(conf["runs"]) != 1):
             msg = ("Gathering only one run at a time for type dark. Quitting.")
             raise WrongConfiguration(msg)
 
         if (conf["measurement"] == "dark"
                 and conf["measurement"] == "process"
-                and len(conf["run_list"]) != 3):
+                and len(conf["runs"]) != 3):
             msg = ("Runs for all 3 gain stages are required to calculate dark "
                    "constants. Quitting.")
             raise WrongConfiguration(msg)
 
         if (conf["measurement"] == "pcdrs"
-                and len(conf["run_list"]) != 8):
+                and len(conf["runs"]) != 8):
             msg = ("Pulse capacitor requires 8 runs to calculate constants. "
                    "Quitting.")
             raise WrongConfiguration(msg)

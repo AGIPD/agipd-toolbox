@@ -41,9 +41,6 @@ class Analyse(object):
         print(json.dumps(vars(self), sort_keys=True, indent=4))
         print("===================================================")
 
-        self.runs = self.run_list
-        del self.run_list
-
         # Usually the in directory and file names correspond to the
         # measurement
         self.meas_in = {self.measurement: self.measurement}
@@ -119,6 +116,7 @@ class Analyse(object):
         Preprocess = __import__(self.preproc_module).Preprocess
 
         if len(self.runs) != 1:
+            print("runs", self.runs)
             raise Exception("Preprocessing can only be done per run")
 
         # define in files

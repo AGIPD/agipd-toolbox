@@ -39,8 +39,8 @@ class StartAnalyse(object):
 
         self.asic_list = self.asic_list or[None]
         self.current_list = self.current_list if self.current_list else None
-        if type(self.run_list) != list:
-            self.run_list = [self.run_list]
+        if type(self.runs) != list:
+            self.runs = [self.runs]
 
         print("====== Configured parameter in class StartAnalyse ======")
         print(json.dumps(vars(self), sort_keys=True, indent=4))
@@ -56,7 +56,7 @@ class StartAnalyse(object):
             Analyse(args)
 
         elif self.run_type == "preprocess":
-            for run in self.run_list:
+            for run in self.runs:
                 print("Starting script for run {}\n".format(run))
 
                 args["asic"] = 0
