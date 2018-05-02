@@ -14,7 +14,10 @@ import utils  # noqa E402
 
 
 class JobOverview(object):
-    def __init__(self, rtl, panel_list):
+    def __init__(self, rtl, panel_list, enable_asics=False):
+        self.enable_asics = enable_asics
+        print("enable_asics", enable_asics)
+
         self.dep_overview = {}
 
         # jobs concering all panels (before single panel jobs are done)
@@ -36,18 +39,25 @@ class JobOverview(object):
         for run_type in rtl.panel_dep_after:
             self.dep_overview["all_after"][run_type] = {}
 
-    def fill(self, group_name, runs, run_type, jn, jobs):
+    def fill(self, group_name, runs, asics, run_type, jn, jobs):
         """Filling content into the overview dictionary.
 
         Args:
             group_name: The group name this information belongs to,
                         e.g. 'all_before', a specific panel or 'all_after'.
             runs (list): A list of runs
+            asics (list or None): A list of asics or None if asic splitting
+                                  was disabled.
             run_type (str): The run type of the job,
                             e.g. 'gather', 'process', ...
             jn: Under which job number the job was launched.
             jobs: The jobs this job is depending on.
         """
+
+        if asics is None:
+            asics_str = "all"
+        else:
+            asics_str = "-".join(map(str, asics))
 
         group_name = str(group_name)
 
@@ -56,10 +66,14 @@ class JobOverview(object):
         else:
             runs_string = str(runs)
 
-        ov = self.dep_overview[group_name][run_type]
-        ov[runs_string] = {}
-        ov[runs_string]["jobnum"] = jn
-        ov[runs_string]["deb_jobs"] = jobs
+        ov_r = self.dep_overview[group_name][run_type]
+        if runs_string in ov_r:
+            ov_r[runs_string][asics_str] = {}
+        else:
+            ov_r[runs_string] = {asics_str: {}}
+
+        ov_r[runs_string][asics_str]["jobnum"] = jn
+        ov_r[runs_string][asics_str]["deb_jobs"] = jobs
 
     def prepare(self, header, sep):
         """Preparation for printing.
@@ -85,6 +99,13 @@ class JobOverview(object):
 
                 for runs in self.dep_overview[panel][run_type]:
                     max_key_len["Runs"] = max(max_key_len["Runs"], len(runs))
+
+                    for asics in self.dep_overview[panel][run_type][runs]:
+                        try:
+                            max_key_len["Asics"] = max(max_key_len["Asics"],
+                                                       len(asics))
+                        except KeyError:
+                            pass
 
         # job ids are 6-digit numbers
         max_key_len["JobID"] = max(max_key_len["JobID"], 6)
@@ -120,7 +141,10 @@ class JobOverview(object):
         """Print overview of dependencies.
         """
 
-        header = ["Panel", "Run type", "Runs", "JobID", "Dependencies"]
+        if self.enable_asics:
+            header = ["Panel", "Run type", "Runs", "Asics", "JobID", "Dependencies"]
+        else:
+            header = ["Panel", "Run type", "Runs", "JobID", "Dependencies"]
         sep = " "
 
         max_key_len, header_str, sorted_keys = self.prepare(header, sep)
@@ -132,20 +156,26 @@ class JobOverview(object):
         for panel in sorted_keys:
             for run_type in self.dep_overview[panel]:
                 for runs in self.dep_overview[panel][run_type]:
-                    d_o = self.dep_overview[panel][run_type][runs]
+                    for asics in self.dep_overview[panel][run_type][runs]:
+                        d_o = self.dep_overview[panel][run_type][runs][asics]
 
-                    col = []
-                    col.append(panel.ljust(max_key_len[header[0]]))
-                    col.append(run_type.ljust(max_key_len[header[1]]))
-                    col.append(runs.ljust(max_key_len[header[2]]))
-                    col.append(str(d_o["jobnum"]).ljust(max_key_len[header[3]]))
+                        col = []
+                        col.append(panel.ljust(max_key_len[header[0]]))
+                        col.append(run_type.ljust(max_key_len[header[1]]))
+                        col.append(runs.ljust(max_key_len[header[2]]))
 
-                    if d_o["deb_jobs"] == "":
-                        col.append("no dependencies")
-                    else:
-                        col.append(str(d_o["deb_jobs"]))
+                        if self.enable_asics:
+                            col.append(asics.ljust(max_key_len[header[3]]))
+                            col.append(str(d_o["jobnum"]).ljust(max_key_len[header[4]]))
+                        else:
+                            col.append(str(d_o["jobnum"]).ljust(max_key_len[header[3]]))
 
-                    print(sep.join(col))
+                        if d_o["deb_jobs"] == "":
+                            col.append("no dependencies")
+                        else:
+                            col.append(str(d_o["deb_jobs"]))
+
+                        print(sep.join(col))
 
     def get():
         """Get the content of the overview dictionary.

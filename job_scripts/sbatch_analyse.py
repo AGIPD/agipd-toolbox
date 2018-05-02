@@ -250,7 +250,7 @@ class SubmitJobs(object):
 
         self.rtl = self.run_conf.get_run_type_lists_split(self.run_type_list)
 
-        self.overview = JobOverview(self.rtl, self.panel_list)
+        self.overview = JobOverview(self.rtl, self.panel_list, self.asic_set)
 
     def insert_args_in_config(self, args):
         c_general = self.config['general']
@@ -374,6 +374,7 @@ class SubmitJobs(object):
             # collect information for later overview
             self.overview.fill(group_name="all_before",
                                runs=self.run_list,
+                               asics=None,
                                run_type=run_type,
                                jn=jn,
                                jobs=dep_jobs)
@@ -422,12 +423,13 @@ class SubmitJobs(object):
                         if jn is not None:
                             jobnums_type.append(jn)
 
-                    # collect information for later overview
-                    self.overview.fill(group_name=panel,
-                                       runs=overview_name,
-                                       run_type=run_type,
-                                       jn=jn,
-                                       jobs=dep_jobs)
+                        # collect information for later overview
+                        self.overview.fill(group_name=panel,
+                                           runs=overview_name,
+                                           asics=asic_set,
+                                           run_type=run_type,
+                                           jn=jn,
+                                           jobs=dep_jobs)
 
             jobnums_mod += jobnums_type
 
@@ -446,6 +448,7 @@ class SubmitJobs(object):
             # collect information for later overview
             self.overview.fill(group_name="all_after",
                                runs=self.run_list,
+                               asics=None,
                                run_type=run_type,
                                jn=jn,
                                jobs=dep_jobs)
@@ -642,26 +645,6 @@ class SubmitJobs(object):
 
         return jobnum
 
-
-def submit_job(cmd, jobname):
-    p = subprocess.Popen(cmd,
-                         stdin=subprocess.PIPE,
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE)
-    output, err = p.communicate()
-    rc = p.returncode
-
-    # remove newline and "'"
-#    jobnum = str(output.rstrip())[:-1]
-#    jobnum = jobnum.split("batch job ")[-1]
-
-    jobnum = output.rstrip().decode("unicode_escape")
-
-    if rc != 0:
-        print("Error submitting {}".format(jobname))
-        print("Error:", err)
-
-    return jobnum
 
 if __name__ == "__main__":
     obj = SubmitJobs()
