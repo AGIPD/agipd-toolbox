@@ -9,6 +9,7 @@ import subprocess
 import sys
 import time
 
+from job_overview import JobOverview
 import measurement_specifics
 import run_specifics
 
@@ -246,7 +247,9 @@ class SubmitJobs(object):
             run_name=self.run_name
         )
 
-        self.dep_overview = {}
+        self.rtl = self.run_conf.get_run_type_lists_split(self.run_type_list)
+
+        self.overview = JobOverview(self.rtl, self.panel_list)
 
     def insert_args_in_config(self, args):
         c_general = self.config['general']
@@ -346,19 +349,14 @@ class SubmitJobs(object):
             self.asic_lists += [asic_set[i:i + size + 1]
                                 for i in range(start, stop, size + 1)]
 
-
     def run(self):
 
-        rtl = self.run_conf.get_run_type_lists_split(self.run_type_list)
-
         print("run type lists:")
-        print(rtl)
-
-        self.init_overview(rtl)
+        print(self.rtl)
 
         # jobs concering all panels (before single panel jobs are done)
         jobnums_indp = []
-        for run_type in rtl.panel_dep_before:
+        for run_type in self.rtl.panel_dep_before:
 
             # as a placeholder because a panel has to be defined
             self.panel = self.panel_list[0]
@@ -373,7 +371,7 @@ class SubmitJobs(object):
                 jobnums_indp.append(jn)
 
             # collect information for later overview
-            self.fill_overview(group_name="all_before",
+            self.overview.fill(group_name="all_before",
                                runs=self.run_list,
                                run_type=run_type,
                                jn=jn,
@@ -386,7 +384,7 @@ class SubmitJobs(object):
             self.panel = panel
 
             jobnums_type = []
-            for run_type in rtl.per_panel:
+            for run_type in self.rtl.per_panel:
                 l_and_n = self.run_conf.get_list_and_name(
                     measurement=self.measurement,
                     run_list=self.run_list,
@@ -418,7 +416,7 @@ class SubmitJobs(object):
                         jobnums_type.append(jn)
 
                     # collect information for later overview
-                    self.fill_overview(group_name=panel,
+                    self.overview.fill(group_name=panel,
                                        runs=overview_name,
                                        run_type=run_type,
                                        jn=jn,
@@ -428,7 +426,7 @@ class SubmitJobs(object):
 
         # jobs concering all panels (after single panel jobs were done)
         jobnums_indp = jobnums_mod
-        for run_type in rtl.panel_dep_after:
+        for run_type in self.rtl.panel_dep_after:
             dep_jobs = ":".join(jobnums_indp)
 
             jn = self.create_job(run_type=run_type,
@@ -439,182 +437,14 @@ class SubmitJobs(object):
                 jobnums_indp.append(jn)
 
             # collect information for later overview
-            self.fill_overview(group_name="all_after",
+            self.overview.fill(group_name="all_after",
                                runs=self.run_list,
                                run_type=run_type,
                                jn=jn,
                                jobs=dep_jobs)
 
-        self.print_overview()
+        self.overview.print()
 #        self.generate_mail_body()
-
-    def init_overview(self, rtl):
-        # jobs concering all panels (before single panel jobs are done)
-        self.dep_overview["all_before"] = {}
-        for run_type in rtl.panel_dep_before:
-            self.dep_overview["all_before"][run_type] = {}
-
-        # jobs concering single panel
-        for panel in self.panel_list:
-            panel = str(panel)
-
-            self.dep_overview[panel] = {}
-
-            for run_type in rtl.per_panel:
-                self.dep_overview[panel][run_type] = {}
-
-        # jobs concering all panels (after single panel jobs were done)
-        self.dep_overview["all_after"] = {}
-        for run_type in rtl.panel_dep_after:
-            self.dep_overview["all_after"][run_type] = {}
-
-    def fill_overview(self, group_name, runs, run_type, jn, jobs):
-        group_name = str(group_name)
-
-        if type(runs) == list:
-            runs_string = "-".join(list(map(str, runs)))
-        else:
-            runs_string = str(runs)
-
-        ov = self.dep_overview[group_name][run_type]
-        ov[runs_string] = {}
-        ov[runs_string]["jobnum"] = jn
-        ov[runs_string]["deb_jobs"] = jobs
-
-    def print_overview(self):
-        # print overview of dependencies
-
-        header = ["Panel", "Run type", "Runs", "JobID", "Dependencies"]
-        sep = " "
-
-        max_key_len, header_str, sorted_keys = self.prepare_overview(header,
-                                                                     sep)
-
-        print("\nDependencies Overview")
-        print(header_str)
-
-        # print overview
-        #for panel in self.dep_overview:
-        for panel in sorted_keys:
-            for run_type in self.dep_overview[panel]:
-                for runs in self.dep_overview[panel][run_type]:
-                    d_o = self.dep_overview[panel][run_type][runs]
-
-                    row = []
-                    row.append(panel.ljust(max_key_len[header[0]]))
-                    row.append(run_type.ljust(max_key_len[header[1]]))
-                    row.append(runs.ljust(max_key_len[header[2]]))
-                    row.append(str(d_o["jobnum"]).ljust(max_key_len[header[3]]))
-
-                    if d_o["deb_jobs"] == "":
-                        row.append("no dependencies")
-                    else:
-                        row.append(str(d_o["deb_jobs"]))
-
-                    print(sep.join(row))
-
-    def prepare_overview(self, header, sep):
-
-        # determine how long the space for the keys should be
-        max_key_len = {}
-        for key in header:
-            max_key_len[key] = len(key)
-
-        for panel in self.dep_overview:
-            max_key_len["Panel"] = max(max_key_len["Panel"], len(panel))
-
-            for run_type in self.dep_overview[panel]:
-                max_key_len["Run type"] = max(max_key_len["Run type"],
-                                              len(run_type))
-
-                for runs in self.dep_overview[panel][run_type]:
-                    max_key_len["Runs"] = max(max_key_len["Runs"], len(runs))
-
-        # job ids are 6-digit numbers
-        max_key_len["JobID"] = max(max_key_len["JobID"], 6)
-
-        # fill up header with spaces according to max length of strings in
-        # column
-        new_header = []
-        for i, key in enumerate(header):
-            new_key = key.ljust(max_key_len[key])
-            new_header.append(new_key)
-
-        # sort the rows
-        key_list = [int(key) for key in self.dep_overview
-                    if not key.startswith("all")]
-        sorted_keys = sorted(key_list)
-        # to sort the list numerically the entries have to be ints
-        # but to access the dictionary they have to be converted back to string
-        sorted_keys = list(map(str, sorted_keys))
-        sorted_keys = ["all_before"] + sorted_keys + ["all_after"]
-
-        # generate header
-        header_str = sep.join(list(map(str, new_header)))
-        header_str += "\n"
-
-        # add separation between column description and rows
-        for key in header:
-            value = max_key_len[key]
-            header_str += "-" * value + sep
-
-        return max_key_len, header_str, sorted_keys
-
-
-    def generate_mail_body(self):
-        header = ["Panel", "Run type", "Runs", "JobID", "State"]
-        sep = " "
-
-        time.sleep(3)
-        # get status of jobs
-        status = {}
-        for panel in self.dep_overview:
-            for run_type in self.dep_overview[panel]:
-                for runs in self.dep_overview[panel][run_type]:
-                    d_o = self.dep_overview[panel][run_type][runs]
-
-                    if d_o["jobnum"] is not None:
-                        cmd = ["sacct", "--brief", "-p", "-j", d_o["jobnum"]]
-#                        os.system("squeue --user $USER")
-                        result = self.submit_job(cmd, jobname="sacct")
-                        result = result.split()
-
-                        # the line ends with a separator
-                        # -> remove last character
-#                        status_header = result[0][:-1].split("|")
-#                        print(status_header)
-                        for res in result[1:]:
-                            # the line ends with a separator
-                            status_result = res[:-1].split("|")
-#                            print("status_result", status_result)
-                            # sacct give the two results for every job
-                            # <jobid> and <jobid>.batch
-                            if status_result[0] == d_o["jobnum"]:
-                                # status results as the entries
-                                # 'JobID', 'State', 'ExitCode'
-                                status[d_o["jobnum"]] = status_result[1]
-
-        max_key_len, header_str, sorted_keys = self.prepare_overview(header,
-                                                                     sep)
-
-        print("\nMail Body")
-        print(header_str)
-
-        # print overview
-        #for panel in self.dep_overview:
-        for panel in sorted_keys:
-            for run_type in self.dep_overview[panel]:
-                for runs in self.dep_overview[panel][run_type]:
-                    d_o = self.dep_overview[panel][run_type][runs]
-
-                    row = []
-                    row.append(panel.ljust(max_key_len[header[0]]))
-                    row.append(run_type.ljust(max_key_len[header[1]]))
-                    row.append(runs.ljust(max_key_len[header[2]]))
-                    row.append(str(d_o["jobnum"]).ljust(max_key_len[header[3]]))
-                    row.append(status[d_o["jobnum"]])
-
-                    print(sep.join(row))
 
     def create_job(self, run_type, runs, run_name, dep_jobs):
         print("runs", runs, type(runs))
@@ -798,7 +628,7 @@ class SubmitJobs(object):
                 cmd = ["sbatch"] + self.sbatch_params + cmd
 #                print("submitting job with command:", cmd)
 
-                jobnum = self.submit_job(cmd, "{} job".format(run_type))
+                jobnum = utils.submit_job(cmd, "{} job".format(run_type))
             else:
                 print("cmd {}".format(cmd))
                 try:
@@ -808,26 +638,26 @@ class SubmitJobs(object):
 
             return jobnum
 
-    def submit_job(self, cmd, jobname):
-        p = subprocess.Popen(cmd,
-                             stdin=subprocess.PIPE,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
-        output, err = p.communicate()
-        rc = p.returncode
 
-        # remove newline and "'"
-#        jobnum = str(output.rstrip())[:-1]
-#        jobnum = jobnum.split("batch job ")[-1]
+def submit_job(cmd, jobname):
+    p = subprocess.Popen(cmd,
+                         stdin=subprocess.PIPE,
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
+    output, err = p.communicate()
+    rc = p.returncode
 
-        jobnum = output.rstrip().decode("unicode_escape")
+    # remove newline and "'"
+#    jobnum = str(output.rstrip())[:-1]
+#    jobnum = jobnum.split("batch job ")[-1]
 
-        if rc != 0:
-            print("Error submitting {}".format(jobname))
-            print("Error:", err)
+    jobnum = output.rstrip().decode("unicode_escape")
 
-        return jobnum
+    if rc != 0:
+        print("Error submitting {}".format(jobname))
+        print("Error:", err)
 
+    return jobnum
 
 if __name__ == "__main__":
     obj = SubmitJobs()

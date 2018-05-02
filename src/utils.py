@@ -106,6 +106,35 @@ def load_config(config_file, config={}):
 
     return config
 
+
+def submit_job(cmd, jobname):
+    """Executes commands on the command line.
+
+    cmd (str): The command to execute.
+    jobname (str): The job name (used in the error message).
+
+    """
+
+    p = subprocess.Popen(cmd,
+                         stdin=subprocess.PIPE,
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
+    output, err = p.communicate()
+    rc = p.returncode
+
+    # remove newline and "'"
+#    jobnum = str(output.rstrip())[:-1]
+#    jobnum = jobnum.split("batch job ")[-1]
+
+    jobnum = output.rstrip().decode("unicode_escape")
+
+    if rc != 0:
+        print("Error submitting {}".format(jobname))
+        print("Error:", err)
+
+    return jobnum
+
+
 def get_channel_order():
     """Default channel order on system.
 
