@@ -227,7 +227,7 @@ class GeneratePathsXfel(object):
             fname = prefix + "_agipd.h5"
 
         if not as_template:
-            prefix = prefix.format(self._channel, self._asic)
+            fname = fname.format(self._channel, self._asic)
 
         return fdir, fname
 

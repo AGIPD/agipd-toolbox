@@ -192,6 +192,7 @@ class SubmitJobs(object):
         self.max_part = rconf.get_max_part(self.config)
 
         self.panel_list = self.module_list + self.channel_list
+        self.asic_lists = None
 
         self.n_jobs = {}
         self.n_processes = {}
@@ -408,12 +409,18 @@ class SubmitJobs(object):
                         rname = None
                         overview_name = runs
 
-                    jn = self.create_job(run_type=run_type,
-                                         runs=runs,
-                                         run_name=rname,
-                                         dep_jobs=dep_jobs)
-                    if jn is not None:
-                        jobnums_type.append(jn)
+                        self.generate_asic_lists(asic_set=self.asic_set,
+                                                 n_jobs=self.n_jobs[run_type])
+                        print("run asic_lists", self.asic_lists)
+
+                    for asic_set in self.asic_lists:
+                        jn = self.create_job(run_type=run_type,
+                                             runs=runs,
+                                             run_name=rname,
+                                             dep_jobs=dep_jobs,
+                                             asic_set=asic_set)
+                        if jn is not None:
+                            jobnums_type.append(jn)
 
                     # collect information for later overview
                     self.overview.fill(group_name=panel,
@@ -446,10 +453,8 @@ class SubmitJobs(object):
         self.overview.print()
 #        self.generate_mail_body()
 
-    def create_job(self, run_type, runs, run_name, dep_jobs):
+    def create_job(self, run_type, runs, run_name, dep_jobs, asic_set=None):
         print("runs", runs, type(runs))
-        self.asic_lists = None
-        self.generate_asic_lists(self.asic_set, self.n_jobs[run_type])
 
         # work_dir is the directory where the sbatch log files are stored
         if self.use_xfel:
@@ -490,7 +495,8 @@ class SubmitJobs(object):
             jobnum = self.start_job(run_type=run_type,
                                     runs=runs,
                                     meas_spec=meas_spec,
-                                    dep_jobs=dep_jobs)
+                                    dep_jobs=dep_jobs,
+                                    asic_set=asic_set)
         return jobnum
 
     def set_script_parameters(self, run_type, runs, run_name, work_dir):
@@ -574,69 +580,67 @@ class SubmitJobs(object):
                    "Quitting.")
             raise WrongConfiguration(msg)
 
-    def start_job(self, run_type, runs, meas_spec, dep_jobs):
+    def start_job(self, run_type, runs, meas_spec, dep_jobs, asic_set):
         global BATCH_JOB_DIR
 
-        print("run asic_lists", self.asic_lists)
-        for asic_set in self.asic_lists:
-            if self.use_xfel:
-                if type(runs) == list:
-                    runs = "-".join(list(map(str, runs)))
+        if self.use_xfel:
+            if type(runs) == list:
+                runs = "-".join(list(map(str, runs)))
 
-                job_name = ("{}_{}_{}_ch{}"
-                            .format(run_type,
-                                    self.measurement,
-                                    runs,
-                                    self.panel))
+            job_name = ("{}_{}_{}_ch{}"
+                        .format(run_type,
+                                self.measurement,
+                                runs,
+                                self.panel))
 
-            else:
-                short_temperature = self.temperature[len("temperature_"):]
+        else:
+            short_temperature = self.temperature[len("temperature_"):]
 
-                job_name = ("{}_{}_{}_{}_{}"
-                            .format(run_type,
-                                    self.measurement,
-                                    self.panel,
-                                    short_temperature,
-                                    meas_spec))
+            job_name = ("{}_{}_{}_{}_{}"
+                        .format(run_type,
+                                self.measurement,
+                                self.panel,
+                                short_temperature,
+                                meas_spec))
 
-            if asic_set is not None:
-                print("Starting job for asics {}\n".format(asic_set))
-                job_name = job_name + "_{}".format(asic_set)
+        if asic_set is not None:
+            print("Starting job for asics {}\n".format(asic_set))
+            job_name = job_name + "_{}".format(asic_set)
 
-            log_name = "{}_%j".format(job_name)
+        log_name = "{}_%j".format(job_name)
 
-            self.sbatch_params += [
-                "--job-name", job_name,
-                "--output", log_name + ".out",
-                "--error", log_name + ".err"
-            ]
+        self.sbatch_params += [
+            "--job-name", job_name,
+            "--output", log_name + ".out",
+            "--error", log_name + ".err"
+        ]
 
-            self.script_params["asic_list"] = asic_set
-            script_params = json.dumps(self.script_params)
+        self.script_params["asic_list"] = asic_set
+        script_params = json.dumps(self.script_params)
 
-            shell_script = os.path.join(BATCH_JOB_DIR, "start_analyse.sh")
-            cmd = [shell_script, BATCH_JOB_DIR, script_params]
+        shell_script = os.path.join(BATCH_JOB_DIR, "start_analyse.sh")
+        cmd = [shell_script, BATCH_JOB_DIR, script_params]
 
-            jobnum = None
-            if not self.no_slurm:
-                if dep_jobs != "":
-                    self.sbatch_params += [
-                        "--depend=afterok:{}".format(dep_jobs),
-                        "--kill-on-invalid-dep=yes"
-                    ]
+        jobnum = None
+        if not self.no_slurm:
+            if dep_jobs != "":
+                self.sbatch_params += [
+                    "--depend=afterok:{}".format(dep_jobs),
+                    "--kill-on-invalid-dep=yes"
+                ]
 
-                cmd = ["sbatch"] + self.sbatch_params + cmd
-#                print("submitting job with command:", cmd)
+            cmd = ["sbatch"] + self.sbatch_params + cmd
+#            print("submitting job with command:", cmd)
 
-                jobnum = utils.submit_job(cmd, "{} job".format(run_type))
-            else:
-                print("cmd {}".format(cmd))
-                try:
-                    subprocess.call(cmd)
-                except:
-                    raise
+            jobnum = utils.submit_job(cmd, "{} job".format(run_type))
+        else:
+            print("cmd {}".format(cmd))
+            try:
+                subprocess.call(cmd)
+            except:
+                raise
 
-            return jobnum
+        return jobnum
 
 
 def submit_job(cmd, jobname):
