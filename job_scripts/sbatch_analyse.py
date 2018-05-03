@@ -401,6 +401,11 @@ class SubmitJobs(object):
 
                 print("run_type", run_type)
                 print("jobnums_type", jobnums_type)
+
+                self.generate_asic_lists(asic_set=self.asic_set,
+                                         n_jobs=self.n_jobs[run_type])
+                print("run asic_lists", self.asic_lists)
+
                 dep_jobs = ":".join(jobnums_panel + jobnums_type)
                 for i, runs in enumerate(run_list):
                     if self.run_name is not None:
@@ -409,10 +414,6 @@ class SubmitJobs(object):
                     else:
                         rname = None
                         overview_name = runs
-
-                        self.generate_asic_lists(asic_set=self.asic_set,
-                                                 n_jobs=self.n_jobs[run_type])
-                        print("run asic_lists", self.asic_lists)
 
                     for asic_set in self.asic_lists:
                         jn = self.create_job(run_type=run_type,
@@ -438,10 +439,18 @@ class SubmitJobs(object):
         for run_type in self.rtl.panel_dep_after:
             dep_jobs = ":".join(jobnums_indp)
 
+
+            self.generate_asic_lists(asic_set=self.asic_set,
+                                     n_jobs=self.n_jobs[run_type])
+            print("run asic_lists", self.asic_lists)
+
             jn = self.create_job(run_type=run_type,
                                  runs=self.run_list,
                                  run_name=None,
-                                 dep_jobs=dep_jobs)
+                                 dep_jobs=dep_jobs,
+                                 # have to notify join that dat was split
+                                 # by asic
+                                 asic_set=self.asic_lists)
             if jn is not None:
                 jobnums_indp.append(jn)
 
