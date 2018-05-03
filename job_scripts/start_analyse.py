@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import argparse
+import copy
 import json
 import multiprocessing
 import os
@@ -49,7 +50,7 @@ class StartAnalyse(object):
         self.run()
 
     def run(self):
-        args = vars(self)
+        args = copy.deepcopy(vars(self))
 
         jobs = []
         if self.run_type == "merge":
@@ -69,6 +70,8 @@ class StartAnalyse(object):
             for job in jobs:
                 job.join()
         else:
+            args_ch = copy.deepcopy(args)
+
             for m in self.module:
                 for asic in self.asic_list:
                     print("Starting script for module {} and asic {}\n"
@@ -87,12 +90,11 @@ class StartAnalyse(object):
                     print("Starting script for channel {} and asic {}\n"
                           .format(ch, asic))
 
-                    args["module"] = None
-                    args["channel"] = ch
-                    args["asic"] = asic
+                    args_ch["module"] = None
+                    args_ch["channel"] = ch
+                    args_ch["asic"] = asic
 
-                    print(args)
-                    p = multiprocessing.Process(target=Analyse, args=(args,))
+                    p = multiprocessing.Process(target=Analyse, args=(args_ch,))
                     jobs.append(p)
                     p.start()
 

@@ -24,15 +24,20 @@ class RunType(object):
 
     def get_channel_list(self, l):
         if self._use_xfel:
-            return l
+            if type(l) == list:
+                return l
+            else:
+                return [l]
         else:
             return []
 
     def get_module_list(self, l):
         if self._use_xfel:
             return []
-        else:
+        elif type(l) == list:
             return l
+        else:
+            return [l]
 
     def get_temperature(self, config):
         if self._use_xfel:
@@ -103,13 +108,18 @@ class RunType(object):
         postfix = raw_splitted[-1]
         postfix = postfix.format(part=0)
 
+        if not found_files:
+            print("Searched for file matching:", raw)
+            raise Exception("No raw files found.")
+
         run_numbers_dict = {}
         for f in found_files:
+
             # also remove underscore
             middle_part = f[len(raw_splitted[0]) + 2:]
 
             # only take the runs for which run_names are defined
-            if middle_part.startswith(tuple(run_name)):
+            if run_name is None or middle_part.startswith(tuple(run_name)):
                 # cut off the part after the run_number
                 rnumber = f[:-len(postfix)]
                 print("rnumber", rnumber)
@@ -123,6 +133,7 @@ class RunType(object):
                 rnumber = "_".join(rnumber)
                 print("rnumber", rnumber)
 
+                # which run name the run number matches
                 rname = [name for name in run_name
                          if middle_part.startswith(name)][0]
                 print("rname", rname)
@@ -134,11 +145,16 @@ class RunType(object):
 
         print("run_numbers_dir", run_numbers_dict)
 
+        if not run_numbers_dict:
+            raise Exception("No file matching run_names found.")
+
         # order the run_numbers the same way as the run names
         # the order in the run names is important to determine the different
         # gain stages
         run_numbers = []
         for name in run_name:
+            if name not in run_numbers_dict:
+                raise Exception("run_name {} not found.".format(name))
             run_numbers.append(run_numbers_dict[name])
         print("run_numbers", run_numbers)
 

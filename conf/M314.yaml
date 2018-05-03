@@ -12,7 +12,7 @@ general:
 
     safety_factor: 950
 
-    asic_set: None
+    asic_set: null
 
 drscs:
     current: [itestc150]
@@ -20,7 +20,7 @@ drscs:
 
 dark:
     tint: tint150ns
-    run_name: None
+    run_name: null
     #run_name: [hg, mg, lg]
 
 xray:

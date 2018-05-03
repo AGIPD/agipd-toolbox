@@ -468,24 +468,26 @@ class SubmitJobs(object):
     def create_job(self, run_type, runs, run_name, dep_jobs, asic_set=None):
         print("runs", runs, type(runs))
 
+        # getting date and time
+        now = datetime.datetime.now()
+        dt = now.strftime("%Y-%m-%d_%H:%M")
+
         # work_dir is the directory where the sbatch log files are stored
         if self.use_xfel:
             subdir = "-".join(list(map(str, self.run_list)))
-
-            # getting date and time
-            now = datetime.datetime.now()
-            dt = now.strftime("%Y-%m-%d_%H:%M")
-
             subdir += "_" + dt
 
             work_dir = os.path.join(self.output_dir[run_type],
                                     "sbatch_out",
                                     subdir)
         else:
+            subdir = self.measurement + "_" + dt
+
             work_dir = os.path.join(self.output_dir[run_type],
                                     self.panel,
                                     self.temperature,
-                                    "sbatch_out")
+                                    "sbatch_out",
+                                    subdir)
 
         if not os.path.exists(work_dir) and not self.no_slurm:
             os.makedirs(work_dir)
@@ -501,11 +503,12 @@ class SubmitJobs(object):
 
         for meas_spec in self.meas_spec:
             if meas_spec is not None:
-                self.script_params += ["--meas_spec", meas_spec]
+                self.script_params["meas_spec"] = meas_spec
 
             print("start_job ({}) for {}".format(run_type, meas_spec))
             jobnum = self.start_job(run_type=run_type,
                                     runs=runs,
+                                    run_name=run_name,
                                     meas_spec=meas_spec,
                                     dep_jobs=dep_jobs,
                                     asic_set=asic_set)
@@ -592,7 +595,13 @@ class SubmitJobs(object):
                    "Quitting.")
             raise WrongConfiguration(msg)
 
-    def start_job(self, run_type, runs, meas_spec, dep_jobs, asic_set):
+    def start_job(self,
+                  run_type,
+                  runs,
+                  run_name,
+                  meas_spec,
+                  dep_jobs,
+                  asic_set):
         global BATCH_JOB_DIR
 
         if self.use_xfel:
@@ -608,15 +617,15 @@ class SubmitJobs(object):
         else:
             short_temperature = self.temperature[len("temperature_"):]
 
-            job_name = ("{}_{}_{}_{}_{}"
+            job_name = ("{}_{}_{}_{}"
                         .format(run_type,
                                 self.measurement,
                                 self.panel,
-                                short_temperature,
-                                meas_spec))
+                                run_name))
 
         if asic_set is not None:
             print("Starting job for asics {}\n".format(asic_set))
+            #asic_str = "asics" + "-".join(list(map(str,asic_set)))
             job_name = job_name + "_{}".format(asic_set)
 
         log_name = "{}_%j".format(job_name)

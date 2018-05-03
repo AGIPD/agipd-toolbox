@@ -331,10 +331,14 @@ class GeneratePathsCfel(object):
 
         if self._run_name is None:
             fname = prefix + "{run_number:05}_part{part:05}.nxs"
-        elif len(self._run_name) == 1:
+        elif type(self._run_name) == str:
             fname = (prefix
-                     + self._run_name[0]
+                     + self._run_name
                      + "_{run_number:05}_part{part:05}.nxs")
+#        elif len(self._run_name) == 1:
+#            fname = (prefix
+#                     + self._run_name[0]
+#                     + "_{run_number:05}_part{part:05}.nxs")
         else:
             raise Exception("Run name is not unique.")
 
@@ -383,7 +387,8 @@ class GeneratePathsCfel(object):
 
         else:
             if len(self._runs) == 1:
-                name = "-".join(self._run_name)
+                #name = "-".join(self._run_name)
+                name = self._run_name
             else:
                 name = "{run_number}"
 

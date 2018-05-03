@@ -118,7 +118,7 @@ class JobOverview(object):
             new_header.append(new_key)
 
         # sort the rows
-        key_list = [int(key) for key in self.dep_overview
+        key_list = [key for key in self.dep_overview
                     if not key.startswith("all")]
         sorted_keys = sorted(key_list)
         # to sort the list numerically the entries have to be ints

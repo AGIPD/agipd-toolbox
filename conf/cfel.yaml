@@ -14,16 +14,16 @@ general:
     #asic_set: [1]
     #asic_set: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
     #TODO fix this
-    asic_set: None
+    asic_set: null
 
 drscs:
     current: [itestc20]
-    #current: itestc20, itestc150
-    #current: itestc20, itestc80, itestc150
+    #current: [itestc20, itestc150]
+    #current: [itestc20, itestc80, itestc150]
 
 dark:
     tint: tint150ns
-    run_name: high, med, low
+    run_name: [hg, mg, lg]
 
 xray:
     element: Cu
