@@ -3,7 +3,7 @@ import numpy as np
 from process_base import ProcessBase
 
 
-class ProcessPcdrs(ProcessBase):
+class ProcessDrspc(ProcessBase):
     def __init__(self, **kwargs):
 
         self.fit_interval = None

@@ -91,16 +91,7 @@ if __name__ == "__main__":
     output_format = args.output_format
 
 
-#    base_dir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm/pcdrs"
-#    channel = 0
-#
-#    input_filename = "pcdrs_AGIPD{:02d}_agipd.h5"
     input_fname = os.path.join(base_dir, input_filename.format(channel))
-#
-#    #output_format = "agipd"
-#    output_format = "xfel"
-#
-#    output_filename = "{}_AGIPD{:02d}_{}.h5".format("pcdrs")
     output_fname = os.path.join(base_dir,
                                 output_filename.format(channel, output_format))
 

@@ -149,8 +149,8 @@ class Analyse(object):
             obj.run()
 
     def run_gather(self):
-        if self.measurement == "pcdrs":
-            from gather.gather_pcdrs import GatherPcdrs as Gather
+        if self.measurement == "drspc":
+            from gather.gather_drspc import GatherDrspc as Gather
         else:
             from gather.gather_base import GatherBase as Gather
 
@@ -211,14 +211,14 @@ class Analyse(object):
             else:
                 run_list = self.run_name
 
-        elif self.measurement == "pcdrs":
-            from process_pcdrs import ProcessPcdrs as Process
+        elif self.measurement == "drspc":
+            from process_drspc import ProcessDrspc as Process
 
             # adjust list of runs
             run_list = ["r" + "-r".join(str(r).zfill(4) for r in self.runs)]
 
         elif self.measurement == "drscs":
-            from process_pcdrs import AgipdProcessDrscs as Process
+            from process_drspc import ProcessDrscs as Process
 
             if not self.use_xfel_layout:
                 run_list = self.runs

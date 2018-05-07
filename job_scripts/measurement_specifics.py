@@ -117,10 +117,10 @@ class Dark(Measurement):
             return self.meas_spec
 
 
-class Pcdrs(Measurement):
+class Drspc(Measurement):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.measurement = "pcdrs"
+        self.measurement = "drspc"
 
     def get_meas_spec(self, config):
         """Get the measurement depending specific tag.

@@ -13,10 +13,10 @@ def get_arguments():
                         help="Base directory to write results to")
     parser.add_argument("--type",
                         type=str,
-                        choices=["dark", "pcdrs", "drscs"],
+                        choices=["dark", "drspc", "drscs"],
                         help="Which type to run:\n"
                              "dark: generating the dark constants\n"
-                             "pcdrs: generating the pulse capacitor constants")
+                             "drspc: generating the pulse capacitor constants")
     parser.add_argument("--run_list",
                         type=int,
                         nargs="+",
@@ -24,7 +24,7 @@ def get_arguments():
                              "Requirements:\n"
                              "dark: 3 runs for the gain stages "
                              "high, medium, low (in this order)\n"
-                             "pcdrs: 8 runs")
+                             "drspc: 8 runs")
 
     parser.add_argument("--config_file",
                         type=str,

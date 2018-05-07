@@ -37,10 +37,10 @@ def get_arguments():
                         help="Base directory to write results to")
     parser.add_argument("--type",
                         type=str,
-                        choices=["dark", "pcdrs", "drscs"],
+                        choices=["dark", "drspc", "drscs"],
                         help="Which type to run:\n"
                              "dark: generating the dark constants\n"
-                             "pcdrs: generating the pulse capacitor constants")
+                             "drspc: generating the pulse capacitor constants")
     parser.add_argument("--run_list",
                         type=int,
                         nargs="+",
@@ -48,7 +48,7 @@ def get_arguments():
                              "Requirements:\n"
                              "dark: 3 runs for the gain stages "
                              "high, medium, low (in this order)\n"
-                             "pcdrs: 8 runs")
+                             "drspc: 8 runs")
 
     parser.add_argument("--config_file",
                         type=str,
@@ -163,8 +163,8 @@ class SubmitJobs(object):
 
         if self.measurement == "dark":
             self.meas_conf = measurement_specifics.Dark(self.use_xfel)
-        elif self.measurement == "pcdrs":
-            self.meas_conf = measurement_specifics.Pcdrs(self.use_xfel)
+        elif self.measurement == "drspc":
+            self.meas_conf = measurement_specifics.Drspc(self.use_xfel)
         elif self.measurement == "drscs":
             self.meas_conf = measurement_specifics.Drscs(self.use_xfel)
         elif self.measurement == "xray":
@@ -589,7 +589,7 @@ class SubmitJobs(object):
                    "constants. Quitting.")
             raise WrongConfiguration(msg)
 
-        if (conf["measurement"] == "pcdrs"
+        if (conf["measurement"] == "drspc"
                 and len(conf["runs"]) != 8):
             msg = ("Pulse capacitor requires 8 runs to calculate constants. "
                    "Quitting.")

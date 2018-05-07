@@ -128,7 +128,7 @@ class GeneratePathsXfel(object):
             string.
         """
 
-        if self._measurement == "pcdrs" or len(self._runs) == 1:
+        if self._measurement == "drspc" or len(self._runs) == 1:
             run_subdir = "r" + "-r".join(str(r).zfill(4)
                                          for r in self._runs)
 
@@ -165,7 +165,7 @@ class GeneratePathsXfel(object):
 
         # TODO: concider additing this into out_base_dir (joined) and
         #       create subdirs for gathered files
-        if self._measurement == "pcdrs" or len(self._runs) == 1:
+        if self._measurement == "drspc" or len(self._runs) == 1:
             run_subdir = "r" + "-r".join(str(r).zfill(4)
                                          for r in self._runs)
 

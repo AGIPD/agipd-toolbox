@@ -2,7 +2,7 @@ import numpy as np
 from gather_base import GatherBase
 
 
-class GatherPcdrs(GatherBase):
+class GatherDrspc(GatherBase):
     def __init__(self, **kwargs):
 
         self.n_runs = 8

@@ -20,18 +20,18 @@ if GATHER_PATH not in sys.path:
 
 import utils  # noqa
 
-from gather_pcdrs import GatherPcdrs  # noqa E402
+from gather_drspc import GatherDrspc  # noqa E402
 from gather_drscs import GatherDrscs  # noqa E402
 
 
 #
-# PCDRS
+# DRSPC
 #
-class GatherPcdrsTests(unittest.TestCase):
+class GatherDrspcTests(unittest.TestCase):
     # per test
     def setUp(self):
 
-        class Gather(GatherPcdrs):
+        class Gather(GatherDrspc):
             def __init__(self):
                 self.n_runs = 8
 
@@ -303,7 +303,7 @@ if __name__ == "__main__":
     # Run only the tests in the specified classes
 
     test_classes_to_run = [
-        GatherPcdrsTests,
+        GatherDrspcTests,
         GatherDrscsTests
     ]
 

@@ -19,7 +19,7 @@ if PROCESS_PATH not in sys.path:
 import utils  # noqa E402
 
 from process_dark import ProcessDark  # noqa E402
-from process_pcdrs import ProcessPcdrs  # noqa E402
+from process_drspc import ProcessDrspc  # noqa E402
 
 
 def call_xfel_mode(measurement,
@@ -31,8 +31,8 @@ def call_xfel_mode(measurement,
 
     if measurement == "dark":
         Process = ProcessDark
-    elif measurement == "pcdrs":
-        Process = ProcessPcdrs
+    elif measurement == "drspc":
+        Process = ProcessDrspc
 
     in_file_name = ("R{run_number:04d}-" +
                     "AGIPD{:02d}-gathered.h5".format(channel))
@@ -75,8 +75,8 @@ def call_cfel_mode(measurement,
 
     if measurement == "dark":
         Process = ProcessDark
-    elif measurement == "pcdrs":
-        Process = ProcessPcdrs
+    elif measurement == "drspc":
+        Process = ProcessDrspc
 
     in_file_name = ("{}_{}_".format(module, measurement) +
                     "{run_number}_gathered.h5")
@@ -153,11 +153,11 @@ def test_dark(use_xfel_format):
                        run_names=run_names)
 
 
-def test_pcdrs():
+def test_drspc():
     in_base_dir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm"
 #    out_base_dir = in_base_dir
     run_list = ["r0488-r0489-r0490-r0491-r0492-r0493-r0494-r0495"]
-    measurement = "pcdrs"
+    measurement = "drspc"
 
     use_xfel_format = False
 #    use_xfel_format = True
@@ -176,4 +176,4 @@ def test_pcdrs():
 if __name__ == "__main__":
     test_dark(use_xfel_format=False)
 #    test_dark(use_xfel_format=True)
-#    test_pcdrs()
+#    test_drspc()

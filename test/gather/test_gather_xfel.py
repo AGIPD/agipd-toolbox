@@ -19,7 +19,7 @@ if GATHER_PATH not in sys.path:
     sys.path.insert(0, GATHER_PATH)
 
 from gather_base import GatherBase  # noqa E402
-from gather_pcdrs import GatherPcdrs  # noqa E402
+from gather_drspc import GatherDrspc  # noqa E402
 
 
 def call_xfel_mode(measurement,
@@ -34,8 +34,8 @@ def call_xfel_mode(measurement,
 
         if measurement == "dark":
             Gather = GatherBase
-        elif measurement == "pcdrs":
-            Gather = GatherPcdrs
+        elif measurement == "drspc":
+            Gather = GatherDrspc
 
         in_file_name = ("RAW-R{run_number:04}-" +
                         "AGIPD{:02}".format(channel) +
@@ -146,11 +146,11 @@ class GatherBaseXfelTests(unittest.TestCase):
 #        self.gather_obj.run()
 
 
-class GatherPcdrsXfelTests(unittest.TestCase):
+class GatherDrspcXfelTests(unittest.TestCase):
 
     # per test
     def setUp(self):
-        measurement = "pcdrs"
+        measurement = "drspc"
 
         base_dir = "/gpfs/exfel/exp/SPB/201730/p900009"
 #        runs = [488]
@@ -213,7 +213,7 @@ if __name__ == "__main__":
 
     test_classes_to_run = [
         GatherBaseXfelTests,
-        GatherPcdrsXfelTests
+        GatherDrspcXfelTests
     ]
 
     loader = unittest.TestLoader()

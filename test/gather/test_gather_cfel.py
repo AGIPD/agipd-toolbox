@@ -21,7 +21,7 @@ if GATHER_PATH not in sys.path:
 import utils  # noqa E402
 
 from gather_base import GatherBase  # noqa E402
-from gather_pcdrs import GatherPcdrs  # noqa E402
+from gather_drspc import GatherDrspc  # noqa E402
 
 
 def call_cfel_mode(measurement,
@@ -37,8 +37,8 @@ def call_cfel_mode(measurement,
 
         if measurement == "dark":
             Gather = GatherBase
-        elif measurement == "pcdrs":
-            Gather = GatherPcdrs
+        elif measurement == "drspc":
+            Gather = GatherDrspc
 
         in_file_name = ("{}*_{}_{}_"
                         .format(module, measurement, meas_spec)
