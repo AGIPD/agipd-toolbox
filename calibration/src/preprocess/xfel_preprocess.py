@@ -105,7 +105,11 @@ class Preprocess(object):
         with h5py.File(fname, "r") as f:
             in_data = f[read_in_path][()].astype(np.int)
 
-        n_memcells = max(in_data)
+        try:
+            n_memcells = max(in_data)
+        except:
+            print("in_data", in_data)
+            raise
 
         if self._use_interleaved:
             # _n_memcells has to be an odd number because every memory cell
