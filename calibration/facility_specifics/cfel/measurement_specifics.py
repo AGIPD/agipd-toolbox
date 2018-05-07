@@ -1,32 +1,12 @@
-class XfelModification(object):
-    def __init__(self, use_xfel):
-        self._use_xfel = use_xfel
+import sys
+from __init__ import FACILITY_DIR
 
-    def conv_run_type_list(self, run_type_list):
-        if self._use_xfel:
-            run_type_list = ["preprocess"] + run_type_list + ["join"]
-
-        return run_type_list
-
-
-class NoModification(object):
-    def __init__(self, use_xfel):
-        pass
-
-    def conv_run_type_list(self, run_type_list):
-        return run_type_list
+if FACILITY_DIR not in sys.path:
+    sys.path.insert(0, FACILITY_DIR)
 
 
 class Measurement(object):
-    def __init__(self, use_xfel):
-
-        self._use_xfel = use_xfel
-
-        if self._use_xfel:
-            self._mod = XfelModification(self._use_xfel)
-        else:
-            self._mod = NoModification(self._use_xfel)
-
+    def __init__(self):
         self.meas_spec = None
 
     def get_safety_factor(self, config):
@@ -60,7 +40,6 @@ class Measurement(object):
         """
 
         run_type_list = ["gather", "process"]
-        run_type_list = self._mod.conv_run_type_list(run_type_list)
 
         return run_type_list
 
@@ -108,13 +87,10 @@ class Dark(Measurement):
         Return:
             A string read in the measurement specific entry in the config.
         """
-        if self._use_xfel:
-            return super().get_meas_spec(config)
-        else:
-            tint = config[self.measurement]["tint"]
-            self.meas_spec = [tint]
+        tint = config[self.measurement]["tint"]
+        self.meas_spec = [tint]
 
-            return self.meas_spec
+        return self.meas_spec
 
 
 class Drspc(Measurement):
@@ -132,13 +108,10 @@ class Drspc(Measurement):
             A string read in the measurement specific entry in the config.
         """
 
-        if self._use_xfel:
-            return super().get_meas_spec(config)
-        else:
-            tint = self.config[self.measurement]["tint"]
-            self.meas_spec = [tint]
+        tint = self.config[self.measurement]["tint"]
+        self.meas_spec = [tint]
 
-            return self.meas_spec
+        return self.meas_spec
 
 
 class Drscs(Measurement):
@@ -147,10 +120,7 @@ class Drscs(Measurement):
         self.measurement = "drscs"
 
     def get_safety_factor(self, config):
-        if self._use_xfel:
-            return super().get_safety_factor(config)
-        else:
-            return config[self.measurement]["safety_factor"]
+        return config[self.measurement]["safety_factor"]
 
     def get_meas_spec(self, config):
         """Get the measurement depending specific tag.
@@ -162,16 +132,13 @@ class Drscs(Measurement):
             A string read in the measurement specific entry in the config.
         """
 
-        if self._use_xfel:
-            return super().get_meas_spec(config)
-        else:
-            c_current = config[self.measurement]["current"]
+        c_current = config[self.measurement]["current"]
 
-            # comma seperated string into into list
-            current_list = [c.split()[0] for c in c_current.split(",")]
-            self.measurement = current_list
+        # comma seperated string into into list
+        current_list = [c.split()[0] for c in c_current.split(",")]
+        self.measurement = current_list
 
-            return self.meas_spec
+        return self.meas_spec
 
     def get_run_type_list(self):
         """ Get the list of steps to be taken to get the constants.
@@ -181,7 +148,6 @@ class Drscs(Measurement):
         """
 
         run_type_list = ["gather", "process", "merge"]
-        run_type_list = self._mod.conv_run_type_list(run_type_list)
 
         return run_type_list
 
@@ -231,13 +197,10 @@ class Xray(Measurement):
             A string read in the measurement specific entry in the config.
         """
 
-        if self._use_xfel:
-            return super().get_meas_spec(config)
-        else:
-            element = config[self.measurement]["element"]
-            self.meas_spec = [element]
+        element = config[self.measurement]["element"]
+        self.meas_spec = [element]
 
-            return self.meas_spec
+        return self.meas_spec
 
     def get_run_type_list(self):
         """ Get the list of steps to be taken to get the constants.
@@ -247,6 +210,5 @@ class Xray(Measurement):
         """
 
         run_type_list = ["gather", "process"]
-        run_type_list = self._mod.conv_run_type_list(run_type_list)
 
         return run_type_list

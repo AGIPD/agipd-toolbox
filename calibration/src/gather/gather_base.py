@@ -14,7 +14,7 @@ except:
 CALIBRATION_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
 SRC_DIR = os.path.join(CALIBRATION_DIR, "src")
 GATHER_DIR = os.path.join(SRC_DIR, "gather")
-LAYOUT_DIR = os.path.join(GATHER_DIR, "layouts")
+FACILITY_DIR = os.path.join(GATHER_DIR, "facility_specifics")
 
 BASE_DIR = os.path.dirname(CALIBRATION_DIR)
 SHARED_DIR = os.path.join(BASE_DIR, "shared")
@@ -30,9 +30,6 @@ if SHARED_DIR not in sys.path:
 
 from _version import __version__
 
-if LAYOUT_DIR not in sys.path:
-    sys.path.insert(0, LAYOUT_DIR)
-
 
 class GatherBase(object):
     def __init__(self,
@@ -45,7 +42,9 @@ class GatherBase(object):
                  max_part=False,
                  asic=None,
                  layout="xfel_layout",
+                 facility="xfel",
                  backing_store=True):
+        global FACILITY_DIR
 
         self._in_fname = in_fname
         self._out_fname = out_fname
@@ -58,6 +57,14 @@ class GatherBase(object):
         self._asic = asic
         self._backing_store = backing_store
 
+        self._facility = facility
+
+        # load facility
+        LAYOUT_DIR = os.path.join(FACILITY_DIR, self._facility)
+        if LAYOUT_DIR not in sys.path:
+            sys.path.insert(0, LAYOUT_DIR)
+
+        # load layout
         Layout = __import__(layout).Layout
         if layout.startswith("cfel") and not self._use_interleaved:
                 print("ERROR: CFEL only supports interleaved mode.")

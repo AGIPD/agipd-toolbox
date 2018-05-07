@@ -10,18 +10,17 @@ import sys
 import time
 
 from job_overview import JobOverview
-import measurement_specifics
-import run_specifics
 
 BATCH_JOB_DIR = os.path.dirname(os.path.realpath(__file__))
 SCRIPT_BASE_DIR = os.path.dirname(BATCH_JOB_DIR)
 CONF_DIR = os.path.join(SCRIPT_BASE_DIR, "conf")
 
-BASE_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-SRC_PATH = os.path.join(BASE_PATH, "src")
+CALIBRATION_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+SRC_DIR = os.path.join(CALIBRATION_DIR, "src")
+FACILITY_DIR = os.path.join(CALIBRATION_DIR, "facility_specifics")
 
-if SRC_PATH not in sys.path:
-    sys.path.insert(0, SRC_PATH)
+if SRC_DIR not in sys.path:
+    sys.path.insert(0, SRC_DIR)
 
 import utils  # noqa E402
 
@@ -102,6 +101,7 @@ def get_arguments():
 class SubmitJobs(object):
     def __init__(self):
         global CONF_DIR
+        global CALIBRATION_DIR
 
         # get command line arguments
         args = get_arguments()
@@ -113,9 +113,9 @@ class SubmitJobs(object):
         self.overwrite = args.overwrite
 
         if self.use_xfel:
-            self.config_file = "xfel"
+            self._facility = "xfel"
         else:
-            self.config_file = "cfel"
+            self._facility = "cfel"
 
         # load base config
         yaml_file = os.path.join(CONF_DIR, "base.yaml")
@@ -123,7 +123,7 @@ class SubmitJobs(object):
         utils.load_config(yaml_file, self.config)
 
         # override base config with values of user config file
-        config_name = args.config_file or self.config_file
+        config_name = args.config_file or self._facility
         yaml_file = os.path.join(CONF_DIR, "{}.yaml".format(config_name))
         print("Using yaml_file: {}".format(yaml_file))
         utils.load_config(yaml_file, self.config)
@@ -145,30 +145,38 @@ class SubmitJobs(object):
         self.asic_set = self.config["general"]["asic_set"]
         self.use_interleaved = self.config["general"]["use_interleaved"]
 
+        # load facility specifics
+        fac_dir = os.path.join(FACILITY_DIR, self._facility)
+        if fac_dir not in sys.path:
+            sys.path.insert(0, fac_dir)
+        # this is located in the facility dir
+        import measurement_specifics
+        import run_specifics
+
         if self.run_type == "preprocess":
-            self.run_conf = run_specifics.Preprocess(self.use_xfel)
+            self.run_conf = run_specifics.Preprocess()
         elif self.run_type == "gather":
-            self.run_conf = run_specifics.Gather(self.use_xfel)
+            self.run_conf = run_specifics.Gather()
         elif self.run_type == "process":
-            self.run_conf = run_specifics.Process(self.use_xfel)
+            self.run_conf = run_specifics.Process()
         elif self.run_type == "merge":
-            self.run_conf = run_specifics.Merge(self.use_xfel)
+            self.run_conf = run_specifics.Merge()
         elif self.run_type == "join":
-            self.run_conf = run_specifics.Join(self.use_xfel)
+            self.run_conf = run_specifics.Join()
         elif self.run_type == "all":
-            self.run_conf = run_specifics.All(self.use_xfel)
+            self.run_conf = run_specifics.All()
         else:
             print("run_type:", self.run_type)
             raise Exception("Run type not supported")
 
         if self.measurement == "dark":
-            self.meas_conf = measurement_specifics.Dark(self.use_xfel)
+            self.meas_conf = measurement_specifics.Dark()
         elif self.measurement == "drspc":
-            self.meas_conf = measurement_specifics.Drspc(self.use_xfel)
+            self.meas_conf = measurement_specifics.Drspc()
         elif self.measurement == "drscs":
-            self.meas_conf = measurement_specifics.Drscs(self.use_xfel)
+            self.meas_conf = measurement_specifics.Drscs()
         elif self.measurement == "xray":
-            self.meas_conf = measurement_specifics.Xray(self.use_xfel)
+            self.meas_conf = measurement_specifics.Xray()
         else:
             print("measurement:", self.measurement)
             raise Exception("Measurement not supported")
