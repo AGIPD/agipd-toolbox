@@ -11,13 +11,19 @@ try:
 except:
     CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
 
-BASE_PATH = os.path.dirname(os.path.dirname(CURRENT_DIR))
-SRC_PATH = os.path.join(BASE_PATH, "src")
+CALIBRATION_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
+SRC_DIR = os.path.join(CALIBRATION_DIR, "src")
 
-if SRC_PATH not in sys.path:
-    sys.path.insert(0, SRC_PATH)
+BASE_DIR = os.path.dirname(CALIBRATION_DIR)
+SHARED_DIR = os.path.join(BASE_DIR, "shared")
+
+if SRC_DIR not in sys.path:
+    sys.path.insert(0, SRC_DIR)
 
 import utils  # noqa E402
+
+if SHARED_DIR not in sys.path:
+    sys.path.insert(0, SHARED_DIR)
 
 from _version import __version__
 
@@ -388,7 +394,6 @@ if __name__ == "__main__":
                                       run_subdir,
                                       "{}-preprocessing.result"
                                       .format(run_subdir.upper()))
-#    preprocessing_file = os.path.join(BASE_PATH, "preprocessing.result")
 
 
     p = Preprocess(in_fname=file_raw_temp,
