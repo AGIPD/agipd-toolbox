@@ -65,8 +65,11 @@ class ProcessXray(ProcessBase):
 
             for mc in range(self.n_memcells):
                 print("memcell {}".format(mc))
-                for row in range(self.n_rows):
-                    for col in range(self.n_cols):
+                for row in range(10):
+                #for row in range(self.n_rows):
+                    print("row ", row)
+                    for col in range(1):
+                    #for col in range(self.n_cols):
 
                         try:
                             #(photon_spacing, spacing_error, peak_stddev, peak_errors, quality) = self.get_photon_spacing(analog)
@@ -104,13 +107,13 @@ class ProcessXray(ProcessBase):
             #find peak
             pk_height[n] = np.amax(rest_data)
             pk[n] = rest_bins[np.argmax(rest_data)]
-            print(pk[n])
+            #print(pk[n])
     
             # remove peak
-            print(len(rest_bins))
-            print(len(rest_data))
-            print(rest_bins)
-            print(np.where(rest_bins > (pk[n]+25)))
+            #print(len(rest_bins))
+            #print(len(rest_data))
+            #print(rest_bins)
+            #print(np.where(rest_bins > (pk[n]+25)))
             rest_data = rest_data[np.where(rest_bins > (pk[n]+25))]
             rest_bins = rest_bins[-(len(rest_data)):]
 
@@ -135,8 +138,8 @@ class ProcessXray(ProcessBase):
         window_bins = int(25/bin_width)
         fit_window = np.empty(npeaks, dtype='int')
         
-        popt = np.empty(npeaks)
-        pcov = np.empty(npeaks)
+        popt = []
+        pcov = []
         # loop over peaks, do fits
         for i in range(0, npeaks):
 
@@ -146,7 +149,10 @@ class ProcessXray(ProcessBase):
             x_fit = bins[fit_window[i]-window_bins:fit_window[i]+window_bins]
 
             h_fit = hist[fit_window[i]-window_bins:fit_window[i]+window_bins]
-            popt[i], pcov[i] = curve_fit(self.gauss, x_fit, h_fit, p0=p_initial)
+            res = curve_fit(self.gauss, x_fit, h_fit, p0=p_initial)
+            popt.append(res[0])
+            pcov.append(res[1])
+
         
         return popt, pcov
         
@@ -176,6 +182,7 @@ class ProcessXray(ProcessBase):
         fit_peak_sizes = params[:][1]
                 
         photon_spacing = np.abs(fit_peak_locations[1] - fit_peak_locations[0])
+        print(photon_spacing)
 
         if photon_spacing <= 10:
             return failed
