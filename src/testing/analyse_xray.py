@@ -2,8 +2,10 @@
 
 import os
 import sys
+from timeit import default_timer as timer
 
-BASE_PATH = "/home/kuhnm/agipd/calibration"
+
+BASE_PATH = "/home/jsibille/agipd/calibration"
 
 SRC_PATH = os.path.join(BASE_PATH, "src")
 GATHER_PATH = os.path.join(SRC_PATH, "gather")
@@ -37,9 +39,10 @@ def create_dir(directory_name):
 
 
 if __name__ == "__main__":
+    start = timer()
     module = "M304"
     element = "Mo"
-    memcell = 50
+    memcell = 175
 
     in_base_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/raw/333-325-331-304-320-312-302-311"
     subdir = "temperature_m20C/xray"
@@ -53,7 +56,7 @@ if __name__ == "__main__":
     runs = [0]
 #    runs = [4]
 
-    out_base_dir = ("/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm/"
+    out_base_dir = ("/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/jsibille/"
                     "tmp/cfel")
     out_dir = os.path.join(out_base_dir, module, subdir)
 
@@ -83,11 +86,12 @@ if __name__ == "__main__":
                  runs=runs,
                  properties=properties,
                  use_interleaved=True,
+                 preproc_fname=None,
                  max_part=None,
                  asic=None,
-                 use_xfel_format=False)
+                 layout="cfel_layout")
 
-    obj.run()
+    #obj.run()
 
     p_out_dir = os.path.join(out_dir, "process")
     create_dir(p_out_dir)
@@ -96,7 +100,7 @@ if __name__ == "__main__":
 #    p_out_filename = "{}_xray_{}.h5".format(module, element)
     p_out_fname = os.path.join(p_out_dir, p_out_filename)
 
-    print("Used parameter for process:")
+    print("Used parameters for process:")
     print("in_fname=", g_out_fname)
     print("out_fname", p_out_fname)
     print("runs", runs)
@@ -105,3 +109,7 @@ if __name__ == "__main__":
             out_fname=p_out_fname,
             runs=runs,
             use_xfel_format=False)
+
+
+    end = timer()
+    print("Total time: ", end - start)
