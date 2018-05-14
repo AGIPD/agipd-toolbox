@@ -5,29 +5,9 @@ import sys
 import time
 import glob
 
-
-try:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-except:
-    CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
-
-CALIBRATION_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
-SRC_DIR = os.path.join(CALIBRATION_DIR, "src")
-GATHER_DIR = os.path.join(SRC_DIR, "gather")
-FACILITY_DIR = os.path.join(GATHER_DIR, "facility_specifics")
-
-BASE_DIR = os.path.dirname(CALIBRATION_DIR)
-SHARED_DIR = os.path.join(BASE_DIR, "shared")
-
-if SRC_DIR not in sys.path:
-    sys.path.insert(0, SRC_DIR)
+from __init__ import FACILITY_DIR
 
 import utils  # noqa E402
-import cfel_optarg  # noqa E402
-
-if SHARED_DIR not in sys.path:
-    sys.path.insert(0, SHARED_DIR)
-
 from _version import __version__
 
 
@@ -60,7 +40,7 @@ class GatherBase(object):
         self._facility = facility
 
         # load facility
-        LAYOUT_DIR = os.path.join(FACILITY_DIR, self._facility)
+        LAYOUT_DIR = os.path.join(FACILITY_DIR, self._facility, "layout")
         if LAYOUT_DIR not in sys.path:
             sys.path.insert(0, LAYOUT_DIR)
 

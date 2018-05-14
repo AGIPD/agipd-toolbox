@@ -4,12 +4,8 @@ import os
 import argparse
 import h5py
 
-from __init__ import SRC_DIR
-
-if SRC_DIR not in sys.path:
-    sys.path.insert(0, SRC_DIR)
-
-import utils  # noqa E402
+import __init__
+import utils
 
 
 def get_arguments():

@@ -201,14 +201,3 @@ class Xray(Measurement):
         self.meas_spec = [element]
 
         return self.meas_spec
-
-    def get_run_type_list(self):
-        """ Get the list of steps to be taken to get the constants.
-
-        Return:
-            A list of run_types, e.g. ["gather", "process"]
-        """
-
-        run_type_list = ["gather", "process"]
-
-        return run_type_list

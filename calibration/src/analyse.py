@@ -14,13 +14,9 @@ from join_constants import JoinConstants
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 print("BASE_DIR", BASE_DIR)
 SRC_DIR = os.path.join(BASE_DIR, "src")
-PREPROCESS_DIR = os.path.join(SRC_DIR, "preprocess")
 GATHER_DIR = os.path.join(SRC_DIR, "gather")
 PROCESS_DIR = os.path.join(SRC_DIR, "process")
 FACILITY_DIR = os.path.join(BASE_DIR, "facility_specifics")
-
-if PREPROCESS_DIR not in sys.path:
-    sys.path.insert(0, PREPROCESS_DIR)
 
 if GATHER_DIR not in sys.path:
     sys.path.insert(0, GATHER_DIR)
@@ -123,6 +119,13 @@ class Analyse(object):
         print("took time: ", time.time() - t)
 
     def run_preprocess(self):
+
+        # add module location to python path
+        preprocess_dir = os.path.join(FACILITY_DIR, self._facility, "preprocess")
+        if preprocess_dir not in sys.path:
+            sys.path.insert(0, preprocess_dir)
+
+        # load module
         Preprocess = __import__(self.preproc_module).Preprocess
 
         if len(self.runs) != 1:

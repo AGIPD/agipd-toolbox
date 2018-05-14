@@ -6,13 +6,7 @@ import numpy as np
 import os
 import sys
 
-try:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-except:
-    CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
-
-BASE_PATH = os.path.dirname(os.path.dirname(CURRENT_DIR))
-SRC_PATH = os.path.join(BASE_PATH, "src")
+from __init__ import SRC_DIR, SHARED_DIR
 
 if SRC_PATH not in sys.path:
     sys.path.insert(0, SRC_PATH)

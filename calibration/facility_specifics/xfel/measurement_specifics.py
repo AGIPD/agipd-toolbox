@@ -4,7 +4,8 @@ from __init__ import FACILITY_DIR
 if FACILITY_DIR not in sys.path:
     sys.path.insert(0, FACILITY_DIR)
 
-from cfel.measurement_specific import Measurement as CfelMeasurement
+from cfel.measurement_specifics import Measurement as CfelMeasurement
+
 
 # overwrite the cfel measurements -> only xfel specify differences
 class Measurement(CfelMeasurement):

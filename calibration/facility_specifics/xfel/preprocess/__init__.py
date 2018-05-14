@@ -6,9 +6,11 @@ try:
 except:
     CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
 
-FACILITY_DIR = os.path.dirname(CURRENT_DIR)
-
-CALIBRATION_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
+CALIBRATION_DIR = os.path.dirname(
+                    os.path.dirname(
+                        os.path.dirname(CURRENT_DIR)
+                    )
+                  )
 SRC_DIR = os.path.join(CALIBRATION_DIR, "src")
 
 BASE_DIR = os.path.dirname(CALIBRATION_DIR)
