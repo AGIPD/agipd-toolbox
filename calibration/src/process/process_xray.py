@@ -1,7 +1,9 @@
 import numpy as np
 from process_base import ProcessBase
-from scipy.signal import convolve
+#import scipy
+from scipy import signal
 from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
 
 
 class ProcessXray(ProcessBase):
@@ -46,6 +48,100 @@ class ProcessXray(ProcessBase):
             }
         }
 
+
+    def gauss(self, x, *p):
+        a, b, c = p
+        y = a*np.exp(-np.power((x - b), 2.)/(2. * c**2.))
+    
+        return y
+    
+
+    def fit_peaks(self, hist, bins, npeaks, initial):
+
+        #print(bins)
+        #print(initial)
+        bin_width = bins[1] - bins[0]
+        window_bins = int(25/bin_width)
+        fit_window = np.empty(npeaks, dtype='int')
+        
+        popt = []
+        pcov = []
+        # loop over peaks, do fits
+        for i in range(0, npeaks):
+
+            p_initial = [initial[0][i], initial[1][0], 10]
+            #print(np.where(bins==initial[0][i]))
+            fit_window[i] = np.where(bins==initial[0][i])[0]
+
+            x_fit = bins[fit_window[i]-window_bins:fit_window[i]+window_bins]
+
+            h_fit = hist[fit_window[i]-window_bins:fit_window[i]+window_bins]
+            res = curve_fit(self.gauss, x_fit, h_fit, p0=p_initial)
+            popt.append(res[0])
+            pcov.append(res[1])
+
+        
+        return popt, pcov
+        
+
+    def get_photon_spacing(self, analog):
+        #for one pixel
+
+        #failed = (0, 0, (0, 0), (0, 0), 0)
+        #failed = (0, (0, 0), 0)
+        failed = 0
+
+        bins = np.arange(np.min(analog), np.max(analog), 1, dtype='int16')
+        (hist, _) = np.histogram(analog, bins)
+        smooth_window = 11
+        hist_smooth = signal.convolve(hist, np.ones((smooth_window,)), mode='same')
+            
+        # find starting peak locations, heights
+        peak_loc_bins = signal.find_peaks_cwt(hist_smooth, np.arange(10,70), min_snr=2)
+        peak_locations = bins[peak_loc_bins]
+        #print("peak locations: ", peak_locations)
+        peak_sizes = hist_smooth[peak_loc_bins]
+
+        # find_peaks_cwt also finds many spurious peaks, filter these out
+        # define minimum peak height
+        min_height = 50
+        peak_sizes_filtered = peak_sizes[np.where(peak_sizes > min_height)]
+        peak_locations_filtered = peak_locations[np.where(peak_sizes > min_height)]
+        #print(peak_sizes_filtered)
+        #print(peak_locations_filtered)
+        #plt.plot(bins[:-1], hist_smooth)
+        #plt.plot(peak_locations_filtered+bins[0], hist_smooth[peak_locations_filtered], 'o')
+        #plt.show()
+        npeaks = len(peak_locations_filtered)
+        if npeaks < 2:
+            print("ERROR: Fewer than 2 peaks found!")
+            return failed
+
+        #peak_locations, peak_sizes = self.find_peaks(hist_smooth, bins, npeaks)
+        initial = [peak_locations_filtered, peak_sizes_filtered]
+
+        # fit peaks with gaussian
+        params, pcov = self.fit_peaks(hist_smooth, bins, npeaks, initial)
+
+        fit_peak_locations = params[:][0]
+        fit_peak_sizes = params[:][1]
+                
+        photon_spacing = np.abs(fit_peak_locations[1] - fit_peak_locations[0])
+        #print(photon_spacing)
+
+        if photon_spacing <= 10:
+            return failed
+
+        #indices_between_peaks = np.sort(sorted_peak_indices[0:2])
+        #quality = sorted_peak_sizes[1] - np.min(hist_smooth[indices_between_peaks[0]:indices_between_peaks[1]])
+            
+        #peak_stddev = sorted_peak_stddev[0:2]
+            
+        #return (photon_spacing, spacing_error, peak_stddev, peak_errors, quality)
+        return (photon_spacing)
+
+
+
     def calculate(self):
         for i, run_number in enumerate(self.runs):
             in_fname = self.in_fname.format(run_number=run_number)
@@ -62,19 +158,21 @@ class ProcessXray(ProcessBase):
 
             print("Start computing photon spacing ... ",
                   end="", flush=True)
+            
+            failed_count = 0
+            #for row in range(self.n_rows):
+            for row in range(1):
+                #print("row ", row)
 
-            for mc in range(self.n_memcells):
-                print("memcell {}".format(mc))
-                for row in range(10):
-                #for row in range(self.n_rows):
-                    print("row ", row)
-                    for col in range(1):
-                    #for col in range(self.n_cols):
+                for col in range(self.n_cols):
 
+                    for mc in range(self.n_memcells):
+                        #print("memcell {}".format(mc))
+
+                        idx = (row, col, mc)
                         try:
                             #(photon_spacing, spacing_error, peak_stddev, peak_errors, quality) = self.get_photon_spacing(analog)
-                            photon_spacing = self.get_photon_spacing(analog)                           
-                            idx = (mc, row, col)
+                            photon_spacing = self.get_photon_spacing(m_analog[row, col, mc, :])
                             self.result["photon_spacing"]["data"][idx] = photon_spacing
                             #self.result["spacing_error"]["data"][idx] = spacing_error
                             #self.result["peak_stddev"]["data"][idx] = peak_stddev
@@ -85,116 +183,48 @@ class ProcessXray(ProcessBase):
                         except:
                             print("memcell, row, col", mc, row, col)
                             print("analog.shape", analog.shape)
+                            self.result["photon_spacing"]["data"][idx] = 0
                             raise
+                            
+                            
+                        if self.result["photon_spacing"]["data"][idx] == 0:
+                            failed_count = failed_count + 1
 
 
 
             print("Done.")
+            total_fits = self.n_rows * self.n_cols * self.n_memcells
+            print("Failed fits: ", failed_count, " = ", (failed_count/total_fits)*100, "%")
+
 
     
-    def find_peaks(self, hist, bins, npeaks, window=25):
-        # stupid peak-finding function
-        # finds max value of hist, the removes data 
-        # from peak +/- window, continue for npeaks
+#    def find_peaks(self, hist, bins, npeaks, window=25):
+#        # stupid peak-finding function
+#        # finds max value of hist, the removes data 
+#        # from peak +/- window, continue for npeaks
 
-        rest_data = hist
-        rest_bins = bins[:-1]
-        pk = np.empty(npeaks)
-        pk_height = np.empty(npeaks)
+#        rest_data = hist
+#        rest_bins = bins[:-1]
+#        pk = np.empty(npeaks)
+#        pk_height = np.empty(npeaks)
 
-        for n in range(0, npeaks):
+#        for n in range(0, npeaks):
 
             #find peak
-            pk_height[n] = np.amax(rest_data)
-            pk[n] = rest_bins[np.argmax(rest_data)]
-            #print(pk[n])
+#            pk_height[n] = np.amax(rest_data)
+#            pk[n] = rest_bins[np.argmax(rest_data)]
     
             # remove peak
-            #print(len(rest_bins))
-            #print(len(rest_data))
-            #print(rest_bins)
-            #print(np.where(rest_bins > (pk[n]+25)))
-            rest_data = rest_data[np.where(rest_bins > (pk[n]+25))]
-            rest_bins = rest_bins[-(len(rest_data)):]
+#            rest_data = rest_data[np.where(rest_bins > (pk[n]+25))]
+#            rest_bins = rest_bins[-(len(rest_data)):]
 
         # sort peaks by size
-        sorted_indices = np.argsort(pk_height)[::-1]
-        pk_height_sorted = pk_height[sorted_indices]
-        pk_sorted = pk[sorted_indices]
+#        sorted_indices = np.argsort(pk_height)[::-1]
+#        pk_height_sorted = pk_height[sorted_indices]
+#        pk_sorted = pk[sorted_indices]
+        #print(pk_sorted, pk_height_sorted)
 
-        return pk_sorted, pk_height_sorted
-
-
-    def gauss(self, x, *p):
-        a, b, c = p
-        y = a*np.exp(-np.power((x - b), 2.)/(2. * c**2.))
-    
-        return y
-    
-
-    def fit_peaks(self, hist, bins, npeaks, initial):
-
-        bin_width = bins[1] - bins[0]
-        window_bins = int(25/bin_width)
-        fit_window = np.empty(npeaks, dtype='int')
-        
-        popt = []
-        pcov = []
-        # loop over peaks, do fits
-        for i in range(0, npeaks):
-
-            p_initial = [initial[0][i], initial[1][0], 10]
-            fit_window[i] = np.where(bins==initial[0][i])[0]
-
-            x_fit = bins[fit_window[i]-window_bins:fit_window[i]+window_bins]
-
-            h_fit = hist[fit_window[i]-window_bins:fit_window[i]+window_bins]
-            res = curve_fit(self.gauss, x_fit, h_fit, p0=p_initial)
-            popt.append(res[0])
-            pcov.append(res[1])
-
-        
-        return popt, pcov
-        
-
-
-    def get_photon_spacing(self, analog):
-    #def get_photon_spacing(self, analog, lowpass=True):
-        #for one pixel
-
-        #failed = (0, 0, (0, 0), (0, 0), 0)
-        failed = (0, (0, 0), 0)
-
-        bins = np.arange(np.min(analog), np.max(analog), 1, dtype='int16')
-        (hist, _) = np.histogram(analog, bins)
-        smooth_window = 11
-        hist_smooth = convolve(hist, np.ones((smooth_window,)), mode='same')
-            
-        npeaks = 2
-        # find starting peak locations, heights
-        peak_locations, peak_sizes = self.find_peaks(hist_smooth, bins, npeaks)
-        initial = [peak_locations, peak_sizes]
-
-        # fit peaks with gaussian
-        params, pcov = self.fit_peaks(hist_smooth, bins, npeaks, initial)
-
-        fit_peak_locations = params[:][0]
-        fit_peak_sizes = params[:][1]
-                
-        photon_spacing = np.abs(fit_peak_locations[1] - fit_peak_locations[0])
-        print(photon_spacing)
-
-        if photon_spacing <= 10:
-            return failed
-
-        #indices_between_peaks = np.sort(sorted_peak_indices[0:2])
-        #quality = sorted_peak_sizes[1] - np.min(hist_smooth[indices_between_peaks[0]:indices_between_peaks[1]])
-            
-        #peak_stddev = sorted_peak_stddev[0:2]
-            
-        #return (photon_spacing, spacing_error, peak_stddev, peak_errors, quality)
-        return (photon_spacing)
-
+#        return pk_sorted, pk_height_sorted
 
 
 
