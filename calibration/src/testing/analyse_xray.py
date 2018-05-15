@@ -5,7 +5,7 @@ import sys
 from timeit import default_timer as timer
 
 
-BASE_PATH = "/home/jsibille/agipd/calibration"
+BASE_PATH = "/home/jsibille/agipd/calibration/calibration"
 
 SRC_PATH = os.path.join(BASE_PATH, "src")
 GATHER_PATH = os.path.join(SRC_PATH, "gather")
@@ -107,8 +107,7 @@ if __name__ == "__main__":
 
     Process(in_fname=g_out_fname,
             out_fname=p_out_fname,
-            runs=runs,
-            use_xfel_format=False)
+            runs=runs)
 
 
     end = timer()

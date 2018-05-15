@@ -13,9 +13,9 @@ class ProcessXray(ProcessBase):
         n_offsets = len(self.runs)
 
         self.shapes = {
-            "photon_spacing": (self.n_memcells,
-                               self.n_rows,
-                               self.n_cols)
+            "photon_spacing": (self.n_rows,
+                               self.n_cols,
+                               self.n_memcells)
         }
 
         self.result = {
