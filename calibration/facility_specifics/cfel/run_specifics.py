@@ -4,13 +4,7 @@ import json
 import os
 import sys
 
-BASE_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-SRC_PATH = os.path.join(BASE_PATH, "src")
-
-if SRC_PATH not in sys.path:
-    sys.path.insert(0, SRC_PATH)
-
-from generate_paths import GeneratePathsCfel as GeneratePaths  # noqa E402
+from generate_paths import GeneratePaths
 
 
 class RunType(object):
@@ -18,32 +12,20 @@ class RunType(object):
                              "per_panel",
                              "panel_dep_after"])
 
-    def __init__(self, use_xfel):
-        self._use_xfel = use_xfel
+    def __init__(self):
         self.run_type = None
 
     def get_channel_list(self, l):
-        if self._use_xfel:
-            if type(l) == list:
-                return l
-            else:
-                return [l]
-        else:
-            return []
+        return []
 
     def get_module_list(self, l):
-        if self._use_xfel:
-            return []
-        elif type(l) == list:
+        if type(l) == list:
             return l
         else:
             return [l]
 
     def get_temperature(self, config):
-        if self._use_xfel:
-            return None
-        else:
-            return config
+        return config
 
     def get_max_part(self, config):
         return None
@@ -58,10 +40,7 @@ class RunType(object):
                      input_dir,
                      meas_conf,
                      run_name):
-        if self._use_xfel:
-            return c_run_list
-        else:
-            return []
+        return []
 
     def _get_cfel_run_list(self,
                            measurement,
@@ -185,17 +164,6 @@ class Preprocess(RunType):
         super().__init__(*args, **kwargs)
         self.run_type = "preprocess"
 
-    def get_channel_list(self, conf):
-        if self._use_xfel:
-            # preprocess only should run once and not for every channel
-            # -> because the channel is not used in prepocess at all use
-            # channel 0 as placeholder
-            channel_list = [0]
-        else:
-            channel_list = super().get_channel_list(conf=conf)
-
-        return channel_list
-
     def get_run_type_lists_split(self, run_type_list):
         rtl_panel_dep_before = [self.run_type]
         rtl_per_panel = []
@@ -212,13 +180,10 @@ class Gather(RunType):
         self.run_type = "gather"
 
     def get_max_part(self, config):
-        if self._use_xfel:
+        try:
+            return config["gather"]["max_part"]
+        except:
             return super().get_max_part(config)
-        else:
-            try:
-                return config["gather"]["max_part"]
-            except:
-                return super().get_max_part(config)
 
     def get_run_list(self,
                      c_run_list,
@@ -230,16 +195,13 @@ class Gather(RunType):
                      input_dir,
                      meas_conf,
                      run_name):
-        if self._use_xfel:
-            return c_run_list
-        else:
-            return self._get_cfel_run_list(measurement=measurement,
-                                           module_list=module_list,
-                                           temperature=temperature,
-                                           meas_spec=meas_spec,
-                                           input_dir=input_dir,
-                                           meas_conf=meas_conf,
-                                           run_name=run_name)
+        return self._get_cfel_run_list(measurement=measurement,
+                                       module_list=module_list,
+                                       temperature=temperature,
+                                       meas_spec=meas_spec,
+                                       input_dir=input_dir,
+                                       meas_conf=meas_conf,
+                                       run_name=run_name)
 
     def get_list_and_name(self, measurement, run_list, run_name, run_type):
         if measurement == "dark":
@@ -293,16 +255,13 @@ class All(RunType):
                      meas_conf,
                      run_name):
 
-        if self._use_xfel:
-            return c_run_list
-        else:
-            return self._get_cfel_run_list(measurement=measurement,
-                                           module_list=module_list,
-                                           temperature=temperature,
-                                           meas_spec=meas_spec,
-                                           input_dir=input_dir,
-                                           meas_conf=meas_conf,
-                                           run_name=run_name)
+        return self._get_cfel_run_list(measurement=measurement,
+                                       module_list=module_list,
+                                       temperature=temperature,
+                                       meas_spec=meas_spec,
+                                       input_dir=input_dir,
+                                       meas_conf=meas_conf,
+                                       run_name=run_name)
 
     def get_list_and_name(self, measurement, run_list, run_name, run_type):
         if run_type == "gather" and measurement == "dark":
@@ -314,15 +273,9 @@ class All(RunType):
                                              run_type=run_type)
 
     def get_run_type_lists_split(self, run_type_list):
-        if self._use_xfel:
-            rtl_panel_dep_before = ["preprocess"]
-            rtl_per_panel = [t for t in run_type_list
-                             if t not in ["preprocess", "join"]]
-            rtl_panel_dep_after = ["join"]
-        else:
-            rtl_panel_dep_before = []
-            rtl_per_panel = run_type_list
-            rtl_panel_dep_after = []
+        rtl_panel_dep_before = []
+        rtl_per_panel = run_type_list
+        rtl_panel_dep_after = []
 
         return RunType.Rtl(panel_dep_before=rtl_panel_dep_before,
                            per_panel=rtl_per_panel,
