@@ -84,7 +84,7 @@ class ProcessXray(ProcessBase):
         return popt, pcov
         
 
-    def get_photon_spacing(self, analog):
+    def get_photon_spacing(self, analog, row, col, mc):
         #for one pixel
 
         #failed = (0, 0, (0, 0), (0, 0), 0)
@@ -97,27 +97,32 @@ class ProcessXray(ProcessBase):
         hist_smooth = signal.convolve(hist, np.ones((smooth_window,)), mode='same')
             
         # find starting peak locations, heights
-        peak_loc_bins = signal.find_peaks_cwt(hist_smooth, np.arange(10,70), min_snr=2)
+        peak_loc_bins = signal.find_peaks_cwt(hist_smooth, np.arange(10,70))
+        if len(peak_loc_bins)==0:
+            print("ERROR: No peaks found!!")
+            return failed
+
         peak_locations = bins[peak_loc_bins]
-        #print("peak locations: ", peak_locations)
         peak_sizes = hist_smooth[peak_loc_bins]
 
         # find_peaks_cwt also finds many spurious peaks, filter these out
         # define minimum peak height
-        min_height = 50
+        min_height = 30
         peak_sizes_filtered = peak_sizes[np.where(peak_sizes > min_height)]
         peak_locations_filtered = peak_locations[np.where(peak_sizes > min_height)]
-        #print(peak_sizes_filtered)
-        #print(peak_locations_filtered)
-        #plt.plot(bins[:-1], hist_smooth)
-        #plt.plot(peak_locations_filtered+bins[0], hist_smooth[peak_locations_filtered], 'o')
-        #plt.show()
+
         npeaks = len(peak_locations_filtered)
         if npeaks < 2:
-            print("ERROR: Fewer than 2 peaks found!")
+            print("ERROR: Fewer than 2 peaks found!", row, col, mc)
+            plt.plot(bins[:-1], hist)
+            plt.plot(peak_locations, hist[peak_loc_bins], 'o')
+            #plt.show()
+            pdir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/jsibille/tmp/cfel/M304/temperature_m20C/xray/plots"
+            pname = "{}/{}_{}_{}.png".format(pdir, row, col, mc)
+            plt.savefig(pname)
+            plt.gcf().clear()
             return failed
 
-        #peak_locations, peak_sizes = self.find_peaks(hist_smooth, bins, npeaks)
         initial = [peak_locations_filtered, peak_sizes_filtered]
 
         # fit peaks with gaussian
@@ -160,9 +165,9 @@ class ProcessXray(ProcessBase):
                   end="", flush=True)
             
             failed_count = 0
-            #for row in range(self.n_rows):
-            for row in range(1):
-                #print("row ", row)
+            for row in range(self.n_rows):
+            #for row in range(1):
+                print("row ", row)
 
                 for col in range(self.n_cols):
 
@@ -172,7 +177,7 @@ class ProcessXray(ProcessBase):
                         idx = (row, col, mc)
                         try:
                             #(photon_spacing, spacing_error, peak_stddev, peak_errors, quality) = self.get_photon_spacing(analog)
-                            photon_spacing = self.get_photon_spacing(m_analog[row, col, mc, :])
+                            photon_spacing = self.get_photon_spacing(m_analog[row, col, mc, :], row, col, mc)
                             self.result["photon_spacing"]["data"][idx] = photon_spacing
                             #self.result["spacing_error"]["data"][idx] = spacing_error
                             #self.result["peak_stddev"]["data"][idx] = peak_stddev
@@ -198,35 +203,6 @@ class ProcessXray(ProcessBase):
 
 
     
-#    def find_peaks(self, hist, bins, npeaks, window=25):
-#        # stupid peak-finding function
-#        # finds max value of hist, the removes data 
-#        # from peak +/- window, continue for npeaks
-
-#        rest_data = hist
-#        rest_bins = bins[:-1]
-#        pk = np.empty(npeaks)
-#        pk_height = np.empty(npeaks)
-
-#        for n in range(0, npeaks):
-
-            #find peak
-#            pk_height[n] = np.amax(rest_data)
-#            pk[n] = rest_bins[np.argmax(rest_data)]
-    
-            # remove peak
-#            rest_data = rest_data[np.where(rest_bins > (pk[n]+25))]
-#            rest_bins = rest_bins[-(len(rest_data)):]
-
-        # sort peaks by size
-#        sorted_indices = np.argsort(pk_height)[::-1]
-#        pk_height_sorted = pk_height[sorted_indices]
-#        pk_sorted = pk[sorted_indices]
-        #print(pk_sorted, pk_height_sorted)
-
-#        return pk_sorted, pk_height_sorted
-
-
 
 #######################################################################################
 # Yaroslav's functions
