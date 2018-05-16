@@ -65,16 +65,16 @@ class GeneratePaths(object):
                             self._temperature,
                             self._meas_in[self._measurement])
 
-        if self._measurement not in ["dark", "xray"]:
-            fdir = os.path.join(base_dir,
-                                self._temperature,
-                                self._meas_in[self._measurement],
-                                self._meas_spec)
-
-        prefix = ("{}*_{}_{}_"  # only module without location, e.g. M304
+        prefix = ("{}*_{}_"  # only module without location, e.g. M304
                   .format(self._module,
-                          self._measurement,
-                          self._meas_spec))
+                          self._measurement))
+
+        if self._meas_spec is not None:
+            if self._measurement not in ["dark", "xray"]:
+                fdir = os.path.join(fdir,
+                                    self._meas_spec)
+
+            prefix += "{}_".format(self._meas_spec)
 
         if self._run_name is None:
             fname = prefix + "{run_number:05}_part{part:05}.nxs"
@@ -86,7 +86,15 @@ class GeneratePaths(object):
 #            fname = (prefix
 #                     + self._run_name[0]
 #                     + "_{run_number:05}_part{part:05}.nxs")
+        elif (type(self._run_name) == list
+                and self._run_name
+                and type(self._run_name[0]) != list):
+            fname = (prefix
+                     + "{run_name}"
+                     + "_{run_number:05}_part{part:05}.nxs")
+
         else:
+            print("run_name", self._run_name)
             raise Exception("Run name is not unique.")
 
         return fdir, fname
@@ -123,9 +131,11 @@ class GeneratePaths(object):
         fdir = os.path.join(base_dir,
                             self._module,
                             self._temperature,
-                            self._measurement,
-                            self._meas_spec,
-                            "gather")
+                            self._measurement)
+        if self._meas_spec:
+            fdir = os.path.join(fdir, self._meas_spec)
+
+        fdir = os.path.join(fdir, "gather")
 
         if self._run_name is None:
             prefix = ("{}_{}"

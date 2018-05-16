@@ -138,8 +138,14 @@ class Analyse(object):
         in_fname = os.path.join(in_dir, in_file_name)
         # partially substitute the string
         split = in_fname.rsplit("-AGIPD", 1)
+        if self.run_name:
+            split_tmp = split[0].format(run_name=self.run_name[0],
+                                        run_number=self.runs[0])
+        else:
+            split_tmp = split[0].format(run_number=self.runs[0])
+
         in_fname = (
-            split[0].format(run_number=self.runs[0]) +
+            split_tmp +
             "-AGIPD" +
             split[1]
         )
@@ -196,6 +202,7 @@ class Analyse(object):
             print("in_fname=", in_fname)
             print("out_fname=", out_fname)
             print("runs=", self.runs)
+            print("run_names=", self.run_name)
             print("properties", self.properties)
             print("use_interleaved", self.use_interleaved)
             print("preproc_fname", preproc_fname)
@@ -206,6 +213,7 @@ class Analyse(object):
             obj = Gather(in_fname=in_fname,
                          out_fname=out_fname,
                          runs=self.runs,
+                         run_names=self.run_name,
                          properties=self.properties,
                          use_interleaved=self.use_interleaved,
                          preproc_fname=preproc_fname,
@@ -266,9 +274,11 @@ class Analyse(object):
             print("in_fname=", in_fname)
             print("out_fname", out_fname)
             print("runs", run_list)
+            print("run_names", run_names)
             Process(in_fname=in_fname,
                     out_fname=out_fname,
-                    runs=run_list)
+                    runs=run_list,
+                    run_names=run_names)
 
     #            ParallelProcess(self.asic,
     #                            in_fname,

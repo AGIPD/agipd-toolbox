@@ -28,7 +28,7 @@ from _version import __version__
 
 
 class ProcessBase(object):
-    def __init__(self, in_fname, out_fname, runs):
+    def __init__(self, in_fname, out_fname, runs, run_names):
 
         self._out_fname = out_fname
 
@@ -36,6 +36,7 @@ class ProcessBase(object):
         self.in_fname = in_fname
 
         self.runs = runs
+        self.run_names = run_names
 
         self._row_location = None
         self._col_location = None
@@ -69,7 +70,14 @@ class ProcessBase(object):
         self._frame_location = 3
 
     def _set_dims_and_metadata(self):
-        in_fname = self.in_fname.format(run_number=self.runs[0])
+        run_number = self.runs[0]
+        if self.run_names:
+            run_name = self.run_name[0]
+        else:
+            run_name = None
+
+        in_fname = self.in_fname.format(run_name=run_name,
+                                        run_number=run_number)
         with h5py.File(in_fname, "r") as f:
             shape = f['analog'].shape
 

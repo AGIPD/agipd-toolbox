@@ -13,3 +13,9 @@ FACILITY_DIR = os.path.join(GATHER_DIR, "facility_specifics")
 
 BASE_DIR = os.path.dirname(CALIBRATION_DIR)
 SHARED_DIR = os.path.join(BASE_DIR, "shared")
+
+if SRC_DIR not in sys.path:
+    sys.path.insert(0, SRC_DIR)
+
+if SHARED_DIR not in sys.path:
+    sys.path.insert(0, SHARED_DIR)

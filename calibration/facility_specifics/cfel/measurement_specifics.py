@@ -98,21 +98,6 @@ class Drspc(Measurement):
         super().__init__(*args, **kwargs)
         self.measurement = "drspc"
 
-    def get_meas_spec(self, config):
-        """Get the measurement depending specific tag.
-
-        Args:
-            config (dict): The dictionary created when reading the config file.
-
-        Return:
-            A string read in the measurement specific entry in the config.
-        """
-
-        tint = self.config[self.measurement]["tint"]
-        self.meas_spec = [tint]
-
-        return self.meas_spec
-
 
 class Drscs(Measurement):
     def __init__(self, *args, **kwargs):

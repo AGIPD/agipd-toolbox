@@ -16,6 +16,7 @@ class Layout(object):
     def __init__(self,
                  in_fname,
                  runs,
+                 run_names,
                  use_interleaved,
                  properties,
                  preproc_fname=None,
@@ -24,6 +25,7 @@ class Layout(object):
 
         self._in_fname = in_fname
         self._runs = runs
+        self._run_names = run_names
         self._use_interleaved = use_interleaved
         self._preprocessing_fname = preproc_fname
         self._max_part = max_part
@@ -83,8 +85,13 @@ class Layout(object):
         # take first run and asume that the others have as many frames
         # TODO check this
         run_number = self._runs[0]
+        if self._run_names:
+            run_name = self._run_names[0]
+        else:
+            run_name = None
 
-        fname_with_wildcard = self._in_fname.format(run_number=run_number,
+        fname_with_wildcard = self._in_fname.format(run_name=run_name,
+                                                    run_number=run_number,
                                                     part=0)
         # cfel file names have ...<module name>_<module position>...
         # -> the wildcard for the module position has to be filled

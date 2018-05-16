@@ -1,0 +1,34 @@
+general:
+    #mail_address: manuela.kuhn@desy.de
+
+    # options are: all, gather, process, merge (for drscs)
+    run_type: all
+    #run_type: gather
+
+    module: M304
+    temperature: temperature_m20C
+    measurement: drspc
+    #measurement: dark
+    #measurement: drscs
+
+    safety_factor: 700
+
+    asic_set: null
+
+drscs:
+    current: [itestc20]
+    #current: [itestc20, itestc80, itestc150]
+
+drspc:
+    run_name: [r1, r2, r3, r4, r5, r6, r7, r8]
+
+dark:
+    tint: tint50us
+    run_name: [hg, mg, lg]
+
+xray:
+    element: Cu
+
+all:
+    input_dir: /gpfs/cfel/fsds/labs/agipd/calibration/raw/333-325-331-304-320-312-302-311
+    output_dir: /gpfs/cfel/fsds/labs/agipd/calibration/processed/
