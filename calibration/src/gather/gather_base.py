@@ -5,27 +5,10 @@ import sys
 import time
 import glob
 
-
-try:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-except:
-    CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
-
-BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
-SRC_DIR = os.path.join(BASE_DIR, "src")
-GATHER_DIR = os.path.join(SRC_DIR, "gather")
-LAYOUT_DIR = os.path.join(GATHER_DIR, "layouts")
-
-if SRC_DIR not in sys.path:
-    sys.path.insert(0, SRC_DIR)
+from __init__ import FACILITY_DIR
 
 import utils  # noqa E402
-import cfel_optarg  # noqa E402
-
 from _version import __version__
-
-if LAYOUT_DIR not in sys.path:
-    sys.path.insert(0, LAYOUT_DIR)
 
 
 class GatherBase(object):
@@ -39,7 +22,9 @@ class GatherBase(object):
                  max_part=False,
                  asic=None,
                  layout="xfel_layout",
+                 facility="xfel",
                  backing_store=True):
+        global FACILITY_DIR
 
         self._in_fname = in_fname
         self._out_fname = out_fname
@@ -52,6 +37,14 @@ class GatherBase(object):
         self._asic = asic
         self._backing_store = backing_store
 
+        self._facility = facility
+
+        # load facility
+        LAYOUT_DIR = os.path.join(FACILITY_DIR, self._facility, "layout")
+        if LAYOUT_DIR not in sys.path:
+            sys.path.insert(0, LAYOUT_DIR)
+
+        # load layout
         Layout = __import__(layout).Layout
         if layout.startswith("cfel") and not self._use_interleaved:
                 print("ERROR: CFEL only supports interleaved mode.")

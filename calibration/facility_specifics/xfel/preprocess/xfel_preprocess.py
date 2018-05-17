@@ -6,20 +6,9 @@ import numpy as np
 import os
 import sys
 
-try:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-except:
-    CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
-
-BASE_PATH = os.path.dirname(os.path.dirname(CURRENT_DIR))
-SRC_PATH = os.path.join(BASE_PATH, "src")
-
-if SRC_PATH not in sys.path:
-    sys.path.insert(0, SRC_PATH)
-
+import __init__
 import utils  # noqa E402
-
-from _version import __version__
+from _version import __version__  # noqa E402
 
 
 class Preprocess(object):
@@ -388,7 +377,6 @@ if __name__ == "__main__":
                                       run_subdir,
                                       "{}-preprocessing.result"
                                       .format(run_subdir.upper()))
-#    preprocessing_file = os.path.join(BASE_PATH, "preprocessing.result")
 
 
     p = Preprocess(in_fname=file_raw_temp,

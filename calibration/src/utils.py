@@ -194,6 +194,7 @@ def located_in_wing1(channel):
     else:
         return False
 
+
 def located_in_upper_half(asic):
     """If the ASIC is located in the upper half of the module or not.
     """

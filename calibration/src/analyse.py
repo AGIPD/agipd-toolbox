@@ -9,18 +9,14 @@ import time
 import utils
 # from merge_drscs import ParallelMerge
 # from correct import Correct
-from convert_format import ConvertFormat
 from join_constants import JoinConstants
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 print("BASE_DIR", BASE_DIR)
 SRC_DIR = os.path.join(BASE_DIR, "src")
-PREPROCESS_DIR = os.path.join(SRC_DIR, "preprocess")
 GATHER_DIR = os.path.join(SRC_DIR, "gather")
 PROCESS_DIR = os.path.join(SRC_DIR, "process")
-
-if PREPROCESS_DIR not in sys.path:
-    sys.path.insert(0, PREPROCESS_DIR)
+FACILITY_DIR = os.path.join(BASE_DIR, "facility_specifics")
 
 if GATHER_DIR not in sys.path:
     sys.path.insert(0, GATHER_DIR)
@@ -31,6 +27,8 @@ if PROCESS_DIR not in sys.path:
 
 class Analyse(object):
     def __init__(self, config):
+        global FACILITY_DIR
+
         print("started Analyse")
 
         # add all entries of config into the class namespace
@@ -60,10 +58,18 @@ class Analyse(object):
             self.properties["max_pulses"] = 704
             self.properties["n_memcells"] = 352
 
+
+        # load facility specifics
         if self.use_xfel_layout:
-            from generate_paths import GeneratePathsXfel as GeneratePaths
+            self._facility = "xfel"
         else:
-            from generate_paths import GeneratePathsCfel as GeneratePaths
+            self._facility = "cfel"
+
+        fac_dir = os.path.join(FACILITY_DIR, self._facility)
+        if fac_dir not in sys.path:
+            sys.path.insert(0, fac_dir)
+        # this is located in the facility dir
+        from generate_paths import GeneratePaths
 
         generate_paths = GeneratePaths(
             run_type=self.run_type,
@@ -113,6 +119,13 @@ class Analyse(object):
         print("took time: ", time.time() - t)
 
     def run_preprocess(self):
+
+        # add module location to python path
+        preprocess_dir = os.path.join(FACILITY_DIR, self._facility, "preprocess")
+        if preprocess_dir not in sys.path:
+            sys.path.insert(0, preprocess_dir)
+
+        # load module
         Preprocess = __import__(self.preproc_module).Preprocess
 
         if len(self.runs) != 1:
@@ -198,7 +211,8 @@ class Analyse(object):
                          preproc_fname=preproc_fname,
                          max_part=self.max_part,
                          asic=self.asic,
-                         layout=self.layout_module)
+                         layout=self.layout_module,
+                         facility=self._facility)
             obj.run()
 
     def run_process(self):
@@ -278,6 +292,12 @@ class Analyse(object):
             if os.path.exists(c_out_fname):
                 print("WARNING: output file already exist. Skipping convert.")
             else:
+                fac_dir = os.path.join(FACILITY_DIR, self._facility)
+                if fac_dir not in sys.path:
+                    sys.path.insert(0, fac_dir)
+                # this is located in the facility dir
+                from convert_format import ConvertFormat
+
                 c_obj = ConvertFormat(out_fname,
                                       c_out_fname,
                                       "xfel",

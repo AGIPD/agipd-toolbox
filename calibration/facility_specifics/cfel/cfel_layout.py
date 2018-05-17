@@ -4,19 +4,12 @@ import os
 import sys
 import glob
 
-try:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-except:
-    CURRENT_DIR = os.path.dirname(os.path.realpath('__file__'))
+from __init__ import SRC_DIR
 
-BASE_PATH = os.path.dirname(os.path.dirname(CURRENT_DIR))
-SRC_PATH = os.path.join(BASE_PATH, "src")
+if SRC_DIR not in sys.path:
+    sys.path.insert(0, SRC_DIR)
 
-if SRC_PATH not in sys.path:
-    sys.path.insert(0, SRC_PATH)
-
-import utils  # noqa E402
-import cfel_optarg  # noqa E402
+import utils
 
 
 class Layout(object):

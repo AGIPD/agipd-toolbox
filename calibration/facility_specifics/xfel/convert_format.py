@@ -4,6 +4,7 @@ import os
 import argparse
 import h5py
 
+import __init__
 import utils
 
 
