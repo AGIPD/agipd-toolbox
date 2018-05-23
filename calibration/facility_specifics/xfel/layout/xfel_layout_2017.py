@@ -17,6 +17,7 @@ class Layout(object):
     def __init__(self,
                  in_fname,
                  runs,
+                 run_names,
                  use_interleaved,
                  properties,
                  preproc_fname=None,
@@ -25,6 +26,7 @@ class Layout(object):
 
         self._in_fname = in_fname
         self._runs = runs
+        self._run_names = run_names
         self._use_interleaved = use_interleaved
         self._preprocessing_fname = preproc_fname
         self._max_part = max_part

@@ -69,7 +69,9 @@ class ProcessBase(object):
         self._frame_location = 3
 
     def _set_dims_and_metadata(self):
-        in_fname = self.in_fname.format(run_number=self.runs[0])
+        run_number = self.runs[0]
+
+        in_fname = self.in_fname.format(run_number=run_number)
         with h5py.File(in_fname, "r") as f:
             shape = f['analog'].shape
 
