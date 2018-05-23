@@ -13,6 +13,7 @@ class GeneratePaths(object):
                  channel,
                  temperature,
                  meas_spec,
+                 subdir,
                  meas_in,
                  asic,
                  runs,
@@ -25,6 +26,7 @@ class GeneratePaths(object):
         self._channel = channel
         self._temperature = temperature
         self._meas_spec = meas_spec
+        self._subdir = subdir
         self._meas_in = meas_in
         self._asic = asic
         self._runs = runs
@@ -74,6 +76,9 @@ class GeneratePaths(object):
                 fdir = os.path.join(fdir, self._meas_spec)
 
             prefix += "{}_".format(self._meas_spec)
+
+        if self._subdir is not None:
+            fdir = os.path.join(fdir, self._subdir)
 
         if self._run_name is None:
             fname = prefix + "{run_number:05}_part{part:05}.nxs"
@@ -134,6 +139,9 @@ class GeneratePaths(object):
         if self._meas_spec:
             fdir = os.path.join(fdir, self._meas_spec)
 
+        if self._subdir is not None:
+            fdir = os.path.join(fdir, self._subdir)
+
         fdir = os.path.join(fdir, "gather")
 
         if self._run_name is None:
@@ -184,6 +192,9 @@ class GeneratePaths(object):
 
         if self._meas_spec is not None:
             fdir = os.path.join(fdir, self._meas_spec)
+
+        if self._subdir is not None:
+            fdir = os.path.join(fdir, self._subdir)
 
         fdir = os.path.join(fdir, self._run_type)
 

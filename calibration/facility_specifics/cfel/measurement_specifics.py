@@ -32,6 +32,27 @@ class Measurement(object):
 
         return [None]
 
+    def get_subdir(self, config):
+        """Get the subdir if one is configured.
+
+        Args:
+            config (dict): The dictionary created when reading the config file.
+
+        Return:
+            A string read in the subdir entry in the config.
+            Is set to None if nothing was configured.
+        """
+
+        try:
+            subdir = config[self.measurement]["subdir"]
+        except KeyError:
+            return None
+
+        if subdir == False:
+            subdir = None
+
+        return subdir
+
     def get_run_type_list(self):
         """ Get the list of steps to be taken to get the constants.
 

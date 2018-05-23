@@ -25,6 +25,8 @@ drspc:
 dark:
     tint: tint50us
     run_name: [hg, mg, lg]
+    # if underneath the measurement directory there is an subdirectory
+    #subdir: burst
 
 xray:
     element: Cu

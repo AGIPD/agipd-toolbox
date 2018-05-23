@@ -79,6 +79,7 @@ class Analyse(object):
             channel=self.channel,
             temperature=self.temperature,
             meas_spec=self.meas_spec,
+            subdir=self.subdir,
             meas_in=self.meas_in,
             asic=self.asic,
             runs=self.runs,
