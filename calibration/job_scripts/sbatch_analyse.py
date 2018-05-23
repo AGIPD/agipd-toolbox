@@ -585,19 +585,20 @@ class SubmitJobs(object):
             raise WrongConfiguration(msg)
 
         if (conf["measurement"] == "dark"
-                and conf["measurement"] == "gather"
+                and conf["run_type"] == "gather"
                 and len(conf["runs"]) != 1):
             msg = ("Gathering only one run at a time for type dark. Quitting.")
             raise WrongConfiguration(msg)
 
         if (conf["measurement"] == "dark"
-                and conf["measurement"] == "process"
+                and conf["run_type"] == "process"
                 and len(conf["runs"]) != 3):
             msg = ("Runs for all 3 gain stages are required to calculate dark "
                    "constants. Quitting.")
             raise WrongConfiguration(msg)
 
         if (conf["measurement"] == "drspc"
+                and conf["run_type"] == "gather"
                 and len(conf["runs"]) != 8):
             msg = ("Pulse capacitor requires 8 runs to calculate constants. "
                    "Quitting.")

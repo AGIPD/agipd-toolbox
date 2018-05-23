@@ -143,9 +143,9 @@ class GeneratePaths(object):
                               self._measurement))
 
         else:
-            if len(self._runs) == 1:
-                #name = "-".join(self._run_name)
-                name = self._run_name
+            if len(self._runs) == 1 or self._run_name:
+                name = "-".join(self._run_name)
+                #name = self._run_name
             else:
                 name = "{run_number}"
 

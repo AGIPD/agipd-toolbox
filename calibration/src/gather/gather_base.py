@@ -216,11 +216,13 @@ class GatherBase(object):
         self.metadata = {}
 
         for run_idx, run_number in enumerate(self.runs):
-            print("\n\nrun {}".format(run_number))
             if self.run_names:
                 run_name = self.run_names[run_idx]
+                print("\n\nrun {} ({})".format(run_number, run_name))
             else:
                 run_name = None
+                print("\n\nrun {}".format(run_number))
+
 
             self.pos_idxs = self.set_pos_indices(run_idx, self._asic)
             print("pos_idxs", self.pos_idxs)
