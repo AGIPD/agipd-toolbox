@@ -587,18 +587,18 @@ class SubmitJobs(object):
             msg = "The meas_spec must be defined!"
             raise WrongConfiguration(msg)
 
-        if (conf["measurement"] == "dark"
-                and conf["run_type"] == "gather"
-                and len(conf["runs"]) != 1):
-            msg = ("Gathering only one run at a time for type dark. Quitting.")
-            raise WrongConfiguration(msg)
-
-        if (conf["measurement"] == "dark"
-                and conf["run_type"] == "process"
-                and len(conf["runs"]) != 3):
-            msg = ("Runs for all 3 gain stages are required to calculate dark "
-                   "constants. Quitting.")
-            raise WrongConfiguration(msg)
+#        if (conf["measurement"] == "dark"
+#                and conf["run_type"] == "gather"
+#                and len(conf["runs"]) != 1):
+#            msg = ("Gathering only one run at a time for type dark. Quitting.")
+#            raise WrongConfiguration(msg)
+#
+#        if (conf["measurement"] == "dark"
+#                and conf["run_type"] == "process"
+#                and len(conf["runs"]) != 3):
+#            msg = ("Runs for all 3 gain stages are required to calculate dark "
+#                   "constants. Quitting.")
+#            raise WrongConfiguration(msg)
 
         if (conf["measurement"] == "drspc"
                 and conf["run_type"] == "gather"
