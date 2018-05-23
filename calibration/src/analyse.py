@@ -225,25 +225,21 @@ class Analyse(object):
 
     def run_process(self):
 
+        run_list = self.runs
+        run_name = self.run_name
+
         if self.measurement == "dark":
             from process_dark import ProcessDark as Process
-
-            if self.use_xfel_layout or self.run_name is None:
-                run_list = self.runs
-            else:
-                run_list = self.run_name
 
         elif self.measurement == "drspc":
             from process_drspc import ProcessDrspc as Process
 
             # adjust list of runs
             run_list = ["r" + "-r".join(str(r).zfill(4) for r in self.runs)]
+            run_name = ["-".join(self.run_name)]
 
         elif self.measurement == "drscs":
             from process_drspc import ProcessDrscs as Process
-
-            if not self.use_xfel_layout:
-                run_list = self.runs
 
         else:
             msg = "Process is not supported for type {}".format(self.measurement)
@@ -252,7 +248,8 @@ class Analyse(object):
         # define out files
         # the in files for processing are the out ones from gather
         in_dir, in_file_name = self.generate_gather_path(
-            base_dir=self.input_dir
+            base_dir=self.input_dir,
+            as_template=True
         )
         in_fname = os.path.join(in_dir, in_file_name)
 
@@ -276,7 +273,8 @@ class Analyse(object):
             print("runs", run_list)
             Process(in_fname=in_fname,
                     out_fname=out_fname,
-                    runs=run_list)
+                    runs=run_list,
+                    run_name=run_name)
 
     #            ParallelProcess(self.asic,
     #                            in_fname,

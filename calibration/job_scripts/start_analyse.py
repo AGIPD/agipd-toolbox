@@ -42,6 +42,8 @@ class StartAnalyse(object):
         self.current_list = self.current_list if self.current_list else None
         if type(self.runs) != list:
             self.runs = [self.runs]
+        if type(self.run_name) != list:
+            self.run_name = [self.run_name]
 
         print("====== Configured parameter in class StartAnalyse ======")
         print(json.dumps(vars(self), sort_keys=True, indent=4))

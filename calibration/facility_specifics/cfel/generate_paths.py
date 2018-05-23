@@ -71,8 +71,7 @@ class GeneratePaths(object):
 
         if self._meas_spec is not None:
             if self._measurement not in ["dark", "xray"]:
-                fdir = os.path.join(fdir,
-                                    self._meas_spec)
+                fdir = os.path.join(fdir, self._meas_spec)
 
             prefix += "{}_".format(self._meas_spec)
 
@@ -117,7 +116,7 @@ class GeneratePaths(object):
 
         return None, None
 
-    def gather(self, base_dir):
+    def gather(self, base_dir, as_template=False):
         """Generate the gather file path.
 
         Args:
@@ -143,12 +142,10 @@ class GeneratePaths(object):
                               self._measurement))
 
         else:
-            if len(self._runs) == 1:
-                name = self._run_name
-            elif type(self._run_name) == list:
-                name = "-".join(self._run_name)
+            if as_template:
+                name = "{run_name}"
             else:
-                name = "{run_number}"
+                name = "-".join(self._run_name)
 
             prefix = ("{}_{}_{}"
                       .format(self._module,

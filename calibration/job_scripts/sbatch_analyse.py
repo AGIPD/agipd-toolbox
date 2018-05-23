@@ -268,20 +268,20 @@ class SubmitJobs(object):
 
         try:
             c_general['run_type'] = args.run_type or c_general['run_type']
-        except:
+        except KeyError:
             raise Exception("No run_type specified. Abort.")
             sys.exit(1)
 
         try:
             c_general['measurement'] = args.type or c_general['measurement']
-        except:
+        except KeyError:
             raise Exception("No measurement type specified. Abort.")
             sys.exit(1)
 
         # cfel specific
         try:
             c_general['module'] = args.module or c_general['module']
-        except:
+        except KeyError:
             if not self.use_xfel:
                 raise Exception("No module specified. Abort.")
                 sys.exit(1)
@@ -289,7 +289,7 @@ class SubmitJobs(object):
         try:
             c_general['temperature'] = (args.temperature
                                         or c_general['temperature'])
-        except:
+        except KeyError:
             if not self.use_xfel:
                 raise Exception("No temperature specified. Abort.")
                 sys.exit(1)
