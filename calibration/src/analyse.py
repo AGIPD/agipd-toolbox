@@ -237,6 +237,12 @@ class Analyse(object):
             if not self.use_xfel_layout:
                 run_list = self.runs
 
+        elif self.measurement == "xray":
+            from process_xray import ProcessXray as Process
+            
+            if not self.use_xfel_layout:
+                run_list = self.run_name
+
         else:
             msg = "Process is not supported for type {}".format(self.measurement)
             raise Exception(msg)

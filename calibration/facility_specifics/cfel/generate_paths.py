@@ -72,21 +72,33 @@ class GeneratePaths(object):
                                 self._meas_spec)
 
         prefix = ("{}*_{}_{}_"  # only module without location, e.g. M304
-                  .format(self._module,
-                          self._measurement,
+                  .format(self._module, 
+                         self._measurement,
                           self._meas_spec))
 
+        if self._measurement == "xray":
+            suffix = "{run_number:05}.nxs"
+        else:
+            suffix = "{run_number:05}_part{part:05}.nxs"
+
         if self._run_name is None:
-            fname = prefix + "{run_number:05}_part{part:05}.nxs"
+            fname = prefix + suffix
         elif type(self._run_name) == str:
             fname = (prefix
                      + self._run_name
-                     + "_{run_number:05}_part{part:05}.nxs")
-#        elif len(self._run_name) == 1:
-#            fname = (prefix
-#                     + self._run_name[0]
-#                     + "_{run_number:05}_part{part:05}.nxs")
+                     + "_" + suffix)
+        elif len(self._run_name) == 1:
+            fname = (prefix
+                     + self._run_name[0]
+                     + "_" + suffix)
+        elif (type(self._run_name) == list
+                and self._run_name
+                and type(self._run_name[0]) != list):
+            fname = (prefix
+                     + "{run_name}"
+                     + "_" + suffix)
         else:
+            print("Run name: ", self._run_name)
             raise Exception("Run name is not unique.")
 
         return fdir, fname
@@ -133,9 +145,9 @@ class GeneratePaths(object):
                               self._measurement))
 
         else:
-            if len(self._runs) == 1:
-                #name = "-".join(self._run_name)
-                name = self._run_name
+            if len(self._runs) == 1 or self._run_name:
+                name = "-".join(self._run_name)
+                #name = self._run_name
             else:
                 name = "{run_number}"
 

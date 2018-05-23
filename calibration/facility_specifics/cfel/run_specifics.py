@@ -195,13 +195,17 @@ class Gather(RunType):
                      input_dir,
                      meas_conf,
                      run_name):
-        return self._get_cfel_run_list(measurement=measurement,
-                                       module_list=module_list,
-                                       temperature=temperature,
-                                       meas_spec=meas_spec,
-                                       input_dir=input_dir,
-                                       meas_conf=meas_conf,
-                                       run_name=run_name)
+
+        if c_run_list is None:
+            return self._get_cfel_run_list(measurement=measurement,
+                                           module_list=module_list,
+                                           temperature=temperature,
+                                           meas_spec=meas_spec,
+                                           input_dir=input_dir,
+                                           meas_conf=meas_conf,
+                                           run_name=run_name)
+        else:
+            return c_run_list
 
     def get_list_and_name(self, measurement, run_list, run_name, run_type):
         if measurement == "dark":
@@ -255,13 +259,16 @@ class All(RunType):
                      meas_conf,
                      run_name):
 
-        return self._get_cfel_run_list(measurement=measurement,
-                                       module_list=module_list,
-                                       temperature=temperature,
-                                       meas_spec=meas_spec,
-                                       input_dir=input_dir,
-                                       meas_conf=meas_conf,
-                                       run_name=run_name)
+        if c_run_list is None:
+            return self._get_cfel_run_list(measurement=measurement,
+                                           module_list=module_list,
+                                           temperature=temperature,
+                                           meas_spec=meas_spec,
+                                           input_dir=input_dir,
+                                           meas_conf=meas_conf,
+                                           run_name=run_name)
+        else:
+            return c_run_list
 
     def get_list_and_name(self, measurement, run_list, run_name, run_type):
         if run_type == "gather" and measurement == "dark":

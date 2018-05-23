@@ -110,6 +110,8 @@ class ProcessXray(ProcessBase):
             
         # find starting peak locations, heights
         peak_loc_bins = signal.find_peaks_cwt(hist_smooth, np.arange(10,70))
+        peak_loc_bins = np.array(peak_loc_bins)
+        
         if len(peak_loc_bins)==0:
             print("ERROR: No peaks found!!")
             return failed
@@ -127,13 +129,13 @@ class ProcessXray(ProcessBase):
         npeaks = len(peak_locations_filtered)
         if npeaks < 2:
             print("ERROR: Fewer than 2 peaks found!", row, col, mc)
-            plt.plot(bins[:-1], hist)
-            plt.plot(peak_locations, hist[peak_loc_bins], 'o')
+#            plt.plot(bins[:-1], hist)
+#            plt.plot(peak_locations, hist[peak_loc_bins], 'o')
             #plt.show()
-            pdir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/jsibille/tmp/cfel/M304/temperature_m20C/xray/plots"
-            pname = "{}/{}_{}_{}.png".format(pdir, row, col, mc)
-            plt.savefig(pname)
-            plt.gcf().clear()
+#            pdir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/jsibille/tmp/cfel/M304/temperature_m20C/xray/plots"
+#            pname = "{}/{}_{}_{}.png".format(pdir, row, col, mc)
+#            plt.savefig(pname)
+#            plt.gcf().clear()
             return failed
 
         # fit 0- and 1-photon peaks with gaussian

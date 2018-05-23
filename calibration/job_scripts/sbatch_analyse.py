@@ -36,10 +36,11 @@ def get_arguments():
                         help="Base directory to write results to")
     parser.add_argument("--type",
                         type=str,
-                        choices=["dark", "drspc", "drscs"],
+                        choices=["dark", "drspc", "drscs", "xray"],
                         help="Which type to run:\n"
                              "dark: generating the dark constants\n"
-                             "drspc: generating the pulse capacitor constants")
+                             "drspc: generating the pulse capacitor constants\n"
+                             "xray: generating the photon spacing constants")
     parser.add_argument("--run_list",
                         type=int,
                         nargs="+",
@@ -184,7 +185,7 @@ class SubmitJobs(object):
         self.run_type_list = self.meas_conf.get_run_type_list()
 
         try:
-            self.run_name = self.config[self.measurement]["run_name"]
+            self.run_name = [str(m) for m in self.config[self.measurement]["run_name"]]
         except KeyError:
             self.run_name = None
 
