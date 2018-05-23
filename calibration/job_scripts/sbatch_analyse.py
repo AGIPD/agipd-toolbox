@@ -188,6 +188,9 @@ class SubmitJobs(object):
         except KeyError:
             self.run_name = None
 
+        if self.run_name is not None:
+            self.run_name = [str(m) for m in self.run_name]
+
         self.safety_factor = self.meas_conf.get_safety_factor(self.config)
         self.meas_spec = self.meas_conf.get_meas_spec(self.config)
 

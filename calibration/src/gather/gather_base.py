@@ -134,7 +134,8 @@ class GatherBase(object):
 
             try:
                 run_name = self.run_names[0]
-            except IndexError:
+            # TypeError happens when self.run_names is None (e.g. in XFEL dark)
+            except (IndexError, TypeError):
                 run_name = None
 
             prefix = prefix.format(run_name=run_name, run_number=run_number)
