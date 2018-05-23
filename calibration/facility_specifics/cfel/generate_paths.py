@@ -177,24 +177,32 @@ class GeneratePaths(object):
             Process directory and file name, each as string.
         """
 
+        # set the directory
+
         fdir = os.path.join(self._out_base_dir,
                             self._module,
                             self._temperature,
-                            self._measurement,
-                            self._meas_spec,
-                            self._run_type)
+                            self._measurement)
+
+        if self._meas_spec is not None:
+            fdir = os.path.join(fdir, self._meas_spec)
+
+        fdir = os.path.join(fdir, self._run_type)
+
+        # set the file name
 
         if self._asic is None:
-            fname = ("{}_{}_{}_processed.h5"
-                     .format(self._module,
-                             self._measurement,
-                             self._meas_spec))
+            postfix = "processed.h5"
         else:
-            fname = ("{}_{}_{}_asic{:02}_processed.h5"
-                     .format(self._module,
-                             self._measurement,
-                             self._meas_spec,
-                             self._asic))
+            postfix = "asic{:02}_processed.h5".format(self._asic)
+
+        if self._meas_spec is not None:
+            postfix = "{}_{}".format(self._meas_spec, postfix)
+
+        fname = ("{}_{}_{}"
+                 .format(self._module,
+                         self._measurement,
+                         postfix))
 
         print("process fname", fname)
 

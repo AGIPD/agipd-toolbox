@@ -274,11 +274,9 @@ class Analyse(object):
             print("in_fname=", in_fname)
             print("out_fname", out_fname)
             print("runs", run_list)
-            print("run_names", run_names)
             Process(in_fname=in_fname,
                     out_fname=out_fname,
-                    runs=run_list,
-                    run_names=run_names)
+                    runs=run_list)
 
     #            ParallelProcess(self.asic,
     #                            in_fname,
