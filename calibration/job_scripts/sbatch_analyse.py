@@ -189,6 +189,9 @@ class SubmitJobs(object):
         except KeyError:
             self.run_name = None
 
+        if self.run_name is not None:
+            self.run_name = [str(m) for m in self.run_name]
+
         self.safety_factor = self.meas_conf.get_safety_factor(self.config)
         self.meas_spec = self.meas_conf.get_meas_spec(self.config)
 
@@ -585,20 +588,21 @@ class SubmitJobs(object):
             msg = "The meas_spec must be defined!"
             raise WrongConfiguration(msg)
 
-        if (conf["measurement"] == "dark"
-                and conf["measurement"] == "gather"
-                and len(conf["runs"]) != 1):
-            msg = ("Gathering only one run at a time for type dark. Quitting.")
-            raise WrongConfiguration(msg)
-
-        if (conf["measurement"] == "dark"
-                and conf["measurement"] == "process"
-                and len(conf["runs"]) != 3):
-            msg = ("Runs for all 3 gain stages are required to calculate dark "
-                   "constants. Quitting.")
-            raise WrongConfiguration(msg)
+#        if (conf["measurement"] == "dark"
+#                and conf["run_type"] == "gather"
+#                and len(conf["runs"]) != 1):
+#            msg = ("Gathering only one run at a time for type dark. Quitting.")
+#            raise WrongConfiguration(msg)
+#
+#        if (conf["measurement"] == "dark"
+#                and conf["run_type"] == "process"
+#                and len(conf["runs"]) != 3):
+#            msg = ("Runs for all 3 gain stages are required to calculate dark "
+#                   "constants. Quitting.")
+#            raise WrongConfiguration(msg)
 
         if (conf["measurement"] == "drspc"
+                and conf["run_type"] == "gather"
                 and len(conf["runs"]) != 8):
             msg = ("Pulse capacitor requires 8 runs to calculate constants. "
                    "Quitting.")

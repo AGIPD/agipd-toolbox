@@ -7,7 +7,7 @@ import glob
 
 from __init__ import FACILITY_DIR
 
-import utils  # noqa E402
+import utils
 from _version import __version__
 
 
@@ -16,6 +16,7 @@ class GatherBase(object):
                  in_fname,
                  out_fname,
                  runs,
+                 run_names,
                  properties,
                  use_interleaved,
                  preproc_fname=None,
@@ -32,6 +33,7 @@ class GatherBase(object):
         self._use_interleaved = use_interleaved
 
         self.runs = [int(r) for r in runs]
+        self.run_names = run_names
 
         self._max_part = max_part
         self._asic = asic
@@ -55,6 +57,7 @@ class GatherBase(object):
         self.layout = Layout(
             in_fname=self._in_fname,
             runs=self.runs,
+            run_names=self.run_names,
             use_interleaved=self._use_interleaved,
             properties=self._properties,
             preproc_fname=preproc_fname,
@@ -128,7 +131,14 @@ class GatherBase(object):
 
             # use the first run number to determine number of parts
             run_number = self.runs[0]
-            prefix = prefix.format(run_number=run_number)
+
+            try:
+                run_name = self.run_names[0]
+            # TypeError happens when self.run_names is None (e.g. in XFEL dark)
+            except (IndexError, TypeError):
+                run_name = None
+
+            prefix = prefix.format(run_name=run_name, run_number=run_number)
             print("prefix={}".format(prefix))
 
             part_files = glob.glob("{}*".format(prefix))
@@ -207,7 +217,13 @@ class GatherBase(object):
         self.metadata = {}
 
         for run_idx, run_number in enumerate(self.runs):
-            print("\n\nrun {}".format(run_number))
+            if self.run_names:
+                run_name = self.run_names[run_idx]
+                print("\n\nrun {} ({})".format(run_number, run_name))
+            else:
+                run_name = None
+                print("\n\nrun {}".format(run_number))
+
 
             self.pos_idxs = self.set_pos_indices(run_idx, self._asic)
             print("pos_idxs", self.pos_idxs)
@@ -217,7 +233,9 @@ class GatherBase(object):
             print("load idx: {}, {}".format(load_idx_rows, load_idx_cols))
 
             for i in range(self._n_parts):
-                fname = self._in_fname.format(run_number=run_number, part=i)
+                fname = self._in_fname.format(run_name=run_name,
+                                              run_number=run_number,
+                                              part=i)
                 print("loading file {}".format(fname))
 
                 excluded = [self._data_path]

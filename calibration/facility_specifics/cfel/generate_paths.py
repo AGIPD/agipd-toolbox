@@ -65,16 +65,16 @@ class GeneratePaths(object):
                             self._temperature,
                             self._meas_in[self._measurement])
 
-        if self._measurement not in ["dark", "xray"]:
-            fdir = os.path.join(base_dir,
-                                self._temperature,
-                                self._meas_in[self._measurement],
-                                self._meas_spec)
+        prefix = ("{}*_{}_"  # only module without location, e.g. M304
+                  .format(self._module,
+                          self._measurement))
 
-        prefix = ("{}*_{}_{}_"  # only module without location, e.g. M304
-                  .format(self._module, 
-                         self._measurement,
-                          self._meas_spec))
+        if self._meas_spec is not None:
+            if self._measurement not in ["dark", "xray"]:
+                fdir = os.path.join(fdir,
+                                    self._meas_spec)
+
+            prefix += "{}_".format(self._meas_spec)
 
         if self._measurement == "xray":
             suffix = "{run_number:05}.nxs"
@@ -135,9 +135,11 @@ class GeneratePaths(object):
         fdir = os.path.join(base_dir,
                             self._module,
                             self._temperature,
-                            self._measurement,
-                            self._meas_spec,
-                            "gather")
+                            self._measurement)
+        if self._meas_spec:
+            fdir = os.path.join(fdir, self._meas_spec)
+
+        fdir = os.path.join(fdir, "gather")
 
         if self._run_name is None:
             prefix = ("{}_{}"
@@ -147,7 +149,6 @@ class GeneratePaths(object):
         else:
             if len(self._runs) == 1 or self._run_name:
                 name = "-".join(self._run_name)
-                #name = self._run_name
             else:
                 name = "{run_number}"
 
@@ -179,24 +180,32 @@ class GeneratePaths(object):
             Process directory and file name, each as string.
         """
 
+        # set the directory
+
         fdir = os.path.join(self._out_base_dir,
                             self._module,
                             self._temperature,
-                            self._measurement,
-                            self._meas_spec,
-                            self._run_type)
+                            self._measurement)
+
+        if self._meas_spec is not None:
+            fdir = os.path.join(fdir, self._meas_spec)
+
+        fdir = os.path.join(fdir, self._run_type)
+
+        # set the file name
 
         if self._asic is None:
-            fname = ("{}_{}_{}_processed.h5"
-                     .format(self._module,
-                             self._measurement,
-                             self._meas_spec))
+            postfix = "processed.h5"
         else:
-            fname = ("{}_{}_{}_asic{:02}_processed.h5"
-                     .format(self._module,
-                             self._measurement,
-                             self._meas_spec,
-                             self._asic))
+            postfix = "asic{:02}_processed.h5".format(self._asic)
+
+        if self._meas_spec is not None:
+            postfix = "{}_{}".format(self._meas_spec, postfix)
+
+        fname = ("{}_{}_{}"
+                 .format(self._module,
+                         self._measurement,
+                         postfix))
 
         print("process fname", fname)
 
