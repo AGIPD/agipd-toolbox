@@ -217,7 +217,7 @@ class GatherBase(object):
         self.metadata = {}
 
         for run_idx, run_number in enumerate(self.runs):
-            if self.run_names:
+            if self.run_names and self.run_names != [None]:
                 run_name = self.run_names[run_idx]
                 print("\n\nrun {} ({})".format(run_number, run_name))
             else:

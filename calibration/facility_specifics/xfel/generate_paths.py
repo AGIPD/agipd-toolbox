@@ -13,6 +13,7 @@ class GeneratePaths(object):
                  channel,
                  temperature,
                  meas_spec,
+                 subdir,
                  meas_in,
                  asic,
                  runs,
@@ -25,6 +26,7 @@ class GeneratePaths(object):
         self._channel = channel
         self._temperature = temperature
         self._meas_spec = meas_spec
+        self._subdir = subdir
         self._meas_in = meas_in
         self._asic = asic
         self._runs = runs
@@ -153,7 +155,7 @@ class GeneratePaths(object):
 
         return fdir, fname
 
-    def gather(self, base_dir):
+    def gather(self, base_dir, as_template=False):
         """Generate the gather file path.
 
         Args:

@@ -32,6 +32,27 @@ class Measurement(object):
 
         return [None]
 
+    def get_subdir(self, config):
+        """Get the subdir if one is configured.
+
+        Args:
+            config (dict): The dictionary created when reading the config file.
+
+        Return:
+            A string read in the subdir entry in the config.
+            Is set to None if nothing was configured.
+        """
+
+        try:
+            subdir = config[self.measurement]["subdir"]
+        except KeyError:
+            return None
+
+        if subdir == False:
+            subdir = None
+
+        return subdir
+
     def get_run_type_list(self):
         """ Get the list of steps to be taken to get the constants.
 
@@ -182,7 +203,10 @@ class Xray(Measurement):
             A string read in the measurement specific entry in the config.
         """
 
-        element = config[self.measurement]["element"]
-        self.meas_spec = [element]
+        if self._use_xfel:
+            return super().get_meas_spec(config)
+        else:
+            element = config[self.measurement]["element"]
+            self.meas_spec = [element]
 
-        return self.meas_spec
+            return self.meas_spec

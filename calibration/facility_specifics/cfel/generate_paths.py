@@ -13,6 +13,7 @@ class GeneratePaths(object):
                  channel,
                  temperature,
                  meas_spec,
+                 subdir,
                  meas_in,
                  asic,
                  runs,
@@ -25,6 +26,7 @@ class GeneratePaths(object):
         self._channel = channel
         self._temperature = temperature
         self._meas_spec = meas_spec
+        self._subdir = subdir
         self._meas_in = meas_in
         self._asic = asic
         self._runs = runs
@@ -71,10 +73,12 @@ class GeneratePaths(object):
 
         if self._meas_spec is not None:
             if self._measurement not in ["dark", "xray"]:
-                fdir = os.path.join(fdir,
-                                    self._meas_spec)
+                fdir = os.path.join(fdir, self._meas_spec)
 
             prefix += "{}_".format(self._meas_spec)
+
+        if self._subdir is not None:
+            fdir = os.path.join(fdir, self._subdir)
 
         if self._measurement == "xray":
             suffix = "{run_number:05}.nxs"
@@ -87,16 +91,18 @@ class GeneratePaths(object):
             fname = (prefix
                      + self._run_name
                      + "_" + suffix)
-        elif len(self._run_name) == 1:
-            fname = (prefix
-                     + self._run_name[0]
-                     + "_" + suffix)
+#        elif len(self._run_name) == 1:
+#            fname = (prefix
+#                     + self._run_name[0]
+#                     + "_" + suffix)
+
         elif (type(self._run_name) == list
                 and self._run_name
                 and type(self._run_name[0]) != list):
             fname = (prefix
                      + "{run_name}"
                      + "_" + suffix)
+
         else:
             print("Run name: ", self._run_name)
             raise Exception("Run name is not unique.")
@@ -121,7 +127,7 @@ class GeneratePaths(object):
 
         return None, None
 
-    def gather(self, base_dir):
+    def gather(self, base_dir, as_template=False):
         """Generate the gather file path.
 
         Args:
@@ -139,6 +145,9 @@ class GeneratePaths(object):
         if self._meas_spec:
             fdir = os.path.join(fdir, self._meas_spec)
 
+        if self._subdir is not None:
+            fdir = os.path.join(fdir, self._subdir)
+
         fdir = os.path.join(fdir, "gather")
 
         if self._run_name is None:
@@ -147,10 +156,10 @@ class GeneratePaths(object):
                               self._measurement))
 
         else:
-            if len(self._runs) == 1 or self._run_name:
-                name = "-".join(self._run_name)
+            if as_template:
+                name = "{run_name}"
             else:
-                name = "{run_number}"
+                name = "-".join(self._run_name)
 
             prefix = ("{}_{}_{}"
                       .format(self._module,
@@ -189,6 +198,9 @@ class GeneratePaths(object):
 
         if self._meas_spec is not None:
             fdir = os.path.join(fdir, self._meas_spec)
+
+        if self._subdir is not None:
+            fdir = os.path.join(fdir, self._subdir)
 
         fdir = os.path.join(fdir, self._run_type)
 

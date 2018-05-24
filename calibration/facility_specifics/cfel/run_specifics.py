@@ -37,6 +37,7 @@ class RunType(object):
                      channel_list,
                      temperature,
                      meas_spec,
+                     subdir,
                      input_dir,
                      meas_conf,
                      run_name):
@@ -47,6 +48,7 @@ class RunType(object):
                            module_list,
                            temperature,
                            meas_spec,
+                           subdir,
                            input_dir,
                            meas_conf,
                            run_name):
@@ -59,6 +61,7 @@ class RunType(object):
             channel=None,
             temperature=temperature,
             meas_spec=meas_spec[0],
+            subdir=subdir,
             meas_in={measurement: measurement},
             asic=None,
             runs=None,
@@ -192,6 +195,7 @@ class Gather(RunType):
                      channel_list,
                      temperature,
                      meas_spec,
+                     subdir,
                      input_dir,
                      meas_conf,
                      run_name):
@@ -255,6 +259,7 @@ class All(RunType):
                      channel_list,
                      temperature,
                      meas_spec,
+                     subdir,
                      input_dir,
                      meas_conf,
                      run_name):

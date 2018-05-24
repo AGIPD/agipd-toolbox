@@ -194,6 +194,7 @@ class SubmitJobs(object):
 
         self.safety_factor = self.meas_conf.get_safety_factor(self.config)
         self.meas_spec = self.meas_conf.get_meas_spec(self.config)
+        self.subdir = self.meas_conf.get_subdir(self.config)
 
         c_general = self.config["general"]
         rconf = self.run_conf
@@ -254,6 +255,7 @@ class SubmitJobs(object):
             module_list=self.module_list,
             channel_list=self.channel_list,
             temperature=self.temperature,
+            subdir=self.subdir,
             meas_spec=self.meas_spec,
             input_dir=self.input_dir,
             meas_conf=self.meas_conf,
@@ -269,20 +271,20 @@ class SubmitJobs(object):
 
         try:
             c_general['run_type'] = args.run_type or c_general['run_type']
-        except:
+        except KeyError:
             raise Exception("No run_type specified. Abort.")
             sys.exit(1)
 
         try:
             c_general['measurement'] = args.type or c_general['measurement']
-        except:
+        except KeyError:
             raise Exception("No measurement type specified. Abort.")
             sys.exit(1)
 
         # cfel specific
         try:
             c_general['module'] = args.module or c_general['module']
-        except:
+        except KeyError:
             if not self.use_xfel:
                 raise Exception("No module specified. Abort.")
                 sys.exit(1)
@@ -290,7 +292,7 @@ class SubmitJobs(object):
         try:
             c_general['temperature'] = (args.temperature
                                         or c_general['temperature'])
-        except:
+        except KeyError:
             if not self.use_xfel:
                 raise Exception("No temperature specified. Abort.")
                 sys.exit(1)
@@ -551,6 +553,7 @@ class SubmitJobs(object):
             runs=runs,
             run_name=run_name,
             temperature=self.temperature,
+            subdir=self.subdir,
             safety_factor=self.safety_factor,
             max_part=self.max_part,
             use_interleaved=self.use_interleaved,

@@ -27,8 +27,12 @@ if SHARED_DIR not in sys.path:
 from _version import __version__
 
 
+class NotSupported(Exception):
+    pass
+
+
 class ProcessBase(object):
-    def __init__(self, in_fname, out_fname, runs):
+    def __init__(self, in_fname, out_fname, runs, run_name):
 
         self._out_fname = out_fname
 
@@ -36,6 +40,7 @@ class ProcessBase(object):
         self.in_fname = in_fname
 
         self.runs = runs
+        self.run_names = run_name
 
         self._row_location = None
         self._col_location = None
@@ -70,8 +75,9 @@ class ProcessBase(object):
 
     def _set_dims_and_metadata(self):
         run_number = self.runs[0]
+        run_name = self.run_names[0]
 
-        in_fname = self.in_fname.format(run_number=run_number)
+        in_fname = self.in_fname.format(run_number=run_number, run_name=run_name)
         with h5py.File(in_fname, "r") as f:
             shape = f['analog'].shape
 
