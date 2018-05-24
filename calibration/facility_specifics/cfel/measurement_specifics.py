@@ -203,7 +203,10 @@ class Xray(Measurement):
             A string read in the measurement specific entry in the config.
         """
 
-        element = config[self.measurement]["element"]
-        self.meas_spec = [element]
+        if self._use_xfel:
+            return super().get_meas_spec(config)
+        else:
+            element = config[self.measurement]["element"]
+            self.meas_spec = [element]
 
-        return self.meas_spec
+            return self.meas_spec

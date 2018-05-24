@@ -80,12 +80,17 @@ class GeneratePaths(object):
         if self._subdir is not None:
             fdir = os.path.join(fdir, self._subdir)
 
+        if self._measurement == "xray":
+            suffix = "{run_number:05}.nxs"
+        else:
+            suffix = "{run_number:05}_part{part:05}.nxs"
+
         if self._run_name is None:
-            fname = prefix + "{run_number:05}_part{part:05}.nxs"
+            fname = prefix + suffix
         elif type(self._run_name) == str:
             fname = (prefix
                      + self._run_name
-                     + "_{run_number:05}_part{part:05}.nxs")
+                     + "_" + suffix)
 #        elif len(self._run_name) == 1:
 #            fname = (prefix
 #                     + self._run_name[0]
@@ -95,7 +100,7 @@ class GeneratePaths(object):
                 and type(self._run_name[0]) != list):
             fname = (prefix
                      + "{run_name}"
-                     + "_{run_number:05}_part{part:05}.nxs")
+                     + "_" + suffix)
 
         else:
             print("run_name", self._run_name)
