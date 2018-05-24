@@ -163,7 +163,8 @@ class ProcessXray(ProcessBase):
 
     def calculate(self):
         for i, run_number in enumerate(self.runs):
-            in_fname = self.in_fname.format(run_number=run_number)
+            run_name = self.run_names[i]
+            in_fname = self.in_fname.format(run_number=run_number, run_name=run_name)
 
             print("Start loading data from {} ... ".format(in_fname),
                   end="", flush=True)
