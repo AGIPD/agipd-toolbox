@@ -237,7 +237,8 @@ class Analyse(object):
 
             # adjust list of runs
             run_list = ["r" + "-r".join(str(r).zfill(4) for r in self.runs)]
-            run_name = ["-".join(self.run_name)]
+            if self.run_name != [None]:
+                run_name = ["-".join(self.run_name)]
 
         elif self.measurement == "drscs":
             from process_drspc import ProcessDrscs as Process

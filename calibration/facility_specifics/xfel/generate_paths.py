@@ -155,7 +155,7 @@ class GeneratePaths(object):
 
         return fdir, fname
 
-    def gather(self, base_dir):
+    def gather(self, base_dir, as_template=False):
         """Generate the gather file path.
 
         Args:

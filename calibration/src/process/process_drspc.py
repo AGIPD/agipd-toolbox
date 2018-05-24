@@ -1,6 +1,6 @@
 import numpy as np
 
-from process_base import ProcessBase
+from process_base import ProcessBase, NotSupported
 
 
 class ProcessDrspc(ProcessBase):
@@ -66,7 +66,14 @@ class ProcessDrspc(ProcessBase):
 #        self.fit_interval = [[40, 120], [400, 550]]
 
     def calculate(self):
-        analog, digital = self.load_data(self.in_fname)
+        if len(self.runs) != 1:
+            print("runs", self.runs)
+            print("run_name", self.run_names)
+            raise NotSupported("Input contains of multiple runs. Abort")
+
+        in_fname = self.in_fname.format(run_number=self.runs[0],
+                                        run_name=self.run_names[0])
+        analog, digital = self.load_data(in_fname)
 
         mask = self.get_mask(analog=analog, digital=digital)
 

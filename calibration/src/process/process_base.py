@@ -27,6 +27,10 @@ if SHARED_DIR not in sys.path:
 from _version import __version__
 
 
+class NotSupported(Exception):
+    pass
+
+
 class ProcessBase(object):
     def __init__(self, in_fname, out_fname, runs, run_name):
 
