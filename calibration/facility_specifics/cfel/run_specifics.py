@@ -205,6 +205,7 @@ class Gather(RunType):
                                            module_list=module_list,
                                            temperature=temperature,
                                            meas_spec=meas_spec,
+                                           subdir=subdir,
                                            input_dir=input_dir,
                                            meas_conf=meas_conf,
                                            run_name=run_name)
@@ -269,6 +270,7 @@ class All(RunType):
                                            module_list=module_list,
                                            temperature=temperature,
                                            meas_spec=meas_spec,
+                                           subdir=subdir,
                                            input_dir=input_dir,
                                            meas_conf=meas_conf,
                                            run_name=run_name)
