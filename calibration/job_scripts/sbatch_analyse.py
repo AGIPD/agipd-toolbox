@@ -249,8 +249,13 @@ class SubmitJobs(object):
             self.input_dir[self.run_type] = c_run_type["input_dir"]
             self.output_dir[self.run_type] = c_run_type["output_dir"]
 
+        try:
+            c_run_list = self.config[self.measurement]["run_list"]
+        except KeyError:
+            c_run_list = self.config["general"]["run_list"]
+            
         self.run_list = self.run_conf.get_run_list(
-            c_run_list=self.config["general"]["run_list"],
+            c_run_list=c_run_list,
             measurement=self.measurement,
             module_list=self.module_list,
             channel_list=self.channel_list,

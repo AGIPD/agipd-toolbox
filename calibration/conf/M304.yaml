@@ -11,13 +11,13 @@ general:
     #measurement: dark
     #measurement: drscs
 
-    safety_factor: 700
 
     asic_set: null
 
 drscs:
-    current: [itestc20]
-    #current: [itestc20, itestc80, itestc150]
+    current: [itestc150]
+    #current: [itestc80, itestc150, itestc20]
+    safety_factor: 950
 
 drspc:
     run_name: [r1, r2, r3, r4, r5, r6, r7, r8]
