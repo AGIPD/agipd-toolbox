@@ -1,3 +1,25 @@
+# (c) Copyright 2017-2018 DESY, FS-DS
+#
+# This file is part of the FS-DS AGIPD toolbox.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+
+"""
+@author: Manuela Kuhn <manuela.kuhn@desy.de>
+         Jennifer Poehlsen <jennifer.poehlsen@desy.de>
+"""
+
 from collections import namedtuple
 
 from process_base import ProcessBase
@@ -9,10 +31,10 @@ import matplotlib.pyplot as plt
 
 
 class ProcessXray(ProcessBase):
-    Res = namedtuple("res", ["photon_spacing", 
-                             "spacing_error", 
-                             "peak_stddev", 
-                             "peak_error", 
+    Res = namedtuple("res", ["photon_spacing",
+                             "spacing_error",
+                             "peak_stddev",
+                             "peak_error",
                              "quality"])
 
     def __init__(self, **kwargs):
@@ -65,16 +87,16 @@ class ProcessXray(ProcessBase):
     def gauss(self, x, *p):
         a, b, c = p
         y = a*np.exp(-np.power((x - b), 2.)/(2. * c**2.))
-    
+
         return y
-    
+
 
     def fit_peaks(self, hist, bins, npeaks, initial):
 
         bin_width = bins[1] - bins[0]
         window_bins = int(25/bin_width)
         fit_window = np.empty(npeaks, dtype='int')
-        
+
         popt = []
         pcov = []
         # loop over peaks, do fits
@@ -90,28 +112,28 @@ class ProcessXray(ProcessBase):
             popt.append(res[0])
             pcov.append(res[1])
 
-        
+
         return popt, pcov
-        
+
 
     def get_photon_spacing(self, analog, row, col, mc):
         #for one pixel one memcell
 
-        failed = ProcessXray.Res(photon_spacing=0, 
-                                 spacing_error=0, 
-                                 peak_stddev=(0,0), 
-                                 peak_error=(0,0), 
+        failed = ProcessXray.Res(photon_spacing=0,
+                                 spacing_error=0,
+                                 peak_stddev=(0,0),
+                                 peak_error=(0,0),
                                  quality=0)
 
         bins = np.arange(np.min(analog), np.max(analog), 1, dtype='int16')
         (hist, _) = np.histogram(analog, bins)
         smooth_window = 11
         hist_smooth = signal.convolve(hist, np.ones((smooth_window,)), mode='same')
-            
+
         # find starting peak locations, heights
         peak_loc_bins = signal.find_peaks_cwt(hist_smooth, np.arange(10,70))
         peak_loc_bins = np.array(peak_loc_bins)
-        
+
         if len(peak_loc_bins)==0:
             print("ERROR: No peaks found!!")
             return failed
@@ -157,7 +179,7 @@ class ProcessXray(ProcessBase):
         return ProcessXray.Res(photon_spacing=photon_spacing,
                                spacing_error=spacing_error,
                                peak_stddev=results[2],
-                               peak_error=errors[2], 
+                               peak_error=errors[2],
                                quality=quality)
 
 
@@ -178,7 +200,7 @@ class ProcessXray(ProcessBase):
 
             print("Start computing photon spacing ... ",
                   end="", flush=True)
-            
+
             failed_count = 0
             for row in range(self.n_rows):
             #for row in range(10):
@@ -205,8 +227,8 @@ class ProcessXray(ProcessBase):
                             self.result["photon_spacing"]["data"][idx] = 0
                             self.result["peak_stddev"]["data"][idx] = 0
                             raise
-                            
-                            
+
+
                         if self.result["photon_spacing"]["data"][idx] == 0:
                             failed_count = failed_count + 1
 
