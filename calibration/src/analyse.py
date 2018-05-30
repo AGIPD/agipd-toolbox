@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 
 import datetime
 import json
@@ -245,7 +245,7 @@ class Analyse(object):
 
         elif self.measurement == "xray":
             from process_xray import ProcessXray as Process
-            
+
         else:
             msg = "Process is not supported for type {}".format(self.measurement)
             raise Exception(msg)
