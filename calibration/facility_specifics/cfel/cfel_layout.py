@@ -141,7 +141,7 @@ class Layout(object):
         with h5py.File(fname, "r", libver="latest", driver="core") as f:
             try:
                 # TODO: verify that the shape is always right and not
-                #       dependant on frame loss
+                #       dependent on frame loss
                 source_shape = f[self._path['data']].shape
                 exp_total_frames = f[self._path['frame_number']][0]
             except:

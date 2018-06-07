@@ -63,8 +63,8 @@ class GeneratePaths(object):
             The preprocess and layout module to use.
         """
         return None, "cfel_layout"
-
-    def raw(self, base_dir, as_template=True):
+    
+    def raw(self, base_dir, as_template=True, parts=True):
         """Generates raw path.
 
         Args:
@@ -99,13 +99,15 @@ class GeneratePaths(object):
 
         if self._subdir is not None:
             fdir = os.path.join(fdir, self._subdir)
-
-        if self._measurement == "xray":
-            suffix = "{run_number:05}.nxs"
-        else:
+            
+        prelim_fname = prefix + "*.nxs"
+        
+        if parts:
             suffix = "{run_number:05}_part{part:05}.nxs"
+        else:
+            suffix = "{run_number:05}.nxs"
 
-        if self._run_name is None:
+        if self._run_name is None or self._run_name[0] is None:
             fname = prefix + suffix
         elif type(self._run_name) == str:
             fname = (prefix
@@ -170,7 +172,7 @@ class GeneratePaths(object):
 
         fdir = os.path.join(fdir, "gather")
 
-        if self._run_name is None:
+        if self._run_name is None or self._run_name[0] is None:
             prefix = ("{}_{}"
                       .format(self._module,
                               self._measurement))
@@ -185,7 +187,7 @@ class GeneratePaths(object):
                       .format(self._module,
                               self._measurement,
                               name))
-
+        
         if self._asic is None:
             fname = prefix + "_gathered.h5"
         else:

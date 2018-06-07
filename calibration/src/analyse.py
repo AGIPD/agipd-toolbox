@@ -74,7 +74,7 @@ class Analyse(object):
             "n_cols_total": 512,
         }
 
-        if self.measurement == "xray":
+        if self.measurement == "xray" and self.subdir != "burst":
             self.properties["max_pulses"] = 2
             self.properties["n_memcells"] = 1
         else:

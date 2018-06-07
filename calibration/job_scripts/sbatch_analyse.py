@@ -208,7 +208,7 @@ class SubmitJobs(object):
 
         try:
             self.run_name = [str(m) for m in self.config[self.measurement]["run_name"]]
-        except KeyError:
+        except (KeyError, TypeError):
             self.run_name = None
 
         if self.run_name is not None:

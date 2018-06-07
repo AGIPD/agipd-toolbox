@@ -76,17 +76,6 @@ class GatherBase(object):
         self._n_rows_total = self._properties["n_rows_total"]
         self._n_cols_total = self._properties["n_cols_total"]
 
-        self.layout = Layout(
-            in_fname=self._in_fname,
-            runs=self.runs,
-            run_names=self.run_names,
-            use_interleaved=self._use_interleaved,
-            properties=self._properties,
-            preproc_fname=preproc_fname,
-            max_part=self._max_part,
-            asic=self._asic
-        )
-
         self._analog = None
         self._digital = None
 
@@ -114,7 +103,28 @@ class GatherBase(object):
         self._set_n_parts()
 
         if self._n_parts == 0:
-            msg = "No parts to gather found\n"
+            print("No parts to gather found, check if data exists without parts")
+            prefix = self._in_fname.rsplit("_", 1)[0]
+            
+            # use the first run number to determine number of parts
+            run_number = self.runs[0]
+
+            try:
+                run_name = self.run_names[0]
+            # TypeError happens when self.run_names is None (e.g. in XFEL dark)
+            except (IndexError, TypeError):
+                run_name = None
+                
+            prefix = prefix.format(run_name=run_name, run_number = run_number)
+            files = glob.glob("{}*".format(prefix))
+            
+            print(len(files), " file(s) found.")
+            self._n_parts = 1
+            self._in_fname = prefix + ".nxs"
+            print("prefix={}".format(prefix))
+        
+        if self._n_parts == 0:
+            msg = "Still no files to gather found"
             msg += "in_fname={}".format(self._in_fname)
             raise Exception(msg)
 
@@ -131,7 +141,18 @@ class GatherBase(object):
             self.n_rows = self.asic_size
             self.n_cols = self.asic_size
 
-        self._intiate()
+        self.layout = Layout(
+            in_fname=self._in_fname,
+            runs=self.runs,
+            run_names=self.run_names,
+            use_interleaved=self._use_interleaved,
+            properties=self._properties,
+            preproc_fname=preproc_fname,
+            max_part=self._max_part,
+            asic=self._asic
+        )
+
+        self._initiate()
 
         print("\n\n\n"
               "start gather\n"
@@ -164,6 +185,7 @@ class GatherBase(object):
             print("prefix={}".format(prefix))
 
             part_files = glob.glob("{}*".format(prefix))
+            print(part_files)
 
             self._n_parts = self._max_part or len(part_files)
             print("n_parts {}".format(self._n_parts))
@@ -171,7 +193,7 @@ class GatherBase(object):
             # data is not split in parts
             self._n_parts = 1
 
-    def _intiate(self):
+    def _initiate(self):
         print("n_rows", self.n_rows)
         print("n_cols", self.n_cols)
         init_results = self.layout.initiate(n_rows=self.n_rows,

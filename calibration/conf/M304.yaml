@@ -1,5 +1,5 @@
 general:
-    #mail_address: manuela.kuhn@desy.de
+    mail_address: jennifer.poehlsen@desy.de
 
     # options are: all, gather, process, merge (for drscs)
     run_type: all
@@ -12,7 +12,13 @@ general:
     #measurement: drscs
 
 
-    asic_set: null
+    #asic_set: null
+    #asic_set: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+    asic_set: [1]
+
+process:
+    time_limit: 02:00:00
+
 
 drscs:
     current: [itestc150]
@@ -21,15 +27,21 @@ drscs:
 
 drspc:
     run_name: [r1, r2, r3, r4, r5, r6, r7, r8]
+    #subdir: burst
 
 dark:
-    tint: tint50us
+    #tint: tint50us
+    tint: null
     run_name: [hg, mg, lg]
     # if underneath the measurement directory there is an subdirectory
     #subdir: burst
 
 xray:
-    element: Cu
+    element: Mo
+    #run_name: [175]
+    #run_name: null
+    run_list: [0]
+    #subdir: burst
 
 all:
     input_dir: /gpfs/cfel/fsds/labs/agipd/calibration/raw/333-325-331-304-320-312-302-311
