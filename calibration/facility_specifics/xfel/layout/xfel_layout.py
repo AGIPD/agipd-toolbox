@@ -279,18 +279,20 @@ class Layout(object):
 
             # Detect pulse loss
             diff = np.diff(cellid[source_fidx:source_lidx])
-            cell_loss = np.squeeze(np.where(diff != 1))
+            cell_loss = np.where(diff != 1)[0]
             if cell_loss.size != 0:
                 print("cell_loss", cell_loss)
 
             # Fill up pulse loss
             source_interval = [source_fidx, source_fidx]
-            for cidx in np.concatenate((cell_loss, [source_lidx])):
-                source_interval[1] = cidx
+            for cidx in np.concatenate((cell_loss, [source_lidx-source_fidx-1])):
+                source_interval[1] = source_fidx + cidx + 1
 
                 t_start = target_fidx + cellid[source_interval[0]]
                 t_stop = target_fidx + cellid[source_interval[1] - 1] + 1
+
                 target_interval = [t_start, t_stop]
+
 #                print(train_pos[seq][i], "interval", source_interval,
 #                      "-", target_interval)
 

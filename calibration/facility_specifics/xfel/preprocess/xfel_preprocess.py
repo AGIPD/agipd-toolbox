@@ -53,6 +53,8 @@ class Preprocess(object):
             'trainid': ("INDEX/trainId"),
             'pulse_count': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
                             "header/pulseCount"),
+            'cellid': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
+                            "image/cellId"),
 #            'status': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
 #                       "image/status"),
             #'header_trainid': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
@@ -111,13 +113,14 @@ class Preprocess(object):
         channel = 0
 
         fname = self._in_fname.format(channel, part=seq)
-        read_in_path = self._path['pulse_count'].format(channel)
+        #read_in_path = self._path['pulse_count'].format(channel)
+        read_in_path = self._path['cellid'].format(channel)
 
         with h5py.File(fname, "r") as f:
             in_data = f[read_in_path][()].astype(np.int)
 
         try:
-            n_memcells = max(in_data)
+            n_memcells = max(in_data)[0] + 1
         except:
             print("in_data", in_data)
             raise
