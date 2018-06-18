@@ -150,14 +150,7 @@ class ProcessXray(ProcessBase):
 
         npeaks = len(peak_locations_filtered)
         if npeaks < 2:
-            print("ERROR: Fewer than 2 peaks found!", row, col, mc)
-#            plt.plot(bins[:-1], hist)
-#            plt.plot(peak_locations, hist[peak_loc_bins], 'o')
-            #plt.show()
-#            pdir = "/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/jsibille/tmp/cfel/M304/temperature_m20C/xray/plots"
-#            pname = "{}/{}_{}_{}.png".format(pdir, row, col, mc)
-#            plt.savefig(pname)
-#            plt.gcf().clear()
+            #print("ERROR: Fewer than 2 peaks found!", row, col, mc)
             return failed
 
         # fit 0- and 1-photon peaks with gaussian
@@ -212,21 +205,32 @@ class ProcessXray(ProcessBase):
                     for mc in range(self.n_memcells):
 
                         idx = (row, col, mc)
-                        try:
-                            fit_result = self.get_photon_spacing(m_analog[row, col, mc, :], row, col, mc)
-                            self.result["photon_spacing"]["data"][idx] = fit_result.photon_spacing
-                            self.result["spacing_error"]["data"][idx] = fit_result.spacing_error
-                            self.result["peak_stddev"]["data"][idx] = fit_result.peak_stddev
-                            self.result["peak_error"]["data"][idx] = fit_result.peak_error
-                            self.result["quality"]["data"][idx] = fit_result.quality
-
-
-                        except:
-                            print("memcell, row, col", mc, row, col)
-                            print("analog.shape", analog.shape)
+                        if np.all(np.ma.getmask(m_analog)[row, col, mc, :]):
                             self.result["photon_spacing"]["data"][idx] = 0
+                            self.result["spacing_error"]["data"][idx] = 0
                             self.result["peak_stddev"]["data"][idx] = 0
-                            raise
+                            self.result["peak_error"]["data"][idx] = 0
+                            self.result["quality"]["data"][idx] = 0
+                        else:
+                            try:
+                                fit_result = self.get_photon_spacing(m_analog[row, col, mc, :], row, col, mc)
+                                self.result["photon_spacing"]["data"][idx] = fit_result.photon_spacing
+                                self.result["spacing_error"]["data"][idx] = fit_result.spacing_error
+                                self.result["peak_stddev"]["data"][idx] = fit_result.peak_stddev
+                                self.result["peak_error"]["data"][idx] = fit_result.peak_error
+                                self.result["quality"]["data"][idx] = fit_result.quality
+
+
+                            except:
+                                print("ERROR: Fit failed!")
+                                print("memcell, row, col", mc, row, col)
+                                print("analog.shape", analog.shape)
+                                self.result["photon_spacing"]["data"][idx] = 0
+                                self.result["spacing_error"]["data"][idx] = 0
+                                self.result["peak_stddev"]["data"][idx] = 0
+                                self.result["peak_error"]["data"][idx] = 0
+                                self.result["quality"]["data"][idx] = 0
+                                #raise
 
 
                         if self.result["photon_spacing"]["data"][idx] == 0:
