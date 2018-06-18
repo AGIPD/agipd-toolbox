@@ -74,7 +74,10 @@ class ProcessDark(ProcessBase):
 
     def calculate(self):
         for i, run_number in enumerate(self.runs):
-            run_name = self.run_names[i]
+            if self.run_names[0] is not None:
+                run_name = self.run_names[i]
+            else:
+                run_name = None
             in_fname = self.in_fname.format(run_number=run_number,
                                             run_name=run_name)
 

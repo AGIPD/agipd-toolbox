@@ -280,8 +280,8 @@ class Layout(object):
             # Detect pulse loss
             diff = np.diff(cellid[source_fidx:source_lidx])
             cell_loss = np.where(diff != 1)[0]
-            if cell_loss.size != 0:
-                print("cell_loss", cell_loss)
+            #if cell_loss.size != 0:
+            #    print("cell_loss", cell_loss)
 
             # Fill up pulse loss
             source_interval = [source_fidx, source_fidx]
@@ -313,7 +313,9 @@ class Layout(object):
                         tmp_data[target_idx] = raw_data[source_idx]
                     except:
                         print("tmp_data.shape", tmp_data.shape)
+                        #print(tmp_data[target_idx].shape)
                         print("raw_data.shape", raw_data.shape)
+                        #print(raw_data[source_idx].shape)
                         print("source_idx", source_idx)
                         print("target_idx", target_idx)
                         raise
