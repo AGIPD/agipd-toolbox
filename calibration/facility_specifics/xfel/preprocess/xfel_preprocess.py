@@ -54,9 +54,9 @@ class Preprocess(object):
             'pulse_count': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
                             "header/pulseCount"),
             'cellid': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
-                            "image/cellId"),
-#            'status': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
-#                       "image/status"),
+                       "image/cellId")
+            #'status': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
+            #           "image/status"),
             #'header_trainid': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
             #                   "header/trainId")
         }
@@ -168,10 +168,6 @@ class Preprocess(object):
                     count_not_zero = np.where(count != 0)[0]
                     n_tr = len(count_not_zero)
 
-                    ch_str = "channel{:02}".format(ch)
-                    n_trains = self._prop[ch_str]["n_trains"]
-                    n_trains.append(n_tr)
-
                     if n_tr == 0:
                         continue
 
@@ -190,6 +186,12 @@ class Preprocess(object):
                     tr = f[trainid_path][first_index:last_index].astype(np.int)
 #                    if seq == 0:
 #                        print("ch", ch, "tr", tr[0])
+
+                    # get n_trains from length of trainids
+                    # using non-zero count means missing trains not counted
+                    ch_str = "channel{:02}".format(ch)
+                    n_trains = self._prop[ch_str]["n_trains"]
+                    n_trains.append(len(tr))
 
                 trainids.append(tr)
 
@@ -266,7 +268,7 @@ class Preprocess(object):
             prev_last_trainid = [tr[-1] for tr in trainids]  # noqa F841
             prev_channels_with_trains = copy.copy(channels_with_trains)
 
-            i  = 0
+            i = 0
             # finding train loss inside a sequence
             for ch in range(self._n_channels):
                 p = self._prop["channel{:02}".format(ch)]
@@ -338,7 +340,6 @@ class Preprocess(object):
 
     def _find_outlier_trainids(self, train_number):
         outliers = []
-
         tr_diff = np.diff(train_number)
         pot_outliers = np.squeeze(np.where(tr_diff > self._outlier_threshold))
         # diff is refering to the index before the actual outlier
@@ -350,7 +351,6 @@ class Preprocess(object):
         for p_o in pot_outliers:
             if train_number[p_o - 1] + 1 == train_number[p_o + 1]:
                 outliers.append(p_o)
-
         return outliers
 
     def _write(self):
