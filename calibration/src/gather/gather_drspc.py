@@ -40,8 +40,10 @@ class GatherDrspc(GatherBase):
         idx_upper = np.arange(start, stop, self.n_runs)
 #        print("idx_upper", idx_upper)
 
-        start = self.n_rows // 2 + run_idx
-        stop = self._n_rows_total
+#        start = self.n_rows // 2 + run_idx
+#        stop = self._n_rows_total
+        start = run_idx
+        stop = self._n_rows_total // 2
         idx_lower = np.arange(start, stop, self.n_runs)
 #        print("idx_lower", idx_lower)
 
@@ -49,12 +51,11 @@ class GatherDrspc(GatherBase):
 
         if asic is None:
             pos_idx_rows = np.concatenate((idx_upper, idx_lower))
-
     #        print("pos_idx_rows", pos_idx_rows)
     #        print("pos_idx_cols", pos_idx_cols)
             return [[pos_idx_rows, pos_idx_cols]]
 
-        elif self.asic_in_upper_half:
+        elif self.asic_in_upper_half():
             return [[idx_upper, pos_idx_cols]]
         else:
             return [[idx_lower, pos_idx_cols]]
