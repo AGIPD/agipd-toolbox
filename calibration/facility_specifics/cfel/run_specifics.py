@@ -249,6 +249,39 @@ class Process(RunType):
         super().__init__(*args, **kwargs)
         self.run_type = "process"
 
+    def get_run_list(self,
+                     c_run_list,
+                     measurement,
+                     module_list,
+                     channel_list,
+                     temperature,
+                     meas_spec,
+                     subdir,
+                     input_dir,
+                     meas_conf,
+                     run_name):
+
+        if c_run_list is None:
+            return self._get_cfel_run_list(measurement=measurement,
+                                           module_list=module_list,
+                                           temperature=temperature,
+                                           meas_spec=meas_spec,
+                                           subdir=subdir,
+                                           input_dir=input_dir,
+                                           meas_conf=meas_conf,
+                                           run_name=run_name)
+        else:
+            return c_run_list
+
+    def get_list_and_name(self, measurement, run_list, run_name, run_type):
+        if run_type == "gather" and measurement == "dark":
+            return run_list, run_name
+        else:
+            return super().get_list_and_name(measurement=measurement,
+                                             run_list=run_list,
+                                             run_name=run_name,
+                                             run_type=run_type)
+
 
 class Merge(RunType):
     def __init__(self, *args, **kwargs):
