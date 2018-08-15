@@ -20,4 +20,4 @@
          Jennifer Poehlsen <jennifer.poehlsen@desy.de>
 """
 
-__version__ = '0.3.1-dev'
+__version__ = '1.0.0'
