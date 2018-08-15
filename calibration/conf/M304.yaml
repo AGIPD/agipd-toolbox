@@ -1,5 +1,5 @@
 general:
-    mail_address: jennifer.poehlsen@desy.de
+    #mail_address: jennifer.poehlsen@desy.de
 
     # options are: all, gather, process, merge (for drscs)
     run_type: all
@@ -7,8 +7,8 @@ general:
 
     module: M304
     temperature: temperature_m20C
-    measurement: drspc
-    #measurement: dark
+    #measurement: drspc
+    measurement: dark
     #measurement: drscs
 
 
