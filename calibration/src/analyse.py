@@ -290,7 +290,7 @@ class Analyse(object):
 
         if not self.overwrite and os.path.exists(out_fname):
             print("output filename = {}".format(out_fname))
-            print("WARNING: output file already exist. Skipping process.")
+            print("WARNING: output file already exists. Skipping process.")
         else:
             utils.create_dir(out_dir)
 
@@ -323,8 +323,8 @@ class Analyse(object):
         if out_fname != c_out_fname:
             print("convert format")
             print("output filename = {}".format(c_out_fname))
-            if os.path.exists(c_out_fname):
-                print("WARNING: output file already exist. Skipping convert.")
+            if not self.overwrite and os.path.exists(c_out_fname):
+                print("WARNING: output file already exists. Skipping convert.")
             else:
                 fac_dir = os.path.join(FACILITY_DIR, self._facility)
                 if fac_dir not in sys.path:

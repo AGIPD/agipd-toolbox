@@ -47,13 +47,19 @@ class ProcessXray(ProcessBase):
         self.shapes = {
             "photon_spacing": (self.n_rows,
                                self.n_cols,
-                               self.n_memcells),
+                               self.n_memcells,
+                               1),
 
             "stddev":         (self.n_rows,
                                self.n_cols,
                                self.n_memcells,
                                2)
         }
+
+        self.transpose_order = (3,
+                                self._memcell_location,
+                                self._row_location,
+                                self._col_location)
 
         self.result = {
             "photon_spacing": {
@@ -196,10 +202,8 @@ class ProcessXray(ProcessBase):
 
             failed_count = 0
             for row in range(self.n_rows):
-            #for row in range(10):
                 print("row ", row)
 
-                #for col in range(64):
                 for col in range(self.n_cols):
 
                     for mc in range(self.n_memcells):
@@ -236,7 +240,11 @@ class ProcessXray(ProcessBase):
                         if self.result["photon_spacing"]["data"][idx] == 0:
                             failed_count = failed_count + 1
 
-
+            self.result["photon_spacing"]["data"] = self.result["photon_spacing"]["data"].transpose(self.transpose_order)
+            self.result["spacing_error"]["data"] = self.result["spacing_error"]["data"].transpose(self.transpose_order)
+            self.result["peak_stddev"]["data"] = self.result["peak_stddev"]["data"].transpose(self.transpose_order)
+            self.result["peak_error"]["data"] = self.result["peak_error"]["data"].transpose(self.transpose_order)
+            self.result["quality"]["data"] = self.result["quality"]["data"].transpose(self.transpose_order)
 
             print("Done.")
             total_fits = self.n_rows * self.n_cols * self.n_memcells
