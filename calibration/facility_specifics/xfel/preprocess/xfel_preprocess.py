@@ -329,7 +329,7 @@ class Preprocess(object):
         ]
 
         self._prop["general"]["n_trains_total"] = (
-            np.max(n_trains_individual)
+            int(np.max(n_trains_individual))
             + self._prop["general"]["max_shifting"]
         )
 
