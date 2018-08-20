@@ -1,13 +1,12 @@
 general:
-    #mail_address: manuela.kuhn@desy.de
+    #mail_address: jennifer.poehlsen@desy.de
 
-    partition: all
+    partition: upex
     #partition: cfel
 
-    channel: [0]
-    #channel: [1]
-    #channel: [0 1 2]
-    #channel: [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
+    #channel: [0]
+    #channel: [0, 1, 2]
+    channel: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 
     #asic_set: null
     #
