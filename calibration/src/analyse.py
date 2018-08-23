@@ -313,31 +313,6 @@ class Analyse(object):
     #                            self.safety_factor,
     #                            out_fname)
 
-        c_out_dir, c_out_file_name = (
-            self.generate_process_path(base_dir=self.output_dir,
-                                       use_xfel_format=True)
-        )
-        c_out_fname = os.path.join(c_out_dir, c_out_file_name)
-
-        # do not convert cfel data
-        if out_fname != c_out_fname:
-            print("convert format")
-            print("output filename = {}".format(c_out_fname))
-            if not self.overwrite and os.path.exists(c_out_fname):
-                print("WARNING: output file already exists. Skipping convert.")
-            else:
-                fac_dir = os.path.join(FACILITY_DIR, self._facility)
-                if fac_dir not in sys.path:
-                    sys.path.insert(0, fac_dir)
-                # this is located in the facility dir
-                from convert_format import ConvertFormat
-
-                c_obj = ConvertFormat(out_fname,
-                                      c_out_fname,
-                                      "xfel",
-                                      self.channel)
-
-                c_obj.run()
 
     def run_join(self):
         # join constants in agipd format as well as the xfel format
@@ -358,22 +333,32 @@ class Analyse(object):
         obj = JoinConstants(in_fname, out_fname)
         obj.run()
 
-        # now do the other format
-        in_dir, in_file_name = (
-            self.generate_process_path(base_dir=self.input_dir,
-                                       use_xfel_format=True,
-                                       as_template=True)
-        )
-        in_fname = os.path.join(in_dir, in_file_name)
-
-        out_dir, out_file_name = (
+        # Convert to XFEL format
+        c_out_dir, c_out_file_name = (
             self.generate_join_path(base_dir=self.output_dir,
-                                    use_xfel_format=True)
+                                       use_xfel_format=True)
         )
-        out_fname = os.path.join(out_dir, out_file_name)
+        c_out_fname = os.path.join(c_out_dir, c_out_file_name)
+        #do not convert cfel data
+        if out_fname != c_out_fname:
+            print("convert format")
+            print("output filename = {}".format(c_out_fname))
+            if not self.overwrite and os.path.exists(c_out_fname):
+                print("WARNING: output file already exists. Skipping convert.")
+            else:
+                fac_dir = os.path.join(FACILITY_DIR, self._facility)
+                if fac_dir not in sys.path:
+                    sys.path.insert(0, fac_dir)
+                # this is located in the facility dir
+                from convert_format import ConvertFormat
 
-        obj = JoinConstants(in_fname, out_fname)
-        obj.run()
+                c_obj = ConvertFormat(out_fname,
+                                      c_out_fname,
+                                      "xfel",
+                                      self.channel)
+
+                c_obj.run()
+
 
     def run_merge_drscs(self):
         pass

@@ -72,8 +72,11 @@ class ConvertFormat(object):
 
         if key_list is None:
             with h5py.File(self.input_fname, "r") as f:
-                key_list = list(f.keys())
+                any_mod = list(f.keys())[0]
+                self.n_mods = len(list(f.keys()))
+                key_list = list(f[any_mod].keys())
 
+            print("key_list", key_list)
             key_list.remove("collection")
             self.keys_to_convert = key_list
 
@@ -86,8 +89,9 @@ class ConvertFormat(object):
         file_content = utils.load_file_content(self.input_fname)
 
         print("Converting")
-        for key in self.keys_to_convert:
-            file_content[key] = self.convert(file_content[key])
+        for ch in range(self.n_mods):
+            for key in self.keys_to_convert:
+                file_content["channel{:02}/{}".format(ch, key)] = self.convert(file_content["channel{:02}/{}".format(ch, key)])
 
         print("Writing output_file to {}".format(self.output_fname))
         utils.write_content(self.output_fname, file_content)

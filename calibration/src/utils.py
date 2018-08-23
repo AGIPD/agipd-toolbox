@@ -262,7 +262,6 @@ def convert_dtype(data, dtype):
 
 
 def convert_to_agipd_format(module, data, check=True):
-
     if isinstance(data, np.ndarray):
         if check and not is_xfel_format(data.shape):
             pass
@@ -337,7 +336,7 @@ def convert_to_xfel_format(channel, data):
             data = (data[:-2] + (data[-1], data[-2]))
 
     else:
-        raise Exception("Convertion failed: type {} not supported"
+        raise Exception("Conversion failed: type {} not supported"
                         .format(type(data)))
 
     return data
