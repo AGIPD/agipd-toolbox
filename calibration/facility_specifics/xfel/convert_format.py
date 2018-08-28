@@ -76,31 +76,29 @@ class ConvertFormat(object):
                 self.n_mods = len(list(f.keys()))
                 key_list = list(f[any_mod].keys())
 
-            print("key_list", key_list)
             key_list.remove("collection")
             self.keys_to_convert = key_list
 
         else:
             self.keys_to_convert = key_list
-        print("Keys to convert: {}\n".format(self.keys_to_convert))
+
 
     def run(self):
         print("Loading input_file from {}".format(self.input_fname))
         file_content = utils.load_file_content(self.input_fname)
 
-        print("Converting")
         for ch in range(self.n_mods):
             for key in self.keys_to_convert:
-                file_content["channel{:02}/{}".format(ch, key)] = self.convert(file_content["channel{:02}/{}".format(ch, key)])
+                file_content["channel{:02}/{}".format(ch, key)] = self.convert(file_content["channel{:02}/{}".format(ch, key)], ch)
 
         print("Writing output_file to {}".format(self.output_fname))
         utils.write_content(self.output_fname, file_content)
 
-    def convert(self, data):
+    def convert(self, data, channel):
         if self.output_format == "xfel":
-            return utils.convert_to_xfel_format(self.channel, data)
+            return utils.convert_to_xfel_format(channel, data)
         elif self.output_format == "agipd":
-            return utils.convert_to_agipd_format(self.channel, data)
+            return utils.convert_to_agipd_format(channel, data)
         else:
             msg = "Format to which data should be converted is not supported."
             raise Exception(msg)

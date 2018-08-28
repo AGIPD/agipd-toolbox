@@ -316,7 +316,7 @@ class Analyse(object):
 
     def run_join(self):
         # join constants in agipd format as well as the xfel format
-
+        print("Join AGIPD format")
         in_dir, in_file_name = (
             self.generate_process_path(base_dir=self.input_dir,
                                        use_xfel_format=False,
@@ -334,6 +334,7 @@ class Analyse(object):
         obj.run()
 
         # Convert to XFEL format
+        print("Converting to XFEL format")
         c_out_dir, c_out_file_name = (
             self.generate_join_path(base_dir=self.output_dir,
                                        use_xfel_format=True)
