@@ -88,11 +88,12 @@ class ConvertFormat(object):
         file_content = utils.load_file_content(self.input_fname)
 
         for ch in range(self.n_mods):
+            prefix = "channel{:02}".format(ch)
             for key in self.keys_to_convert:
-                file_content["channel{:02}/{}".format(ch, key)] = self.convert(file_content["channel{:02}/{}".format(ch, key)], ch)
+                file_content[prefix + "/" + key] = self.convert(file_content[prefix + "/" + key], ch)
 
         print("Writing output_file to {}".format(self.output_fname))
-        utils.write_content(self.output_fname, file_content)
+        utils.write_content(self.output_fname, file_content) 
 
     def convert(self, data, channel):
         if self.output_format == "xfel":

@@ -390,10 +390,14 @@ def write_content(fname, file_content, prefix="", excluded=[]):
         excluded (optional): List of keys to be excluded from storing.
     """
 
-    with h5py.File(fname, "w", libver="latest") as f:
+#    with h5py.File(fname, "w", libver="latest") as f:
+    # To maintain compatibility with hdf5 1.8, don't use libver="latest"
+    # Needed by Anton Barty
+    with h5py.File(fname, "w") as f:
         for key in file_content:
             if key not in excluded:
                 f.create_dataset(prefix + "/" + key, data=file_content[key])
+                f.flush()
 
 
 def calculate_mapped_asic(asic, asic_order):
