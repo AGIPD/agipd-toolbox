@@ -313,13 +313,34 @@ class Analyse(object):
     #                            self.safety_factor,
     #                            out_fname)
 
+
+    def run_join(self):
+        # join constants in agipd format as well as the xfel format
+        print("Join AGIPD format")
+        in_dir, in_file_name = (
+            self.generate_process_path(base_dir=self.input_dir,
+                                       use_xfel_format=False,
+                                       as_template=True)
+        )
+        in_fname = os.path.join(in_dir, in_file_name)
+
+        out_dir, out_file_name = (
+            self.generate_join_path(base_dir=self.output_dir,
+                                    use_xfel_format=False)
+        )
+        out_fname = os.path.join(out_dir, out_file_name)
+
+        obj = JoinConstants(in_fname, out_fname)
+        obj.run()
+
+        # Convert to XFEL format
+        print("Converting to XFEL format")
         c_out_dir, c_out_file_name = (
-            self.generate_process_path(base_dir=self.output_dir,
+            self.generate_join_path(base_dir=self.output_dir,
                                        use_xfel_format=True)
         )
         c_out_fname = os.path.join(c_out_dir, c_out_file_name)
-
-        # do not convert cfel data
+        #do not convert cfel data
         if out_fname != c_out_fname:
             print("convert format")
             print("output filename = {}".format(c_out_fname))
@@ -339,41 +360,6 @@ class Analyse(object):
 
                 c_obj.run()
 
-    def run_join(self):
-        # join constants in agipd format as well as the xfel format
-
-        in_dir, in_file_name = (
-            self.generate_process_path(base_dir=self.input_dir,
-                                       use_xfel_format=False,
-                                       as_template=True)
-        )
-        in_fname = os.path.join(in_dir, in_file_name)
-
-        out_dir, out_file_name = (
-            self.generate_join_path(base_dir=self.output_dir,
-                                    use_xfel_format=False)
-        )
-        out_fname = os.path.join(out_dir, out_file_name)
-
-        obj = JoinConstants(in_fname, out_fname)
-        obj.run()
-
-        # now do the other format
-        in_dir, in_file_name = (
-            self.generate_process_path(base_dir=self.input_dir,
-                                       use_xfel_format=True,
-                                       as_template=True)
-        )
-        in_fname = os.path.join(in_dir, in_file_name)
-
-        out_dir, out_file_name = (
-            self.generate_join_path(base_dir=self.output_dir,
-                                    use_xfel_format=True)
-        )
-        out_fname = os.path.join(out_dir, out_file_name)
-
-        obj = JoinConstants(in_fname, out_fname)
-        obj.run()
 
     def run_merge_drscs(self):
         pass

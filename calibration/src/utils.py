@@ -196,14 +196,14 @@ def get_asic_order_xfel(channel):
                       [15, 2],
                       [16, 1]]
     else:
-        asic_order = [[16, 1],
-                      [15, 2],
-                      [14, 3],
-                      [13, 4],
-                      [12, 5],
-                      [11, 6],
-                      [10, 7],
-                      [9, 8]]
+        asic_order = [[1, 16],
+                      [2, 15],
+                      [3, 14],
+                      [4, 13],
+                      [5, 12],
+                      [6, 11],
+                      [7, 10],
+                      [8, 9]]
 
     return asic_order
 
@@ -262,7 +262,6 @@ def convert_dtype(data, dtype):
 
 
 def convert_to_agipd_format(module, data, check=True):
-
     if isinstance(data, np.ndarray):
         if check and not is_xfel_format(data.shape):
             pass
@@ -296,14 +295,13 @@ def convert_to_agipd_format(module, data, check=True):
             data = (data[:-2] + (data[-1], data[-2]))
 
     else:
-        raise Exception("Convertion failed: type {} not supported"
+        raise Exception("Conversion failed: type {} not supported"
                         .format(type(data)))
 
     return data
 
 
 def convert_to_xfel_format(channel, data):
-
     if isinstance(data, np.ndarray):
         if is_xfel_format(data.shape):
             pass
@@ -314,7 +312,6 @@ def convert_to_xfel_format(channel, data):
             # converts (..., 128, 512) to (..., 512, 128)
             last = len(data.shape) - 1
             data = np.swapaxes(data, last, last - 1)
-
             data_dim = len(data.shape)
             if data_dim == 2:
                 if in_wing1:
@@ -337,7 +334,7 @@ def convert_to_xfel_format(channel, data):
             data = (data[:-2] + (data[-1], data[-2]))
 
     else:
-        raise Exception("Convertion failed: type {} not supported"
+        raise Exception("Conversion failed: type {} not supported"
                         .format(type(data)))
 
     return data
@@ -393,10 +390,14 @@ def write_content(fname, file_content, prefix="", excluded=[]):
         excluded (optional): List of keys to be excluded from storing.
     """
 
-    with h5py.File(fname, "w", libver="latest") as f:
+#    with h5py.File(fname, "w", libver="latest") as f:
+    # To maintain compatibility with hdf5 1.8, don't use libver="latest"
+    # Needed by Anton Barty
+    with h5py.File(fname, "w") as f:
         for key in file_content:
             if key not in excluded:
                 f.create_dataset(prefix + "/" + key, data=file_content[key])
+                f.flush()
 
 
 def calculate_mapped_asic(asic, asic_order):
@@ -423,21 +424,21 @@ def calculate_mapped_asic(asic, asic_order):
         wing 2            wing 1
        _________        _________          _________
       |    |    |      |    |    |        |    |    |
-      | 16 |  1 |      |  9 |  8 |        |  0 |  1 |
+      |  1 | 16 |      |  9 |  8 |        |  0 |  1 |
       |____|____|      |____|____|        |____|____|
-      | 15 |  2 |      | 10 |  7 |        |  2 |  3 |
+      |  2 | 15 |      | 10 |  7 |        |  2 |  3 |
       |____|____|      |____|____|        |____|____|
-      | 14 |  3 |      | 11 |  6 |        |  4 |  5 |
+      |  3 | 14 |      | 11 |  6 |        |  4 |  5 |
       |____|__ _|      |____|____|        |____|____|
-      | 13 |  4 |      | 12 |  5 |  into  |  6 |  7 |
+      |  4 | 13 |      | 12 |  5 |  into  |  6 |  7 |
       |____|____|      |____|____|        |____|____|
-      | 12 |  5 |      | 13 |  4 |        |  8 |  9 |
+      |  5 | 12 |      | 13 |  4 |        |  8 |  9 |
       |____|____|      |____|____|        |____|____|
-      | 11 |  6 |      | 14 |  3 |        | 10 | 11 |
+      |  6 | 11 |      | 14 |  3 |        | 10 | 11 |
       |____|____|      |____|____|        |____|____|
-      | 10 |  7 |      | 15 |  2 |        | 12 | 13 |
+      |  7 | 10 |      | 15 |  2 |        | 12 | 13 |
       |____|____|      |____|____|        |____|____|
-      |  9 |  8 |      | 16 |  2 |        | 14 | 15 |
+      |  8 |  9 |      | 16 |  1 |        | 14 | 15 |
       |____|____|      |____|____|        |____|____|
 
 
