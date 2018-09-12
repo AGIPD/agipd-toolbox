@@ -194,6 +194,8 @@ class Analyse(object):
     def run_gather(self):
         if self.measurement == "drspc":
             from gather.gather_drspc import GatherDrspc as Gather
+        elif self.measurement == "drscs":
+            from gather.gather_drscs import GatherDrscs as Gather
         else:
             from gather.gather_base import GatherBase as Gather
 

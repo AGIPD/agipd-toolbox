@@ -94,14 +94,20 @@ class GeneratePaths(object):
         if self._meas_spec is not None:
             if self._measurement not in ["dark", "xray"]:
                 fdir = os.path.join(fdir, self._meas_spec)
-
-            prefix += "{}_".format(self._meas_spec)
-
+            print(self._measurement)
+            if self._measurement != "drscs":
+                prefix += "{}_".format(self._meas_spec)
+#            if self._measurement == "drscs":
+#                print("here")
+#                #prefix += "{run_name}_"
+#            else:
+#                prefix += "{}_".format(self._meas_spec)
+        print("prefix", prefix)
         if self._subdir is not None:
             fdir = os.path.join(fdir, self._subdir)
-            
+
         prelim_fname = prefix + "*.nxs"
-        
+
         if parts:
             suffix = "{run_number:05}_part{part:05}.nxs"
         else:

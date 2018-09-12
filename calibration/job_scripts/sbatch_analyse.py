@@ -604,11 +604,12 @@ class SubmitJobs(object):
         class WrongConfiguration(Exception):
             pass
 
-        if conf["measurement"] == "drscs":
-            if len(conf["runs"]) != 4:
-                msg = ("There have to be 4 runs defined "
-                       "(each containing 2 columns)")
-                raise WrongConfiguration(msg)
+        if (conf["measurement"] == "drscs"
+                and conf["run_type"] == "gather"
+                and len(conf["runs"]) != 4):
+            msg = ("There have to be 4 runs defined "
+                   "(each containing 2 columns)")
+            raise WrongConfiguration(msg)
 
         if (not conf["use_xfel_layout"]
                 and (conf["measurement"] == "dark"

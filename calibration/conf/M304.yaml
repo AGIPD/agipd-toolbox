@@ -21,8 +21,9 @@ process:
 
 
 drscs:
-    current: [itestc150]
-    #current: [itestc80, itestc150, itestc20]
+    current: [itest80]
+    #current: [itest80, itest150, itest20]
+    run_name: [r15, r26, r37, r48]
     safety_factor: 950
 
 drspc:

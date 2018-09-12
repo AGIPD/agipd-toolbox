@@ -160,11 +160,12 @@ class Drscs(Measurement):
             A string read in the measurement specific entry in the config.
         """
 
-        c_current = config[self.measurement]["current"]
+        #c_current = config[self.measurement]["current"]
 
         # comma seperated string into into list
-        current_list = [c.split()[0] for c in c_current.split(",")]
-        self.measurement = current_list
+        #current_list = [c.split()[0] for c in c_current.split(",")]
+        #self.measurement = current_list
+        self.meas_spec = config[self.measurement]["current"]
 
         return self.meas_spec
 
@@ -188,8 +189,8 @@ class Drscs(Measurement):
             A string containing the template and a int describing how many
             many splits to be taken to determine the run number.
         """
-        run_number_templ = self.meas_spec + "_{run_number:05}"
-        split_number = 2
+        run_number_templ = "{run_name}_{run_number:05}"
+        split_number = 1
 
         return run_number_templ, split_number
 
