@@ -1,0 +1,269 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>calibration.src.process package &#8212; agipd-toolbox 1.0.3 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="calibration-src-process-package">
+<h1>calibration.src.process package<a class="headerlink" href="#calibration-src-process-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-calibration.src.process.process_base">
+<span id="calibration-src-process-process-base-module"></span><h2>calibration.src.process.process_base module<a class="headerlink" href="#module-calibration.src.process.process_base" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt>&#64;author: Manuela Kuhn &lt;<a class="reference external" href="mailto:manuela&#46;kuhn&#37;&#52;&#48;desy&#46;de">manuela<span>&#46;</span>kuhn<span>&#64;</span>desy<span>&#46;</span>de</a>&gt;</dt>
+<dd>Jennifer Poehlsen &lt;<a class="reference external" href="mailto:jennifer&#46;poehlsen&#37;&#52;&#48;desy&#46;de">jennifer<span>&#46;</span>poehlsen<span>&#64;</span>desy<span>&#46;</span>de</a>&gt;</dd>
+</dl>
+<dl class="exception">
+<dt id="calibration.src.process.process_base.NotSupported">
+<em class="property">exception </em><code class="descclassname">calibration.src.process.process_base.</code><code class="descname">NotSupported</code><a class="reference internal" href="_modules/calibration/src/process/process_base.html#NotSupported"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_base.NotSupported" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="calibration.src.process.process_base.ProcessBase">
+<em class="property">class </em><code class="descclassname">calibration.src.process.process_base.</code><code class="descname">ProcessBase</code><span class="sig-paren">(</span><em>in_fname</em>, <em>out_fname</em>, <em>runs</em>, <em>run_name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_base.html#ProcessBase"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_base.ProcessBase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="calibration.src.process.process_base.ProcessBase.calculate">
+<code class="descname">calculate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_base.html#ProcessBase.calculate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_base.ProcessBase.calculate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="calibration.src.process.process_base.ProcessBase.fit_linear">
+<code class="descname">fit_linear</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>mask=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_base.html#ProcessBase.fit_linear"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_base.ProcessBase.fit_linear" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="calibration.src.process.process_base.ProcessBase.fit_linear_old">
+<code class="descname">fit_linear_old</code><span class="sig-paren">(</span><em>x</em>, <em>y</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_base.html#ProcessBase.fit_linear_old"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_base.ProcessBase.fit_linear_old" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="calibration.src.process.process_base.ProcessBase.get_mask">
+<code class="descname">get_mask</code><span class="sig-paren">(</span><em>analog</em>, <em>digital</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_base.html#ProcessBase.get_mask"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_base.ProcessBase.get_mask" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="calibration.src.process.process_base.ProcessBase.initiate">
+<code class="descname">initiate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_base.html#ProcessBase.initiate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_base.ProcessBase.initiate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="calibration.src.process.process_base.ProcessBase.load_data">
+<code class="descname">load_data</code><span class="sig-paren">(</span><em>in_fname</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_base.html#ProcessBase.load_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_base.ProcessBase.load_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="calibration.src.process.process_base.ProcessBase.mask_out_problems">
+<code class="descname">mask_out_problems</code><span class="sig-paren">(</span><em>analog</em>, <em>digital</em>, <em>mask=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_base.html#ProcessBase.mask_out_problems"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_base.ProcessBase.mask_out_problems" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="calibration.src.process.process_base.ProcessBase.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_base.html#ProcessBase.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_base.ProcessBase.run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="calibration.src.process.process_base.ProcessBase.write_data">
+<code class="descname">write_data</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_base.html#ProcessBase.write_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_base.ProcessBase.write_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-calibration.src.process.process_dark">
+<span id="calibration-src-process-process-dark-module"></span><h2>calibration.src.process.process_dark module<a class="headerlink" href="#module-calibration.src.process.process_dark" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt>&#64;author: Manuela Kuhn &lt;<a class="reference external" href="mailto:manuela&#46;kuhn&#37;&#52;&#48;desy&#46;de">manuela<span>&#46;</span>kuhn<span>&#64;</span>desy<span>&#46;</span>de</a>&gt;</dt>
+<dd>Jennifer Poehlsen &lt;<a class="reference external" href="mailto:jennifer&#46;poehlsen&#37;&#52;&#48;desy&#46;de">jennifer<span>&#46;</span>poehlsen<span>&#64;</span>desy<span>&#46;</span>de</a>&gt;</dd>
+</dl>
+<dl class="class">
+<dt id="calibration.src.process.process_dark.ProcessDark">
+<em class="property">class </em><code class="descclassname">calibration.src.process.process_dark.</code><code class="descname">ProcessDark</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_dark.html#ProcessDark"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_dark.ProcessDark" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">process_base.ProcessBase</span></code></p>
+<dl class="method">
+<dt id="calibration.src.process.process_dark.ProcessDark.calculate">
+<code class="descname">calculate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_dark.html#ProcessDark.calculate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_dark.ProcessDark.calculate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="calibration.src.process.process_dark.ProcessDark.initiate">
+<code class="descname">initiate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_dark.html#ProcessDark.initiate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_dark.ProcessDark.initiate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-calibration.src.process.process_drspc">
+<span id="calibration-src-process-process-drspc-module"></span><h2>calibration.src.process.process_drspc module<a class="headerlink" href="#module-calibration.src.process.process_drspc" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt>&#64;author: Manuela Kuhn &lt;<a class="reference external" href="mailto:manuela&#46;kuhn&#37;&#52;&#48;desy&#46;de">manuela<span>&#46;</span>kuhn<span>&#64;</span>desy<span>&#46;</span>de</a>&gt;</dt>
+<dd>Jennifer Poehlsen &lt;<a class="reference external" href="mailto:jennifer&#46;poehlsen&#37;&#52;&#48;desy&#46;de">jennifer<span>&#46;</span>poehlsen<span>&#64;</span>desy<span>&#46;</span>de</a>&gt;</dd>
+</dl>
+<dl class="class">
+<dt id="calibration.src.process.process_drspc.ProcessDrspc">
+<em class="property">class </em><code class="descclassname">calibration.src.process.process_drspc.</code><code class="descname">ProcessDrspc</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_drspc.html#ProcessDrspc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_drspc.ProcessDrspc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">process_base.ProcessBase</span></code></p>
+<dl class="method">
+<dt id="calibration.src.process.process_drspc.ProcessDrspc.calculate">
+<code class="descname">calculate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_drspc.html#ProcessDrspc.calculate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_drspc.ProcessDrspc.calculate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="calibration.src.process.process_drspc.ProcessDrspc.determine_fit_intervals">
+<code class="descname">determine_fit_intervals</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_drspc.html#ProcessDrspc.determine_fit_intervals"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_drspc.ProcessDrspc.determine_fit_intervals" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="calibration.src.process.process_drspc.ProcessDrspc.initiate">
+<code class="descname">initiate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_drspc.html#ProcessDrspc.initiate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_drspc.ProcessDrspc.initiate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-calibration.src.process.process_xray">
+<span id="calibration-src-process-process-xray-module"></span><h2>calibration.src.process.process_xray module<a class="headerlink" href="#module-calibration.src.process.process_xray" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt>&#64;author: Manuela Kuhn &lt;<a class="reference external" href="mailto:manuela&#46;kuhn&#37;&#52;&#48;desy&#46;de">manuela<span>&#46;</span>kuhn<span>&#64;</span>desy<span>&#46;</span>de</a>&gt;</dt>
+<dd>Jennifer Poehlsen &lt;<a class="reference external" href="mailto:jennifer&#46;poehlsen&#37;&#52;&#48;desy&#46;de">jennifer<span>&#46;</span>poehlsen<span>&#64;</span>desy<span>&#46;</span>de</a>&gt;</dd>
+</dl>
+<dl class="class">
+<dt id="calibration.src.process.process_xray.ProcessXray">
+<em class="property">class </em><code class="descclassname">calibration.src.process.process_xray.</code><code class="descname">ProcessXray</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_xray.html#ProcessXray"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_xray.ProcessXray" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">process_base.ProcessBase</span></code></p>
+<dl class="attribute">
+<dt id="calibration.src.process.process_xray.ProcessXray.Res">
+<code class="descname">Res</code><a class="headerlink" href="#calibration.src.process.process_xray.ProcessXray.Res" title="Permalink to this definition">¶</a></dt>
+<dd><p>alias of <code class="xref py py-class docutils literal notranslate"><span class="pre">res</span></code></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="calibration.src.process.process_xray.ProcessXray.calculate">
+<code class="descname">calculate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_xray.html#ProcessXray.calculate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_xray.ProcessXray.calculate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="calibration.src.process.process_xray.ProcessXray.fit_peaks">
+<code class="descname">fit_peaks</code><span class="sig-paren">(</span><em>hist</em>, <em>bins</em>, <em>npeaks</em>, <em>initial</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_xray.html#ProcessXray.fit_peaks"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_xray.ProcessXray.fit_peaks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="calibration.src.process.process_xray.ProcessXray.gauss">
+<code class="descname">gauss</code><span class="sig-paren">(</span><em>x</em>, <em>*p</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_xray.html#ProcessXray.gauss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_xray.ProcessXray.gauss" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="calibration.src.process.process_xray.ProcessXray.get_photon_spacing">
+<code class="descname">get_photon_spacing</code><span class="sig-paren">(</span><em>analog</em>, <em>row</em>, <em>col</em>, <em>mc</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_xray.html#ProcessXray.get_photon_spacing"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_xray.ProcessXray.get_photon_spacing" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="calibration.src.process.process_xray.ProcessXray.initiate">
+<code class="descname">initiate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/calibration/src/process/process_xray.html#ProcessXray.initiate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#calibration.src.process.process_xray.ProcessXray.initiate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-calibration.src.process">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-calibration.src.process" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt>&#64;author: Manuela Kuhn &lt;<a class="reference external" href="mailto:manuela&#46;kuhn&#37;&#52;&#48;desy&#46;de">manuela<span>&#46;</span>kuhn<span>&#64;</span>desy<span>&#46;</span>de</a>&gt;</dt>
+<dd>Jennifer Poehlsen &lt;<a class="reference external" href="mailto:jennifer&#46;poehlsen&#37;&#52;&#48;desy&#46;de">jennifer<span>&#46;</span>poehlsen<span>&#64;</span>desy<span>&#46;</span>de</a>&gt;</dd>
+</dl>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">calibration.src.process package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-calibration.src.process.process_base">calibration.src.process.process_base module</a></li>
+<li><a class="reference internal" href="#module-calibration.src.process.process_dark">calibration.src.process.process_dark module</a></li>
+<li><a class="reference internal" href="#module-calibration.src.process.process_drspc">calibration.src.process.process_drspc module</a></li>
+<li><a class="reference internal" href="#module-calibration.src.process.process_xray">calibration.src.process.process_xray module</a></li>
+<li><a class="reference internal" href="#module-calibration.src.process">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/calibration.src.process.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, Manuela Kuhn, Jennifer Poehlsen.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/calibration.src.process.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

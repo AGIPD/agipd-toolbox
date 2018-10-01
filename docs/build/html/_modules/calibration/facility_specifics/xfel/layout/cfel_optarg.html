@@ -1,0 +1,197 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>calibration.facility_specifics.xfel.layout.cfel_optarg &#8212; agipd-toolbox 1.0.3 documentation</title>
+    <link rel="stylesheet" href="../../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for calibration.facility_specifics.xfel.layout.cfel_optarg</h1><div class="highlight"><pre>
+<span></span><span class="c1">#    This file is part of cfelpyutils.</span>
+<span class="c1">#</span>
+<span class="c1">#    cfelpyutils is free software: you can redistribute it and/or modify</span>
+<span class="c1">#    it under the terms of the GNU General Public License as published by</span>
+<span class="c1">#    the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1">#    (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1">#    cfelpyutils is distributed in the hope that it will be useful,</span>
+<span class="c1">#    but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1">#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1">#    GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1">#    You should have received a copy of the GNU General Public License</span>
+<span class="c1">#    along with cfelpyutils.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">absolute_import</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">division</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">print_function</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">unicode_literals</span>
+
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Utilities for parsing command line options and configuration files.</span>
+
+<span class="sd">This module contains utilities for parsing of command line options and</span>
+<span class="sd">configuration files.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="kn">import</span> <span class="nn">ast</span>
+
+
+<div class="viewcode-block" id="parse_parameters"><a class="viewcode-back" href="../../../../../calibration.facility_specifics.xfel.layout.html#calibration.facility_specifics.xfel.layout.cfel_optarg.parse_parameters">[docs]</a><span class="k">def</span> <span class="nf">parse_parameters</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Sets correct types for parameter dictionaries.</span>
+
+<span class="sd">    Reads a parameter dictionary returned by the ConfigParser python module, and assigns correct types to parameters,</span>
+<span class="sd">    without changing the structure of the dictionary.</span>
+
+<span class="sd">    The parser tries to interpret each entry in the dictionary according to the following rules:</span>
+
+<span class="sd">    - If the entry starts and ends with a single quote or double quote, it is</span>
+<span class="sd">      interpreted as a string.</span>
+<span class="sd">    - If the entry starts and ends with a square bracket, it is interpreted as a list.</span>
+<span class="sd">    - If the entry starts and ends with a brace, it is interpreted as a dictionary.</span>
+<span class="sd">    - If the entry is the word None, without quotes, then the entry is</span>
+<span class="sd">      interpreted as NoneType.</span>
+<span class="sd">    - If the entry is the word False, without quotes, then the entry is</span>
+<span class="sd">      interpreted as a boolean False.</span>
+<span class="sd">    - If the entry is the word True, without quotes, then the entry is</span>
+<span class="sd">      interpreted as a boolean True.</span>
+<span class="sd">    - If none of the previous options match the content of the entry,</span>
+<span class="sd">      the parser tries to interpret the entry in order as:</span>
+
+<span class="sd">        - An integer number.</span>
+<span class="sd">        - A float number.</span>
+<span class="sd">        - A string.</span>
+
+<span class="sd">      The first choice that succeeds determines the entry type.</span>
+
+<span class="sd">    Args:</span>
+
+<span class="sd">        config (class RawConfigParser): ConfigParser instance.</span>
+
+<span class="sd">    Returns:</span>
+
+<span class="sd">        monitor_params (dict): dictionary with the same structure as the input dictionary, but with correct types</span>
+<span class="sd">        assigned to each entry.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">monitor_params</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">sect</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">sections</span><span class="p">():</span>
+        <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">op</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">options</span><span class="p">(</span><span class="n">sect</span><span class="p">):</span>
+            <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">sect</span><span class="p">,</span> <span class="n">op</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;&#39;&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;&#39;&quot;</span><span class="p">):</span>
+                <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span> <span class="o">=</span> <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">][</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">):</span>
+                <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span> <span class="o">=</span> <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">][</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;[&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;]&quot;</span><span class="p">):</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span> <span class="o">=</span> <span class="n">ast</span><span class="o">.</span><span class="n">literal_eval</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">sect</span><span class="p">,</span> <span class="n">op</span><span class="p">))</span>
+                    <span class="k">continue</span>
+                <span class="k">except</span> <span class="p">(</span><span class="ne">SyntaxError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Error parsing parameter </span><span class="si">{0}</span><span class="s1"> in section </span><span class="si">{1}</span><span class="s1">. Make sure that the syntax is &#39;</span>
+                                       <span class="s1">&#39;correct: list elements must be separated by commas and dict entries must &#39;</span>
+                                       <span class="s1">&#39;contain the colon symbol. Strings must be quoted, even in lists and &#39;</span>
+                                       <span class="s1">&#39;dicts.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">sect</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;{&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;}&quot;</span><span class="p">):</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span> <span class="o">=</span> <span class="n">ast</span><span class="o">.</span><span class="n">literal_eval</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">sect</span><span class="p">,</span> <span class="n">op</span><span class="p">))</span>
+                    <span class="k">continue</span>
+                <span class="k">except</span> <span class="p">(</span><span class="ne">SyntaxError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Error parsing parameter </span><span class="si">{0}</span><span class="s1"> in section </span><span class="si">{1}</span><span class="s1">. Make sure that the syntax is &#39;</span>
+                                       <span class="s1">&#39;correct: list elements must be separated by commas and dict entries must &#39;</span>
+                                       <span class="s1">&#39;contain the colon symbol. Strings must be quoted, even in lists and &#39;</span>
+                                       <span class="s1">&#39;dicts.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">sect</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+                <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;False&#39;</span><span class="p">:</span>
+                <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;True&#39;</span><span class="p">:</span>
+                <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">continue</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">])</span>
+                <span class="k">continue</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">monitor_params</span><span class="p">[</span><span class="n">sect</span><span class="p">][</span><span class="n">op</span><span class="p">])</span>
+                    <span class="k">continue</span>
+                <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                    <span class="k">pass</span>
+
+    <span class="k">return</span> <span class="n">monitor_params</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, Manuela Kuhn, Jennifer Poehlsen.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

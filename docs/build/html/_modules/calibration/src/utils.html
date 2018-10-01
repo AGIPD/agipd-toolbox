@@ -1,0 +1,855 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>calibration.src.utils &#8212; agipd-toolbox 1.0.3 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for calibration.src.utils</h1><div class="highlight"><pre>
+<span></span><span class="c1"># (c) Copyright 2017-2018 DESY, FS-DS</span>
+<span class="c1">#</span>
+<span class="c1"># This file is part of the FS-DS AGIPD toolbox.</span>
+<span class="c1">#</span>
+<span class="c1"># This software is free: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 2 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This software is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this software.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">@author: Manuela Kuhn &lt;manuela.kuhn@desy.de&gt;</span>
+<span class="sd">         Jennifer Poehlsen &lt;jennifer.poehlsen@desy.de&gt;</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">configparser</span>
+<span class="kn">import</span> <span class="nn">h5py</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">logging.config</span> <span class="k">import</span> <span class="n">dictConfig</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">yaml</span>
+
+
+<div class="viewcode-block" id="create_dir"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.create_dir">[docs]</a><span class="k">def</span> <span class="nf">create_dir</span><span class="p">(</span><span class="n">directory_name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Creates a directory including supdirectories if it does not exist.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        directory_name: The path of the directory to be created.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">directory_name</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">directory_name</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Dir &#39;</span><span class="si">{}</span><span class="s2">&#39; does not exist. Create it.&quot;</span>
+                  <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">directory_name</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">directory_name</span><span class="p">):</span>
+                <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="check_file_exists"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.check_file_exists">[docs]</a><span class="k">def</span> <span class="nf">check_file_exists</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">quit</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Checks if a file already exists.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        file_name: The file to check for existence</span>
+<span class="sd">        quit (optional): Quit the program if the file exists or not.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;file_name = </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">file_name</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">file_name</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Output file already exists&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">quit</span><span class="p">:</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Output file: ok&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="load_config_ini"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.load_config_ini">[docs]</a><span class="k">def</span> <span class="nf">load_config_ini</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">ini_file</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Loads the config from a ini file and overwrites already exsiting config.</span>
+
+<span class="sd">    Overwriting an existing configuration dictionary enables multi-layered</span>
+<span class="sd">    configs.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config (dict): Dictionary with already existing config to be</span>
+<span class="sd">                       overwritten.</span>
+<span class="sd">        ini_file (str): Name of the ini file from which the config should be</span>
+<span class="sd">                        loaded.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">new_config</span> <span class="o">=</span> <span class="n">configparser</span><span class="o">.</span><span class="n">ConfigParser</span><span class="p">()</span>
+    <span class="n">new_config</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">ini_file</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">new_config</span><span class="o">.</span><span class="n">sections</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;ERROR: No ini file found (tried to find </span><span class="si">{}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ini_file</span><span class="p">))</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">section</span><span class="p">,</span> <span class="n">sec_value</span> <span class="ow">in</span> <span class="n">new_config</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">section</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+            <span class="n">config</span><span class="p">[</span><span class="n">section</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">key_value</span> <span class="ow">in</span> <span class="n">sec_value</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">config</span><span class="p">[</span><span class="n">section</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">key_value</span></div>
+
+
+<div class="viewcode-block" id="load_config"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.load_config">[docs]</a><span class="k">def</span> <span class="nf">load_config</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="p">{}):</span>
+    <span class="sd">&quot;&quot;&quot; Loads the config from a yaml file and overwrites already exsiting config.</span>
+
+<span class="sd">    Overwriting an existing configuration dictionary enables multi-layered</span>
+<span class="sd">    configs.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config_file (str): Name of the yaml file from which the config should be</span>
+<span class="sd">                           loaded.</span>
+<span class="sd">        config (optional, dict): Dictionary with already existing config to be</span>
+<span class="sd">                                 overwritten.</span>
+
+<span class="sd">    Return:</span>
+<span class="sd">        Configuration dictionary. Values in the config file onverwrite the ones</span>
+<span class="sd">        in the passed config dictionary.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">new_config</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+    <span class="c1"># check for &quot;None&quot; entries</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">new_config</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">==</span> <span class="nb">dict</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">v</span> <span class="o">==</span> <span class="s2">&quot;None&quot;</span><span class="p">:</span>
+                    <span class="n">new_config</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># update only subdicts of old config</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">new_config</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+            <span class="n">config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="k">return</span> <span class="n">config</span></div>
+
+
+<div class="viewcode-block" id="submit_job"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.submit_job">[docs]</a><span class="k">def</span> <span class="nf">submit_job</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">jobname</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Executes commands on the command line.</span>
+
+<span class="sd">    cmd (str): The command to execute.</span>
+<span class="sd">    jobname (str): The job name (used in the error message).</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">p</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span>
+                         <span class="n">stdin</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+                         <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+                         <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">)</span>
+    <span class="n">output</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">communicate</span><span class="p">()</span>
+    <span class="n">rc</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">returncode</span>
+
+    <span class="c1"># remove newline and &quot;&#39;&quot;</span>
+<span class="c1">#    jobnum = str(output.rstrip())[:-1]</span>
+<span class="c1">#    jobnum = jobnum.split(&quot;batch job &quot;)[-1]</span>
+
+    <span class="n">jobnum</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;unicode_escape&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">rc</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Error submitting </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">jobname</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Error:&quot;</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">jobnum</span></div>
+
+
+<div class="viewcode-block" id="get_channel_order"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.get_channel_order">[docs]</a><span class="k">def</span> <span class="nf">get_channel_order</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Default channel order on system.</span>
+
+<span class="sd">    Return:</span>
+<span class="sd">        The order of the channels on the system per wing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">channel_order</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">12</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">11</span><span class="p">],</span>
+                     <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">]]</span>
+
+    <span class="k">return</span> <span class="n">channel_order</span></div>
+
+
+<div class="viewcode-block" id="get_asic_order"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.get_asic_order">[docs]</a><span class="k">def</span> <span class="nf">get_asic_order</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;The order of the ASICS.</span>
+
+<span class="sd">    How the asics are located on the module.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">asic_order</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">16</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">9</span><span class="p">],</span>
+                  <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">]]</span>
+
+    <span class="k">return</span> <span class="n">asic_order</span></div>
+
+
+<div class="viewcode-block" id="get_asic_order_xfel"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.get_asic_order_xfel">[docs]</a><span class="k">def</span> <span class="nf">get_asic_order_xfel</span><span class="p">(</span><span class="n">channel</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;The order of the ASICS in XFEL layout.</span>
+
+<span class="sd">    How the asics are located on the module depends of the wing they are plugged in.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">located_in_wing1</span><span class="p">(</span><span class="n">channel</span><span class="p">):</span>
+        <span class="n">asic_order</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">9</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">11</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">12</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">13</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">14</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">15</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">16</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">asic_order</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">16</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">15</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">14</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">13</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">12</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">11</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">10</span><span class="p">],</span>
+                      <span class="p">[</span><span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">]]</span>
+
+    <span class="k">return</span> <span class="n">asic_order</span></div>
+
+
+<div class="viewcode-block" id="located_in_wing1"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.located_in_wing1">[docs]</a><span class="k">def</span> <span class="nf">located_in_wing1</span><span class="p">(</span><span class="n">channel</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Determine if the module is located in wing 1. (XFEL)</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        channel: channel (module) number</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        True if in wing 1, false if in wing 2</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">channel_order</span> <span class="o">=</span> <span class="n">get_channel_order</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span> <span class="ow">in</span> <span class="n">channel_order</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="located_in_upper_half"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.located_in_upper_half">[docs]</a><span class="k">def</span> <span class="nf">located_in_upper_half</span><span class="p">(</span><span class="n">asic</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;If the ASIC is located in the upper half of the module or not.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        asic: asic number</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        First asic in asic_order</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">asic_order</span> <span class="o">=</span> <span class="n">get_asic_order</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">asic</span> <span class="ow">in</span> <span class="n">asic_order</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="is_xfel_format"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.is_xfel_format">[docs]</a><span class="k">def</span> <span class="nf">is_xfel_format</span><span class="p">(</span><span class="n">data_shape</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Determine whether data is in XFEL format.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        data_shape: shape of dataset</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        True if shape is consistent with XFEL data format, otherwise False.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">data_shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:]</span> <span class="o">==</span> <span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="mi">128</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="check_data_type"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.check_data_type">[docs]</a><span class="k">def</span> <span class="nf">check_data_type</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">data</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;ERROR: negative values found in data.&quot;</span><span class="p">)</span>
+        <span class="n">neg_values_pos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">data</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Found&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">neg_values_pos</span><span class="p">],</span> <span class="s2">&quot;at position&quot;</span><span class="p">,</span> <span class="n">neg_values_pos</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="as_nparray"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.as_nparray">[docs]</a><span class="k">def</span> <span class="nf">as_nparray</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">type_</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">type_</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">type_</span><span class="p">)))</span></div>
+
+
+<div class="viewcode-block" id="convert_dtype"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.convert_dtype">[docs]</a><span class="k">def</span> <span class="nf">convert_dtype</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">dtype</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">dtype</span><span class="p">:</span>
+        <span class="k">return</span>
+
+    <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">int16</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Convert data from int16 to uint16&quot;</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span> <span class="o">+</span> <span class="mi">2</span><span class="o">**</span><span class="mi">15</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="convert_to_agipd_format"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.convert_to_agipd_format">[docs]</a><span class="k">def</span> <span class="nf">convert_to_agipd_format</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convert data into AGIPD format</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        module: module number</span>
+
+<span class="sd">        data: dataset to convert</span>
+
+<span class="sd">        check: Default True.  Check if data is already in AGIPD format.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        data: dataset converted to AGIPD format</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">check</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_xfel_format</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">):</span>
+            <span class="k">pass</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">in_wing1</span> <span class="o">=</span> <span class="n">located_in_wing1</span><span class="p">(</span><span class="n">module</span><span class="p">)</span>
+
+            <span class="n">data_dim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">data_dim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">in_wing1</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">data_dim</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">in_wing1</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;data to convert is of the wrong dimension&quot;</span><span class="p">)</span>
+
+            <span class="c1"># converts (..., 128, 512) to (..., 512, 128)</span>
+            <span class="n">last</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">swapaxes</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">last</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">check</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_xfel_format</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+            <span class="k">pass</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]))</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Conversion failed: type </span><span class="si">{}</span><span class="s2"> not supported&quot;</span>
+                        <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">data</span><span class="p">)))</span>
+
+    <span class="k">return</span> <span class="n">data</span></div>
+
+
+<div class="viewcode-block" id="convert_to_xfel_format"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.convert_to_xfel_format">[docs]</a><span class="k">def</span> <span class="nf">convert_to_xfel_format</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Convert data to XFEL format</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        channel: channel number</span>
+<span class="sd">        data: dataset to convert</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        data: dataset converted to XFEL format</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">is_xfel_format</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">):</span>
+            <span class="k">pass</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">in_wing1</span> <span class="o">=</span> <span class="n">located_in_wing1</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
+
+            <span class="c1"># converts (..., 128, 512) to (..., 512, 128)</span>
+            <span class="n">last</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">swapaxes</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">last</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">data_dim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">data_dim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">in_wing1</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">data_dim</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">in_wing1</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;data to convert is of the wrong dimension&quot;</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">is_xfel_format</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+            <span class="k">pass</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]))</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Conversion failed: type </span><span class="si">{}</span><span class="s2"> not supported&quot;</span>
+                        <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">data</span><span class="p">)))</span>
+
+    <span class="k">return</span> <span class="n">data</span></div>
+
+
+<div class="viewcode-block" id="load_file_content"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.load_file_content">[docs]</a><span class="k">def</span> <span class="nf">load_file_content</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">excluded</span><span class="o">=</span><span class="p">[]):</span>
+    <span class="sd">&quot;&quot;&quot;Load the HDF5 file into a dictionary.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        fname: The name of the HDF5 file to be loaded.</span>
+<span class="sd">        excluded: The data paths which should be excluded from loading.</span>
+
+<span class="sd">    Return:</span>
+<span class="sd">        A dictionary containing the content of the content of the file where</span>
+<span class="sd">        the keys are the paths in the original file.</span>
+
+<span class="sd">        HDF5 file:</span>
+<span class="sd">            my_group</span>
+<span class="sd">                my_dataset: numpy array</span>
+
+<span class="sd">        dictionary:</span>
+<span class="sd">            &quot;mygroup/mydataset&quot;: numpy array</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">file_content</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">get_file_content</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Dataset</span><span class="p">)</span> <span class="ow">and</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">excluded</span><span class="p">:</span>
+            <span class="n">file_content</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">obj</span><span class="p">[()]</span>
+            <span class="c1"># if object types are not converted writing gives the error</span>
+            <span class="c1"># TypeError: Object dtype dtype(&#39;O&#39;) has no native HDF5 equivalent</span>
+            <span class="k">if</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">file_content</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="ow">and</span>
+                    <span class="n">file_content</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="nb">object</span><span class="p">):</span>
+                <span class="n">file_content</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">file_content</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;S&#39;</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">visititems</span><span class="p">(</span><span class="n">get_file_content</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">file_content</span></div>
+
+
+<div class="viewcode-block" id="write_content"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.write_content">[docs]</a><span class="k">def</span> <span class="nf">write_content</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">file_content</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">excluded</span><span class="o">=</span><span class="p">[]):</span>
+    <span class="sd">&quot;&quot;&quot;Writes data to a file.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        fname: The file to store the data to.</span>
+<span class="sd">        file_content: A dictionary descibing the data to be stored,</span>
+<span class="sd">                      in the form {key: value}</span>
+<span class="sd">                      where:</span>
+<span class="sd">                        key: path inside the hdf5 file</span>
+<span class="sd">                        value: data stored in that path.</span>
+<span class="sd">        prefix (optional): A prefix to be prepended to all keys.</span>
+<span class="sd">        excluded (optional): List of keys to be excluded from storing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<span class="c1">#    with h5py.File(fname, &quot;w&quot;, libver=&quot;latest&quot;) as f:</span>
+    <span class="c1"># To maintain compatibility with hdf5 1.8, don&#39;t use libver=&quot;latest&quot;</span>
+    <span class="c1"># Needed by Anton Barty</span>
+    <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">file_content</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">excluded</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">prefix</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">key</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">file_content</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="calculate_mapped_asic"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.calculate_mapped_asic">[docs]</a><span class="k">def</span> <span class="nf">calculate_mapped_asic</span><span class="p">(</span><span class="n">asic</span><span class="p">,</span> <span class="n">asic_order</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Converts asic numbering</span>
+
+<span class="sd">    e.g. convert an ordering like this (defined in asic_order)::</span>
+
+<span class="sd">      ____ ____ ____ ____ ____ ____ ____ ____</span>
+<span class="sd">     |    |    |    |    |    |    |    |    |</span>
+<span class="sd">     | 16 | 15 | 14 | 13 | 12 | 11 | 10 |  9 |</span>
+<span class="sd">     |____|____|____|____|____|____|____|____|</span>
+<span class="sd">     |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |</span>
+<span class="sd">     |____|____|____|____|____|____|____|____|</span>
+
+<span class="sd">                       into</span>
+<span class="sd">      ____ ____ ____ ____ ____ ____ ____ ____</span>
+<span class="sd">     |    |    |    |    |    |    |    |    |</span>
+<span class="sd">     |  0 |  1 | 2  | 3  |  4 |  5 |  6 |  7 |</span>
+<span class="sd">     |____|____|____|____|____|____|____|____|</span>
+<span class="sd">     |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |</span>
+<span class="sd">     |____|____|____|____|____|____|____|____|</span>
+
+<span class="sd">    or if ordering like this::</span>
+
+<span class="sd">        wing 2            wing 1</span>
+<span class="sd">       _________        _________          _________</span>
+<span class="sd">      |    |    |      |    |    |        |    |    |</span>
+<span class="sd">      |  1 | 16 |      |  9 |  8 |        |  0 |  1 |</span>
+<span class="sd">      |____|____|      |____|____|        |____|____|</span>
+<span class="sd">      |  2 | 15 |      | 10 |  7 |        |  2 |  3 |</span>
+<span class="sd">      |____|____|      |____|____|        |____|____|</span>
+<span class="sd">      |  3 | 14 |      | 11 |  6 |        |  4 |  5 |</span>
+<span class="sd">      |____|__ _|      |____|____|        |____|____|</span>
+<span class="sd">      |  4 | 13 |      | 12 |  5 |  into  |  6 |  7 |</span>
+<span class="sd">      |____|____|      |____|____|        |____|____|</span>
+<span class="sd">      |  5 | 12 |      | 13 |  4 |        |  8 |  9 |</span>
+<span class="sd">      |____|____|      |____|____|        |____|____|</span>
+<span class="sd">      |  6 | 11 |      | 14 |  3 |        | 10 | 11 |</span>
+<span class="sd">      |____|____|      |____|____|        |____|____|</span>
+<span class="sd">      |  7 | 10 |      | 15 |  2 |        | 12 | 13 |</span>
+<span class="sd">      |____|____|      |____|____|        |____|____|</span>
+<span class="sd">      |  8 |  9 |      | 16 |  1 |        | 14 | 15 |</span>
+<span class="sd">      |____|____|      |____|____|        |____|____|</span>
+
+
+<span class="sd">    Args:</span>
+<span class="sd">        asic: Asic to be mapped.</span>
+<span class="sd">        asic_order: Desciption of how the asics are numbered on the module,</span>
+<span class="sd">                    e.g. [[16, 15, 14, 13, 12, 11, 10, 9],  # top half</span>
+<span class="sd">                          [8, 7, 6, 5, 4, 3, 2, 1]]  # bottom half</span>
+
+<span class="sd">    Return:</span>
+<span class="sd">        Mapping result of the asic, e.g asic 8 -&gt; 1 or 13-&gt; 3.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        Exception: If the asic can not be found in the asic_order.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1">#                  [rows, columns]</span>
+    <span class="n">asics_per_module</span> <span class="o">=</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">asic_order</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">asic_order</span><span class="p">[</span><span class="mi">0</span><span class="p">])]</span>
+
+    <span class="n">index_map</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">asics_per_module</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">asics_per_module</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="k">for</span> <span class="n">row_i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">asic_order</span><span class="p">)):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">col_i</span> <span class="o">=</span> <span class="n">asic_order</span><span class="p">[</span><span class="n">row_i</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">asic</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">index_map</span><span class="p">[</span><span class="n">row_i</span> <span class="o">*</span> <span class="n">asics_per_module</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">col_i</span><span class="p">]</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
+    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Asic </span><span class="si">{}</span><span class="s2"> is not supported. (asic_order=</span><span class="si">{}</span><span class="s2">)&quot;</span>
+                    <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">asic</span><span class="p">,</span> <span class="n">asic_order</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="determine_asic_border"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.determine_asic_border">[docs]</a><span class="k">def</span> <span class="nf">determine_asic_border</span><span class="p">(</span><span class="n">mapped_asic</span><span class="p">,</span>
+                          <span class="n">asic_size</span><span class="p">,</span>
+                          <span class="n">asic_order</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                          <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Determines the start and end point of an asic.</span>
+
+<span class="sd">    Determines on which row and col the asic starts and stops according to</span>
+<span class="sd">    the layout defined, default layout is the this one::</span>
+
+<span class="sd">           ____ ____ ____ ____ ____ ____ ____ ____</span>
+<span class="sd">     0x64 |    |    |    |    |    |    |    |    |</span>
+<span class="sd">          |  0 |  1 | 2  | 3  |  4 |  5 |  6 |  7 |</span>
+<span class="sd">     1x64 |____|____|____|____|____|____|____|____|</span>
+<span class="sd">          |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |</span>
+<span class="sd">     2x64 |____|____|____|____|____|____|____|____|</span>
+<span class="sd">          0*64 1x64 2x64 3x64 4x64 5x64 6x64 7x64 8x64</span>
+
+<span class="sd">    Another example would be the xfel layout::</span>
+
+<span class="sd">           _________</span>
+<span class="sd">     0x64 |    |    |</span>
+<span class="sd">          |  0 |  1 |</span>
+<span class="sd">     1x64 |____|____|</span>
+<span class="sd">          |  2 |  3 |</span>
+<span class="sd">     2x64 |____|____|</span>
+<span class="sd">          |  4 |  5 |</span>
+<span class="sd">     3x64 |____|____|</span>
+<span class="sd">          |  6 |  7 |</span>
+<span class="sd">     4x64 |____|____|</span>
+<span class="sd">          |  8 |  9 |</span>
+<span class="sd">     5x64 |____|____|</span>
+<span class="sd">          | 10 | 11 |</span>
+<span class="sd">     6x64 |____|____|</span>
+<span class="sd">          | 12 | 13 |</span>
+<span class="sd">     7x64 |____|____|</span>
+<span class="sd">          | 14 | 15 |</span>
+<span class="sd">     1x64 |____|____|</span>
+<span class="sd">          0*64 1x64</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        mapped_asic: Asic number in the internernal numbering scheme</span>
+<span class="sd">                     (can be determined with calculate_mapped_asic).</span>
+
+<span class="sd">        asic_size: How many pixel are on an asic, e.g. 64</span>
+
+<span class="sd">        asic_order (optional): Desciption of how the asics are numbered on the</span>
+<span class="sd">                               module, e.g.</span>
+<span class="sd">                               [[16, 15, 14, 13, 12, 11, 10, 9],  # top half</span>
+<span class="sd">                                [8, 7, 6, 5, 4, 3, 2, 1]]  # bottom half</span>
+<span class="sd">                               If not set, or set to None, the default asic</span>
+<span class="sd">                               order is taken.</span>
+
+<span class="sd">        verbose (optional, bool): If enabled (intermediate) results are</span>
+<span class="sd">                                  printed.</span>
+
+<span class="sd">    Return:</span>
+<span class="sd">        The start and end point of the columns and rows of the asic in this</span>
+<span class="sd">        order:</span>
+
+<span class="sd">            row start</span>
+<span class="sd">            row stop</span>
+<span class="sd">            column start</span>
+<span class="sd">            column stop.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">asic_order</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">asic_order</span> <span class="o">=</span> <span class="n">get_asic_order</span><span class="p">()</span>
+
+    <span class="n">asics_per_module</span> <span class="o">=</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">asic_order</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">asic_order</span><span class="p">[</span><span class="mi">0</span><span class="p">])]</span>
+
+    <span class="n">row_progress</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">mapped_asic</span> <span class="o">/</span> <span class="n">asics_per_module</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">col_progress</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">mapped_asic</span> <span class="o">%</span> <span class="n">asics_per_module</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">row_start</span> <span class="o">=</span> <span class="n">row_progress</span> <span class="o">*</span> <span class="n">asic_size</span>
+    <span class="n">row_stop</span> <span class="o">=</span> <span class="p">(</span><span class="n">row_progress</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">asic_size</span>
+    <span class="n">col_start</span> <span class="o">=</span> <span class="n">col_progress</span> <span class="o">*</span> <span class="n">asic_size</span>
+    <span class="n">col_stop</span> <span class="o">=</span> <span class="p">(</span><span class="n">col_progress</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">asic_size</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;row_progress: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">row_progress</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;col_progress: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">col_progress</span><span class="p">))</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;asic_size </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">asic_size</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;row_start: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">row_start</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;row_stop: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">row_stop</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;col_start: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">col_start</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;col_stop: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">col_stop</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">row_start</span><span class="p">,</span> <span class="n">row_stop</span><span class="p">,</span> <span class="n">col_start</span><span class="p">,</span> <span class="n">col_stop</span></div>
+
+
+<div class="viewcode-block" id="build_module"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.build_module">[docs]</a><span class="k">def</span> <span class="nf">build_module</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Rebuilds module from a a set of asic data sets.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        data (dict): A dictionary with the data of each asic of the form</span>
+<span class="sd">                    {&lt;asic_nr&gt;: &lt;asic data&gt;, ...}</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A numpy array containing the joined asic data.</span>
+<span class="sd">        Missing asics are filled up with NAN.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="s2">&quot;all&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;all&quot;</span><span class="p">]</span>
+
+    <span class="n">asic_order</span> <span class="o">=</span> <span class="n">get_asic_order</span><span class="p">()</span>
+    <span class="n">n_asics_y</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">asic_order</span><span class="p">)</span>
+    <span class="n">n_asics_x</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">asic_order</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="c1"># initialize joined data set</span>
+    <span class="n">any_key</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">d_shape</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">any_key</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span>
+
+    <span class="n">asic_size</span> <span class="o">=</span> <span class="n">d_shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+    <span class="n">new_shape</span> <span class="o">=</span> <span class="p">(</span><span class="n">d_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                 <span class="n">d_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                 <span class="n">asic_size</span> <span class="o">*</span> <span class="n">n_asics_y</span><span class="p">,</span>
+                 <span class="n">asic_size</span> <span class="o">*</span> <span class="n">n_asics_x</span><span class="p">)</span>
+
+    <span class="n">joined_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">new_shape</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="c1"># put the data on the correct place</span>
+    <span class="k">for</span> <span class="n">asic</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">mapped_asic</span> <span class="o">=</span> <span class="n">calculate_mapped_asic</span><span class="p">(</span><span class="n">asic</span><span class="p">,</span> <span class="n">asic_order</span><span class="p">)</span>
+        <span class="p">(</span><span class="n">row_start</span><span class="p">,</span>
+         <span class="n">row_stop</span><span class="p">,</span>
+         <span class="n">col_start</span><span class="p">,</span>
+         <span class="n">col_stop</span><span class="p">)</span> <span class="o">=</span> <span class="n">determine_asic_border</span><span class="p">(</span><span class="n">mapped_asic</span><span class="o">=</span><span class="n">mapped_asic</span><span class="p">,</span>
+                                           <span class="n">asic_size</span><span class="o">=</span><span class="n">asic_size</span><span class="p">,</span>
+                                           <span class="n">asic_order</span><span class="o">=</span><span class="n">asic_order</span><span class="p">,</span>
+                                           <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="c1">#        print(&quot;asic&quot;, asic, &quot;borders&quot;, row_start, row_stop, col_start, col_stop)</span>
+        <span class="n">target_idx</span> <span class="o">=</span> <span class="p">(</span><span class="bp">Ellipsis</span><span class="p">,</span>
+                      <span class="nb">slice</span><span class="p">(</span><span class="n">row_start</span><span class="p">,</span> <span class="n">row_stop</span><span class="p">),</span>
+                      <span class="nb">slice</span><span class="p">(</span><span class="n">col_start</span><span class="p">,</span> <span class="n">col_stop</span><span class="p">))</span>
+        <span class="n">joined_data</span><span class="p">[</span><span class="n">target_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="k">return</span> <span class="n">joined_data</span></div>
+
+
+<div class="viewcode-block" id="concatenate_to_module"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.concatenate_to_module">[docs]</a><span class="k">def</span> <span class="nf">concatenate_to_module</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">row_axis</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">col_axis</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Takes data which was split into asics and recombines into full module</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        data:</span>
+<span class="sd">        row_axis: Default 2. Which axis of data is row.</span>
+<span class="sd">        col_axis: Default 1. Which axis of data is col.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        result: data of full module</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># data was not splitted into asics but contained the whole module</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;len data&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">16</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Missing asics (only found </span><span class="si">{}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)))</span>
+
+    <span class="n">asic_order</span> <span class="o">=</span> <span class="n">get_asic_order</span><span class="p">()</span>
+    <span class="c1"># upper row</span>
+    <span class="n">asic_row</span> <span class="o">=</span> <span class="n">asic_order</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># index goes from 0 to 15</span>
+    <span class="n">data_upper</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">asic_row</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">asic</span> <span class="ow">in</span> <span class="n">asic_row</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+        <span class="n">data_upper</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">data_upper</span><span class="p">,</span>
+                                     <span class="n">data</span><span class="p">[</span><span class="n">asic</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]),</span>
+                                    <span class="n">axis</span><span class="o">=</span><span class="n">row_axis</span><span class="p">)</span>
+
+    <span class="c1"># lower row</span>
+    <span class="n">asic_row</span> <span class="o">=</span> <span class="n">asic_order</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">data_lower</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">asic_row</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">asic</span> <span class="ow">in</span> <span class="n">asic_row</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+        <span class="n">data_lower</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">data_lower</span><span class="p">,</span>
+                                     <span class="n">data</span><span class="p">[</span><span class="n">asic</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]),</span>
+                                    <span class="n">axis</span><span class="o">=</span><span class="n">row_axis</span><span class="p">)</span>
+
+    <span class="c1"># combine them</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">data_upper</span><span class="p">,</span>
+                             <span class="n">data_lower</span><span class="p">),</span>
+                            <span class="n">axis</span><span class="o">=</span><span class="n">col_axis</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="flatten"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.flatten">[docs]</a><span class="k">def</span> <span class="nf">flatten</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;/&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Converts nested dictionary into flat one.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        d: The dictionary to be flattened.</span>
+<span class="sd">        prefix (optional): A prefix to be prepended to all keys.</span>
+<span class="sd">        sep (optional): Seperater to be used, default is &quot;/&quot;</span>
+
+<span class="sd">    Return:</span>
+<span class="sd">        A not Dictionary nested dictionary where the keys are flattened,</span>
+<span class="sd">        e.g. {&quot;a&quot;: {&quot;n&quot;:1, &quot;m&quot;:2}} -&gt; {&quot;a/n&quot;:1, &quot;a/m&quot;:2}.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">items</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">d</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">prefix</span><span class="p">:</span>
+            <span class="n">new_key</span> <span class="o">=</span> <span class="n">prefix</span> <span class="o">+</span> <span class="n">sep</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">new_key</span> <span class="o">=</span> <span class="n">key</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">MutableMapping</span><span class="p">):</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">flatten</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">new_key</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="n">sep</span><span class="p">)</span>
+            <span class="c1"># extend is used in combination when working with iterables</span>
+            <span class="c1"># e.g.: x = [1, 2, 3];</span>
+            <span class="c1">#       x.append([4, 5]) -&gt; [1, 2, 3, [4, 5]]</span>
+            <span class="c1">#       x.extend([4, 5]) -&gt; [1, 2, 3, 4, 5]</span>
+            <span class="n">items</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">items</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">new_key</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">items</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="setup_logging"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.utils.setup_logging">[docs]</a><span class="k">def</span> <span class="nf">setup_logging</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">level</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">level</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;critical&quot;</span><span class="p">:</span>
+        <span class="n">log_level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">CRITICAL</span>
+    <span class="k">elif</span> <span class="n">level</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;error&quot;</span><span class="p">:</span>
+        <span class="n">log_level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span>
+    <span class="k">elif</span> <span class="n">level</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;warning&quot;</span><span class="p">:</span>
+        <span class="n">log_level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span>
+    <span class="k">elif</span> <span class="n">level</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;info&quot;</span><span class="p">:</span>
+        <span class="n">log_level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span>
+    <span class="k">elif</span> <span class="n">level</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;debug&quot;</span><span class="p">:</span>
+        <span class="n">log_level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;log level </span><span class="si">{}</span><span class="s2"> not supported&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">level</span><span class="p">))</span>
+
+    <span class="n">logging_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">version</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">formatters</span><span class="o">=</span><span class="p">{</span>
+            <span class="s1">&#39;f&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;format&#39;</span><span class="p">:</span>
+                  <span class="s1">&#39;[</span><span class="si">%(asctime)s</span><span class="s1">] &gt; </span><span class="si">%(name)-12s</span><span class="s1"> </span><span class="si">%(levelname)-8s</span><span class="s1"> </span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">,</span>
+                  <span class="s1">&#39;datefmt&#39;</span><span class="p">:</span> <span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">}</span>
+
+        <span class="p">},</span>
+        <span class="n">handlers</span><span class="o">=</span><span class="p">{</span>
+            <span class="s1">&#39;h&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;class&#39;</span><span class="p">:</span> <span class="s1">&#39;logging.StreamHandler&#39;</span><span class="p">,</span>
+                  <span class="s1">&#39;formatter&#39;</span><span class="p">:</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span>
+                  <span class="s1">&#39;level&#39;</span><span class="p">:</span> <span class="n">log_level</span><span class="p">}</span>
+        <span class="p">},</span>
+        <span class="n">root</span><span class="o">=</span><span class="p">{</span>
+            <span class="s1">&#39;handlers&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;h&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;level&#39;</span><span class="p">:</span> <span class="n">log_level</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+
+    <span class="n">dictConfig</span><span class="p">(</span><span class="n">logging_config</span><span class="p">)</span>
+
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">logger</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, Manuela Kuhn, Jennifer Poehlsen.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,357 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>calibration.facility_specifics.xfel.generate_paths &#8212; agipd-toolbox 1.0.3 documentation</title>
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for calibration.facility_specifics.xfel.generate_paths</h1><div class="highlight"><pre>
+<span></span><span class="c1"># (c) Copyright 2017-2018 DESY, FS-DS</span>
+<span class="c1">#</span>
+<span class="c1"># This file is part of the FS-DS AGIPD toolbox.</span>
+<span class="c1">#</span>
+<span class="c1"># This software is free: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 2 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This software is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this software.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">@author: Manuela Kuhn &lt;manuela.kuhn@desy.de&gt;</span>
+<span class="sd">         Jennifer Poehlsen &lt;jennifer.poehlsen@desy.de&gt;</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">h5py</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+
+<div class="viewcode-block" id="GeneratePaths"><a class="viewcode-back" href="../../../../calibration.facility_specifics.xfel.html#calibration.facility_specifics.xfel.generate_paths.GeneratePaths">[docs]</a><span class="k">class</span> <span class="nc">GeneratePaths</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">run_type</span><span class="p">,</span>
+                 <span class="n">measurement</span><span class="p">,</span>
+                 <span class="n">out_base_dir</span><span class="p">,</span>
+                 <span class="n">module</span><span class="p">,</span>
+                 <span class="n">channel</span><span class="p">,</span>
+                 <span class="n">temperature</span><span class="p">,</span>
+                 <span class="n">meas_spec</span><span class="p">,</span>
+                 <span class="n">subdir</span><span class="p">,</span>
+                 <span class="n">meas_in</span><span class="p">,</span>
+                 <span class="n">asic</span><span class="p">,</span>
+                 <span class="n">runs</span><span class="p">,</span>
+                 <span class="n">run_name</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_type</span> <span class="o">=</span> <span class="n">run_type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_measurement</span> <span class="o">=</span> <span class="n">measurement</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_out_base_dir</span> <span class="o">=</span> <span class="n">out_base_dir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_module</span> <span class="o">=</span> <span class="n">module</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_channel</span> <span class="o">=</span> <span class="n">channel</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_temperature</span> <span class="o">=</span> <span class="n">temperature</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_meas_spec</span> <span class="o">=</span> <span class="n">meas_spec</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_subdir</span> <span class="o">=</span> <span class="n">subdir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_meas_in</span> <span class="o">=</span> <span class="n">meas_in</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_asic</span> <span class="o">=</span> <span class="n">asic</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_runs</span> <span class="o">=</span> <span class="n">runs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_name</span> <span class="o">=</span> <span class="n">run_name</span>
+
+<div class="viewcode-block" id="GeneratePaths.get_layout_versions"><a class="viewcode-back" href="../../../../calibration.facility_specifics.xfel.html#calibration.facility_specifics.xfel.generate_paths.GeneratePaths.get_layout_versions">[docs]</a>    <span class="k">def</span> <span class="nf">get_layout_versions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_dir</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Detects which file structure version of the raw files.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            base_dir: Base directory under which the raw directory can be</span>
+<span class="sd">                      found.</span>
+
+<span class="sd">        Return:</span>
+<span class="sd">            The preprocess and layout module to use.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># current version can only be detected by checking if certain entries</span>
+        <span class="c1"># are contained in the hdf5 file because there is no versioning</span>
+
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_channel</span><span class="p">)</span> <span class="o">==</span> <span class="nb">list</span><span class="p">:</span>
+            <span class="n">fdir</span><span class="p">,</span> <span class="n">fname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">raw</span><span class="p">(</span><span class="n">base_dir</span><span class="o">=</span><span class="n">base_dir</span><span class="p">,</span> <span class="n">as_template</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">raw_fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fdir</span><span class="p">,</span> <span class="n">fname</span><span class="p">)</span>
+
+            <span class="c1"># partially substitute the string</span>
+            <span class="n">split</span> <span class="o">=</span> <span class="n">raw_fname</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;-AGIPD</span><span class="si">{:02}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">raw_fname</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">split</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span>
+                <span class="s2">&quot;-AGIPD</span><span class="si">{:02}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_channel</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span>
+                <span class="n">split</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="p">)</span>
+
+            <span class="n">channel</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_channel</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fdir</span><span class="p">,</span> <span class="n">fname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">raw</span><span class="p">(</span><span class="n">base_dir</span><span class="o">=</span><span class="n">base_dir</span><span class="p">)</span>
+            <span class="n">raw_fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fdir</span><span class="p">,</span> <span class="n">fname</span><span class="p">)</span>
+
+            <span class="n">channel</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_channel</span>
+
+        <span class="n">entry_to_test</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;INDEX/SPB_DET_AGIPD1M-1/DET/</span><span class="si">{}</span><span class="s2">CH0:xtdf/image/last&quot;</span>
+            <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">raw_fname</span> <span class="o">=</span> <span class="n">raw_fname</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">run_number</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">part</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">raw_fname</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">f</span><span class="p">[</span><span class="n">entry_to_test</span><span class="p">]</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;found&quot;</span><span class="p">)</span>
+                <span class="n">version</span> <span class="o">=</span> <span class="mi">2017</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Entry </span><span class="si">{}</span><span class="s2"> not found&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">entry_to_test</span><span class="p">))</span>
+                <span class="n">version</span> <span class="o">=</span> <span class="mi">2018</span>
+
+        <span class="k">if</span> <span class="n">version</span> <span class="o">==</span> <span class="mi">2017</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;xfel_preprocess_2017&quot;</span><span class="p">,</span> <span class="s2">&quot;xfel_layout_2017&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;xfel_preprocess&quot;</span><span class="p">,</span> <span class="s2">&quot;xfel_layout&quot;</span></div>
+
+<div class="viewcode-block" id="GeneratePaths.raw"><a class="viewcode-back" href="../../../../calibration.facility_specifics.xfel.html#calibration.facility_specifics.xfel.generate_paths.GeneratePaths.raw">[docs]</a>    <span class="k">def</span> <span class="nf">raw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_dir</span><span class="p">,</span> <span class="n">as_template</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Generates raw path.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            base_dir: Base directory under which the raw directory can be</span>
+<span class="sd">                      found.</span>
+<span class="sd">            as_template (optional, bool): If enabled the channel is kept as a</span>
+<span class="sd">                                          template instead of being filled in</span>
+<span class="sd">                                          (default: False).</span>
+
+<span class="sd">        Return:</span>
+<span class="sd">            Raw directory and file name, each as string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">as_template</span><span class="p">:</span>
+            <span class="n">channel</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{:02}</span><span class="s2">&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">channel</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_channel</span><span class="p">)</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># define in files</span>
+        <span class="n">fdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">base_dir</span><span class="p">,</span>
+                            <span class="s2">&quot;raw&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;r</span><span class="si">{run_number:04}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">fname</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;RAW-R</span><span class="si">{run_number:04}</span><span class="s2">-&quot;</span> <span class="o">+</span>
+                 <span class="s2">&quot;AGIPD</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span> <span class="o">+</span>
+                 <span class="s2">&quot;-S</span><span class="si">{part:05}</span><span class="s2">.h5&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">fdir</span><span class="p">,</span> <span class="n">fname</span></div>
+
+<div class="viewcode-block" id="GeneratePaths.preproc"><a class="viewcode-back" href="../../../../calibration.facility_specifics.xfel.html#calibration.facility_specifics.xfel.generate_paths.GeneratePaths.preproc">[docs]</a>    <span class="k">def</span> <span class="nf">preproc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_dir</span><span class="p">,</span> <span class="n">as_template</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Generates the preprocessing file path.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            base_dir: Base directory under which the output is stored.</span>
+<span class="sd">            as_template (optional, bool): If enabled the run is kept as a</span>
+<span class="sd">                                          template instead of being filled in</span>
+<span class="sd">                                          (default: False).</span>
+
+<span class="sd">        Return:</span>
+<span class="sd">            Preprocessing directory and file name, each as</span>
+<span class="sd">            string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_measurement</span> <span class="o">==</span> <span class="s2">&quot;drspc&quot;</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">run_subdir</span> <span class="o">=</span> <span class="s2">&quot;r&quot;</span> <span class="o">+</span> <span class="s2">&quot;-r&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">r</span><span class="p">)</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+                                         <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;WARNING: generate paths, preproc is running in &#39;else&#39;. &quot;</span>
+                  <span class="s2">&quot;Why?&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;self._runs=</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">))</span>
+            <span class="n">run_subdir</span> <span class="o">=</span> <span class="s2">&quot;r</span><span class="si">{:04}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">as_template</span><span class="p">:</span>
+            <span class="n">fdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">base_dir</span><span class="p">,</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">_measurement</span><span class="p">,</span>
+                                <span class="s2">&quot;r</span><span class="si">{run:04}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;R</span><span class="si">{run:04}</span><span class="s2">-preprocessing.result&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">base_dir</span><span class="p">,</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">_measurement</span><span class="p">,</span>
+                                <span class="n">run_subdir</span><span class="p">)</span>
+
+            <span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;R</span><span class="si">{:04}</span><span class="s2">-preprocessing.result&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">fdir</span><span class="p">,</span> <span class="n">fname</span></div>
+
+<div class="viewcode-block" id="GeneratePaths.gather"><a class="viewcode-back" href="../../../../calibration.facility_specifics.xfel.html#calibration.facility_specifics.xfel.generate_paths.GeneratePaths.gather">[docs]</a>    <span class="k">def</span> <span class="nf">gather</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_dir</span><span class="p">,</span> <span class="n">as_template</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Generate the gather file path.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            base_dir: Base directory under which the output is stored.</span>
+
+<span class="sd">        Return:</span>
+<span class="sd">            Gather directory and file name, each as string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># TODO: concider additing this into out_base_dir (joined) and</span>
+        <span class="c1">#       create subdirs for gathered files</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_measurement</span> <span class="o">==</span> <span class="s2">&quot;drspc&quot;</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">run_subdir</span> <span class="o">=</span> <span class="s2">&quot;r&quot;</span> <span class="o">+</span> <span class="s2">&quot;-r&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">r</span><span class="p">)</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+                                         <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;run_subdir&quot;</span><span class="p">,</span> <span class="n">run_subdir</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;channel&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_channel</span><span class="p">)</span>
+            <span class="n">prefix</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">-AGIPD</span><span class="si">{:02}</span><span class="s2">&quot;</span>
+                      <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">run_subdir</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_channel</span><span class="p">))</span>
+
+        <span class="c1"># TODO fill run_number + for what is this &#39;else&#39; (what cases)?</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">run_subdir</span> <span class="o">=</span> <span class="s2">&quot;r</span><span class="si">{run_number:04}</span><span class="s2">&quot;</span>
+
+            <span class="n">prefix</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;R</span><span class="si">{run_number:04}</span><span class="s2">-&quot;</span> <span class="o">+</span>
+                      <span class="s2">&quot;AGIPD</span><span class="si">{:02}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_channel</span><span class="p">))</span>
+
+        <span class="n">fdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">base_dir</span><span class="p">,</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_measurement</span><span class="p">,</span>
+                            <span class="n">run_subdir</span><span class="p">,</span>
+                            <span class="s2">&quot;gather&quot;</span><span class="p">)</span>
+
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_asic</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fname</span> <span class="o">=</span> <span class="n">prefix</span> <span class="o">+</span> <span class="s2">&quot;_gathered.h5&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fname</span> <span class="o">=</span> <span class="n">prefix</span> <span class="o">+</span> <span class="s2">&quot;_asic</span><span class="si">{:02}</span><span class="s2">_gathered.h5&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_asic</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">fdir</span><span class="p">,</span> <span class="n">fname</span></div>
+
+<div class="viewcode-block" id="GeneratePaths.process"><a class="viewcode-back" href="../../../../calibration.facility_specifics.xfel.html#calibration.facility_specifics.xfel.generate_paths.GeneratePaths.process">[docs]</a>    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_dir</span><span class="p">,</span> <span class="n">use_xfel_format</span><span class="p">,</span> <span class="n">as_template</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Generate the process file path.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            base_dir: Base directory under which the output is stored.</span>
+<span class="sd">            use_xfel_format (bool): If enabled the output is in xfel</span>
+<span class="sd">                                    format.</span>
+<span class="sd">            as_template (optional, bool): If enabled the channel is kept as a</span>
+<span class="sd">                                          template instead of being filled in</span>
+<span class="sd">                                          (default: False).</span>
+
+<span class="sd">        Return:</span>
+<span class="sd">            Process directory and file name, each as string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">run_subdir</span> <span class="o">=</span> <span class="s2">&quot;r&quot;</span> <span class="o">+</span> <span class="s2">&quot;-r&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">r</span><span class="p">)</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">)</span>
+
+        <span class="n">fdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">base_dir</span><span class="p">,</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_measurement</span><span class="p">,</span>
+                            <span class="n">run_subdir</span><span class="p">,</span>
+                            <span class="s2">&quot;process&quot;</span><span class="p">)</span>
+
+        <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_measurement</span> <span class="o">+</span> <span class="s2">&quot;-AGIPD</span><span class="si">{:02}</span><span class="s2">&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_asic</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">prefix</span> <span class="o">=</span> <span class="n">prefix</span> <span class="o">+</span> <span class="s2">&quot;_asic</span><span class="si">{:02}</span><span class="s2">&quot;</span>
+
+        <span class="k">if</span> <span class="n">use_xfel_format</span><span class="p">:</span>
+            <span class="n">fname</span> <span class="o">=</span> <span class="n">prefix</span> <span class="o">+</span> <span class="s2">&quot;_xfel.h5&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fname</span> <span class="o">=</span> <span class="n">prefix</span> <span class="o">+</span> <span class="s2">&quot;_agipd.h5&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">as_template</span><span class="p">:</span>
+            <span class="n">fname</span> <span class="o">=</span> <span class="n">fname</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_channel</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_asic</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">fdir</span><span class="p">,</span> <span class="n">fname</span></div>
+
+<div class="viewcode-block" id="GeneratePaths.join"><a class="viewcode-back" href="../../../../calibration.facility_specifics.xfel.html#calibration.facility_specifics.xfel.generate_paths.GeneratePaths.join">[docs]</a>    <span class="k">def</span> <span class="nf">join</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_dir</span><span class="p">,</span> <span class="n">use_xfel_format</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Generates the join file path.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            base_dir: Base directory under which the output is stored.</span>
+<span class="sd">            use_xfel_format (bool): If enabled the output is in xfel</span>
+<span class="sd">                                    format.</span>
+
+<span class="sd">        Return:</span>
+<span class="sd">            Join directory and file name, each as string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">run_subdir</span> <span class="o">=</span> <span class="s2">&quot;r&quot;</span> <span class="o">+</span> <span class="s2">&quot;-r&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">r</span><span class="p">)</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">)</span>
+
+        <span class="n">fdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">base_dir</span><span class="p">,</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_measurement</span><span class="p">,</span>
+                            <span class="n">run_subdir</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">use_xfel_format</span><span class="p">:</span>
+            <span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">_joined_constants_xfel.h5&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_measurement</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">_joined_constants_agipd.h5&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_measurement</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">fdir</span><span class="p">,</span> <span class="n">fname</span></div></div>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, Manuela Kuhn, Jennifer Poehlsen.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

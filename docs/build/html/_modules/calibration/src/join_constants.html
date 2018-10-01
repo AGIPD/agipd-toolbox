@@ -1,0 +1,223 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>calibration.src.join_constants &#8212; agipd-toolbox 1.0.3 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for calibration.src.join_constants</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+
+
+<span class="c1"># (c) Copyright 2017-2018 DESY, FS-DS</span>
+<span class="c1">#</span>
+<span class="c1"># This file is part of the FS-DS AGIPD toolbox.</span>
+<span class="c1">#</span>
+<span class="c1"># This software is free: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 2 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This software is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this software.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">@author: Manuela Kuhn &lt;manuela.kuhn@desy.de&gt;</span>
+<span class="sd">         Jennifer Poehlsen &lt;jennifer.poehlsen@desy.de&gt;</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">h5py</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">import</span> <span class="nn">utils</span>
+
+
+<div class="viewcode-block" id="get_arguments"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.join_constants.get_arguments">[docs]</a><span class="k">def</span> <span class="nf">get_arguments</span><span class="p">():</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">()</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--input_dir&quot;</span><span class="p">,</span>
+                        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Input directory to load data from&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--input_file&quot;</span><span class="p">,</span>
+                        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Template for input files&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--output_dir&quot;</span><span class="p">,</span>
+                        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output directory to write results to&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--output_file&quot;</span><span class="p">,</span>
+                        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Name of the output file&quot;</span><span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">args</span></div>
+
+
+<div class="viewcode-block" id="JoinConstants"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.join_constants.JoinConstants">[docs]</a><span class="k">class</span> <span class="nc">JoinConstants</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">in_fname</span><span class="p">,</span> <span class="n">out_fname</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_in_fname</span> <span class="o">=</span> <span class="n">in_fname</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_out_fname</span> <span class="o">=</span> <span class="n">out_fname</span>
+
+<div class="viewcode-block" id="JoinConstants.get_file_names"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.join_constants.JoinConstants.get_file_names">[docs]</a>    <span class="k">def</span> <span class="nf">get_file_names</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_fname</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;AGIPD</span><span class="si">{:02}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;AGIPD[0-9][0-9]&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s2">&quot;asic&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_fname</span><span class="p">:</span>
+            <span class="n">fname</span> <span class="o">=</span> <span class="n">fname</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;asic</span><span class="si">{:02}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;asic[0-9][0-9]&quot;</span><span class="p">)</span>
+
+        <span class="n">file_list</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+        <span class="n">file_list</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">file_list</span></div>
+
+<div class="viewcode-block" id="JoinConstants.run"><a class="viewcode-back" href="../../../calibration.src.html#calibration.src.join_constants.JoinConstants.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">file_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_file_names</span><span class="p">()</span>
+
+        <span class="n">files</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">fname</span> <span class="ow">in</span> <span class="n">file_list</span><span class="p">:</span>
+            <span class="n">channel</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">fname</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;AGIPD&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">][:</span><span class="mi">2</span><span class="p">])</span>
+
+            <span class="k">if</span> <span class="n">channel</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+                <span class="n">files</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">files</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">fname</span><span class="p">]</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># collect data and prepare for concatenation to module</span>
+        <span class="k">for</span> <span class="n">channel</span><span class="p">,</span> <span class="n">file_list</span> <span class="ow">in</span> <span class="n">files</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">data_to_be_concatenated</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">fname</span> <span class="ow">in</span> <span class="n">file_list</span><span class="p">:</span>
+                <span class="n">split_res</span> <span class="o">=</span> <span class="n">fname</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;asic&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">split_res</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">asic</span> <span class="o">=</span> <span class="s2">&quot;all&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">asic</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">fname</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;asic&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">][:</span><span class="mi">2</span><span class="p">])</span>
+
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;channel</span><span class="si">{}</span><span class="s2">: loading content of file </span><span class="si">{}</span><span class="s2">&quot;</span>
+                      <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">channel</span><span class="p">,</span> <span class="n">fname</span><span class="p">))</span>
+                <span class="n">file_content</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">load_file_content</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">file_content</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="c1"># metadata does not have to be concatenated</span>
+                    <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;collection&quot;</span><span class="p">):</span>
+                        <span class="c1"># entry is redundant for the other asics</span>
+                        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="n">channel</span><span class="p">]:</span>
+                            <span class="n">data</span><span class="p">[</span><span class="n">channel</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+                    <span class="c1"># mark to be concatenated</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data_to_be_concatenated</span><span class="p">:</span>
+                            <span class="n">data_to_be_concatenated</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+                        <span class="n">data_to_be_concatenated</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">asic</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+            <span class="c1"># rebuild the module from the asic data</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">data_to_be_concatenated</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">data</span><span class="p">[</span><span class="n">channel</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">build_module</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="c1"># write</span>
+        <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_out_fname</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">channel</span><span class="p">,</span> <span class="n">data_channel</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;channel</span><span class="si">{:02d}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">data_channel</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="n">f</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">prefix</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">key</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+                    <span class="n">f</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span></div></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">get_arguments</span><span class="p">()</span>
+
+<span class="c1">#    base_dir = &quot;/gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm/dark&quot;</span>
+<span class="c1">#    in_file_name = &quot;dark_AGIPD{:02d}_agipd_2017-10-27.h5&quot;</span>
+
+    <span class="n">in_dir</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">input_dir</span>
+    <span class="n">in_file_name</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">input_file</span>
+    <span class="n">in_fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">in_dir</span><span class="p">,</span> <span class="n">in_file_name</span><span class="p">)</span>
+
+<span class="c1">#    out_file_name = &quot;dark_joined_constants_agipd.h5&quot;</span>
+    <span class="n">out_file_name</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">output_file</span>
+    <span class="n">out_dir</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">output_dir</span>
+    <span class="n">out_fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">out_dir</span><span class="p">,</span> <span class="n">out_file_name</span><span class="p">)</span>
+
+    <span class="n">obj</span> <span class="o">=</span> <span class="n">JoinConstants</span><span class="p">(</span><span class="n">in_fname</span><span class="p">,</span> <span class="n">out_fname</span><span class="p">)</span>
+    <span class="n">obj</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, Manuela Kuhn, Jennifer Poehlsen.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

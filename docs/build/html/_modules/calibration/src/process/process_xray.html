@@ -1,0 +1,328 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>calibration.src.process.process_xray &#8212; agipd-toolbox 1.0.3 documentation</title>
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for calibration.src.process.process_xray</h1><div class="highlight"><pre>
+<span></span><span class="c1"># (c) Copyright 2017-2018 DESY, FS-DS</span>
+<span class="c1">#</span>
+<span class="c1"># This file is part of the FS-DS AGIPD toolbox.</span>
+<span class="c1">#</span>
+<span class="c1"># This software is free: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 2 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This software is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this software.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">@author: Manuela Kuhn &lt;manuela.kuhn@desy.de&gt;</span>
+<span class="sd">         Jennifer Poehlsen &lt;jennifer.poehlsen@desy.de&gt;</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">namedtuple</span>
+
+<span class="kn">from</span> <span class="nn">process_base</span> <span class="k">import</span> <span class="n">ProcessBase</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="k">import</span> <span class="n">signal</span>
+<span class="kn">from</span> <span class="nn">scipy.optimize</span> <span class="k">import</span> <span class="n">curve_fit</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+
+<div class="viewcode-block" id="ProcessXray"><a class="viewcode-back" href="../../../../calibration.src.process.html#calibration.src.process.process_xray.ProcessXray">[docs]</a><span class="k">class</span> <span class="nc">ProcessXray</span><span class="p">(</span><span class="n">ProcessBase</span><span class="p">):</span>
+    <span class="n">Res</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s2">&quot;res&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;photon_spacing&quot;</span><span class="p">,</span>
+                             <span class="s2">&quot;spacing_error&quot;</span><span class="p">,</span>
+                             <span class="s2">&quot;peak_stddev&quot;</span><span class="p">,</span>
+                             <span class="s2">&quot;peak_error&quot;</span><span class="p">,</span>
+                             <span class="s2">&quot;quality&quot;</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ProcessXray.initiate"><a class="viewcode-back" href="../../../../calibration.src.process.html#calibration.src.process.process_xray.ProcessXray.initiate">[docs]</a>    <span class="k">def</span> <span class="nf">initiate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="n">n_offsets</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">runs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">shapes</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;photon_spacing&quot;</span><span class="p">:</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_rows</span><span class="p">,</span>
+                               <span class="bp">self</span><span class="o">.</span><span class="n">n_cols</span><span class="p">,</span>
+                               <span class="bp">self</span><span class="o">.</span><span class="n">n_memcells</span><span class="p">,</span>
+                               <span class="mi">1</span><span class="p">),</span>
+
+            <span class="s2">&quot;stddev&quot;</span><span class="p">:</span>         <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_rows</span><span class="p">,</span>
+                               <span class="bp">self</span><span class="o">.</span><span class="n">n_cols</span><span class="p">,</span>
+                               <span class="bp">self</span><span class="o">.</span><span class="n">n_memcells</span><span class="p">,</span>
+                               <span class="mi">2</span><span class="p">)</span>
+        <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">transpose_order</span> <span class="o">=</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">_memcell_location</span><span class="p">,</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">_row_location</span><span class="p">,</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">_col_location</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;photon_spacing&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shapes</span><span class="p">[</span><span class="s2">&quot;photon_spacing&quot;</span><span class="p">]),</span>
+                <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="s2">&quot;photon_spacing&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int16</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;spacing_error&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shapes</span><span class="p">[</span><span class="s2">&quot;photon_spacing&quot;</span><span class="p">]),</span>
+                <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="s2">&quot;spacing_error&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">float</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;peak_stddev&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shapes</span><span class="p">[</span><span class="s2">&quot;stddev&quot;</span><span class="p">]),</span>
+                <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="s2">&quot;peak_stddev&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">float</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;peak_error&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shapes</span><span class="p">[</span><span class="s2">&quot;stddev&quot;</span><span class="p">]),</span>
+                <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="s2">&quot;peak_error&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">float</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;quality&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shapes</span><span class="p">[</span><span class="s2">&quot;photon_spacing&quot;</span><span class="p">]),</span>
+                <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="s2">&quot;quality&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int16</span>
+            <span class="p">}</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="ProcessXray.gauss"><a class="viewcode-back" href="../../../../calibration.src.process.html#calibration.src.process.process_xray.ProcessXray.gauss">[docs]</a>    <span class="k">def</span> <span class="nf">gauss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="o">*</span><span class="n">p</span><span class="p">):</span>
+        <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="n">p</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">a</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">b</span><span class="p">),</span> <span class="mf">2.</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span> <span class="o">*</span> <span class="n">c</span><span class="o">**</span><span class="mf">2.</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">y</span></div>
+
+
+<div class="viewcode-block" id="ProcessXray.fit_peaks"><a class="viewcode-back" href="../../../../calibration.src.process.html#calibration.src.process.process_xray.ProcessXray.fit_peaks">[docs]</a>    <span class="k">def</span> <span class="nf">fit_peaks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hist</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">npeaks</span><span class="p">,</span> <span class="n">initial</span><span class="p">):</span>
+
+        <span class="n">bin_width</span> <span class="o">=</span> <span class="n">bins</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">bins</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">window_bins</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">25</span><span class="o">/</span><span class="n">bin_width</span><span class="p">)</span>
+        <span class="n">fit_window</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">npeaks</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;int&#39;</span><span class="p">)</span>
+
+        <span class="n">popt</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">pcov</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># loop over peaks, do fits</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">npeaks</span><span class="p">):</span>
+
+            <span class="n">p_initial</span> <span class="o">=</span> <span class="p">[</span><span class="n">initial</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">i</span><span class="p">],</span> <span class="n">initial</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">i</span><span class="p">],</span> <span class="mi">10</span><span class="p">]</span>
+            <span class="n">fit_window</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">bins</span><span class="o">==</span><span class="n">initial</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">i</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="n">x_fit</span> <span class="o">=</span> <span class="n">bins</span><span class="p">[</span><span class="n">fit_window</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">window_bins</span><span class="p">:</span><span class="n">fit_window</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">+</span><span class="n">window_bins</span><span class="p">]</span>
+
+            <span class="n">h_fit</span> <span class="o">=</span> <span class="n">hist</span><span class="p">[</span><span class="n">fit_window</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">window_bins</span><span class="p">:</span><span class="n">fit_window</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">+</span><span class="n">window_bins</span><span class="p">]</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">curve_fit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gauss</span><span class="p">,</span> <span class="n">x_fit</span><span class="p">,</span> <span class="n">h_fit</span><span class="p">,</span> <span class="n">p0</span><span class="o">=</span><span class="n">p_initial</span><span class="p">)</span>
+            <span class="n">popt</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">pcov</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+
+        <span class="k">return</span> <span class="n">popt</span><span class="p">,</span> <span class="n">pcov</span></div>
+
+
+<div class="viewcode-block" id="ProcessXray.get_photon_spacing"><a class="viewcode-back" href="../../../../calibration.src.process.html#calibration.src.process.process_xray.ProcessXray.get_photon_spacing">[docs]</a>    <span class="k">def</span> <span class="nf">get_photon_spacing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">analog</span><span class="p">,</span> <span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">mc</span><span class="p">):</span>
+        <span class="c1">#for one pixel one memcell</span>
+
+        <span class="n">failed</span> <span class="o">=</span> <span class="n">ProcessXray</span><span class="o">.</span><span class="n">Res</span><span class="p">(</span><span class="n">photon_spacing</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                                 <span class="n">spacing_error</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                                 <span class="n">peak_stddev</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+                                 <span class="n">peak_error</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+                                 <span class="n">quality</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">analog</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">analog</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;int16&#39;</span><span class="p">)</span>
+        <span class="p">(</span><span class="n">hist</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">analog</span><span class="p">,</span> <span class="n">bins</span><span class="p">)</span>
+        <span class="n">smooth_window</span> <span class="o">=</span> <span class="mi">11</span>
+        <span class="n">hist_smooth</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span><span class="n">hist</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">smooth_window</span><span class="p">,)),</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;same&#39;</span><span class="p">)</span>
+
+        <span class="c1"># find starting peak locations, heights</span>
+        <span class="n">peak_loc_bins</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">find_peaks_cwt</span><span class="p">(</span><span class="n">hist_smooth</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">70</span><span class="p">))</span>
+        <span class="n">peak_loc_bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">peak_loc_bins</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">peak_loc_bins</span><span class="p">)</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;ERROR: No peaks found!!&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">failed</span>
+
+        <span class="n">peak_locations</span> <span class="o">=</span> <span class="n">bins</span><span class="p">[</span><span class="n">peak_loc_bins</span><span class="p">]</span>
+        <span class="n">peak_sizes</span> <span class="o">=</span> <span class="n">hist_smooth</span><span class="p">[</span><span class="n">peak_loc_bins</span><span class="p">]</span>
+
+        <span class="c1"># find_peaks_cwt also finds many spurious peaks, filter these out</span>
+        <span class="c1"># define minimum peak height</span>
+        <span class="n">min_height</span> <span class="o">=</span> <span class="mi">30</span>
+        <span class="n">peak_loc_bins_filtered</span> <span class="o">=</span> <span class="n">peak_loc_bins</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">peak_sizes</span> <span class="o">&gt;</span> <span class="n">min_height</span><span class="p">)]</span>
+        <span class="n">peak_sizes_filtered</span> <span class="o">=</span> <span class="n">peak_sizes</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">peak_sizes</span> <span class="o">&gt;</span> <span class="n">min_height</span><span class="p">)]</span>
+        <span class="n">peak_locations_filtered</span> <span class="o">=</span> <span class="n">peak_locations</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">peak_sizes</span> <span class="o">&gt;</span> <span class="n">min_height</span><span class="p">)]</span>
+
+        <span class="n">npeaks</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">peak_locations_filtered</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">npeaks</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="c1">#print(&quot;ERROR: Fewer than 2 peaks found!&quot;, row, col, mc)</span>
+            <span class="k">return</span> <span class="n">failed</span>
+
+        <span class="c1"># fit 0- and 1-photon peaks with gaussian</span>
+        <span class="n">initial</span> <span class="o">=</span> <span class="p">[</span><span class="n">peak_sizes_filtered</span><span class="p">,</span> <span class="n">peak_locations_filtered</span><span class="p">]</span>
+        <span class="n">params</span><span class="p">,</span> <span class="n">pcov</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fit_peaks</span><span class="p">(</span><span class="n">hist_smooth</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">initial</span><span class="p">)</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">params</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="n">param_errors</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">p</span><span class="p">))</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pcov</span><span class="p">]</span>
+        <span class="n">errors</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">param_errors</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">param_errors</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+
+        <span class="n">photon_spacing</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">results</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">spacing_error</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">errors</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">errors</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="n">fit_results</span> <span class="o">=</span> <span class="n">ProcessXray</span><span class="o">.</span><span class="n">Res</span>
+
+        <span class="k">if</span> <span class="n">photon_spacing</span> <span class="o">&lt;=</span> <span class="mi">10</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">failed</span>
+
+        <span class="n">quality</span> <span class="o">=</span>  <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">hist_smooth</span><span class="p">[</span><span class="n">peak_loc_bins_filtered</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">peak_loc_bins_filtered</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+
+        <span class="k">return</span> <span class="n">ProcessXray</span><span class="o">.</span><span class="n">Res</span><span class="p">(</span><span class="n">photon_spacing</span><span class="o">=</span><span class="n">photon_spacing</span><span class="p">,</span>
+                               <span class="n">spacing_error</span><span class="o">=</span><span class="n">spacing_error</span><span class="p">,</span>
+                               <span class="n">peak_stddev</span><span class="o">=</span><span class="n">results</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+                               <span class="n">peak_error</span><span class="o">=</span><span class="n">errors</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+                               <span class="n">quality</span><span class="o">=</span><span class="n">quality</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ProcessXray.calculate"><a class="viewcode-back" href="../../../../calibration.src.process.html#calibration.src.process.process_xray.ProcessXray.calculate">[docs]</a>    <span class="k">def</span> <span class="nf">calculate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">run_number</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">runs</span><span class="p">):</span>
+            <span class="n">run_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_names</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">in_fname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_fname</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">run_number</span><span class="o">=</span><span class="n">run_number</span><span class="p">,</span> <span class="n">run_name</span><span class="o">=</span><span class="n">run_name</span><span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Start loading data from </span><span class="si">{}</span><span class="s2"> ... &quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">in_fname</span><span class="p">),</span>
+                  <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">analog</span><span class="p">,</span> <span class="n">digital</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_data</span><span class="p">(</span><span class="n">in_fname</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Done.&quot;</span><span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Start masking problems ... &quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">m_analog</span><span class="p">,</span> <span class="n">m_digital</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask_out_problems</span><span class="p">(</span><span class="n">analog</span><span class="o">=</span><span class="n">analog</span><span class="p">,</span>
+                                                         <span class="n">digital</span><span class="o">=</span><span class="n">digital</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Done.&quot;</span><span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Start computing photon spacing ... &quot;</span><span class="p">,</span>
+                  <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="n">failed_count</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_rows</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;row &quot;</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span>
+
+                <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_cols</span><span class="p">):</span>
+
+                    <span class="k">for</span> <span class="n">mc</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_memcells</span><span class="p">):</span>
+
+                        <span class="n">idx</span> <span class="o">=</span> <span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">mc</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">getmask</span><span class="p">(</span><span class="n">m_analog</span><span class="p">)[</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">mc</span><span class="p">,</span> <span class="p">:]):</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;photon_spacing&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;spacing_error&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;peak_stddev&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;peak_error&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;quality&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="k">try</span><span class="p">:</span>
+                                <span class="n">fit_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_photon_spacing</span><span class="p">(</span><span class="n">m_analog</span><span class="p">[</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">mc</span><span class="p">,</span> <span class="p">:],</span> <span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">mc</span><span class="p">)</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;photon_spacing&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">fit_result</span><span class="o">.</span><span class="n">photon_spacing</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;spacing_error&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">fit_result</span><span class="o">.</span><span class="n">spacing_error</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;peak_stddev&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">fit_result</span><span class="o">.</span><span class="n">peak_stddev</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;peak_error&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">fit_result</span><span class="o">.</span><span class="n">peak_error</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;quality&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">fit_result</span><span class="o">.</span><span class="n">quality</span>
+
+
+                            <span class="k">except</span><span class="p">:</span>
+                                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;ERROR: Fit failed!&quot;</span><span class="p">)</span>
+                                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;memcell, row, col&quot;</span><span class="p">,</span> <span class="n">mc</span><span class="p">,</span> <span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span>
+                                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;analog.shape&quot;</span><span class="p">,</span> <span class="n">analog</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;photon_spacing&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;spacing_error&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;peak_stddev&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;peak_error&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;quality&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                                <span class="c1">#raise</span>
+
+
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;photon_spacing&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="n">failed_count</span> <span class="o">=</span> <span class="n">failed_count</span> <span class="o">+</span> <span class="mi">1</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;photon_spacing&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;photon_spacing&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transpose_order</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;spacing_error&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;spacing_error&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transpose_order</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;peak_stddev&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;peak_stddev&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transpose_order</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;peak_error&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;peak_error&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transpose_order</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;quality&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;quality&quot;</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transpose_order</span><span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Done.&quot;</span><span class="p">)</span>
+            <span class="n">total_fits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_rows</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_cols</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_memcells</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Failed fits: &quot;</span><span class="p">,</span> <span class="n">failed_count</span><span class="p">,</span> <span class="s2">&quot; = &quot;</span><span class="p">,</span> <span class="p">(</span><span class="n">failed_count</span><span class="o">/</span><span class="n">total_fits</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span><span class="p">,</span> <span class="s2">&quot;%&quot;</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, Manuela Kuhn, Jennifer Poehlsen.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
