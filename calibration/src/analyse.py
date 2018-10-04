@@ -266,7 +266,12 @@ class Analyse(object):
                 run_name = ["-".join(self.run_name)]
 
         elif self.measurement == "drscs":
-            from process_drspc import ProcessDrscs as Process
+            from process_drscs import ProcessDrscs as Process
+
+            # adjust list of runs
+            run_list = ["r" + "-r".join(str(r).zfill(4) for r in self.runs)]
+            if self.run_name != [None]:
+                run_name = ["-".join(self.run_name)]
 
         elif self.measurement == "xray":
             from process_xray import ProcessXray as Process

@@ -59,11 +59,10 @@ class ProcessBase(object):
         self._out_fname = out_fname
 
         # public attributes for use in inherited classes
-        self.in_fname = in_fname
+        self.in_fname = in_fname.format(run_name=run_name[0])
 
         self.runs = runs
         self.run_names = run_name
-
         self._row_location = None
         self._col_location = None
         self._memcell_location = None
@@ -74,6 +73,9 @@ class ProcessBase(object):
 
         self.shapes = {}
         self.result = {}
+        self.collection = {"run_number": None,
+                           "creation_date": str(date.today()),
+                           "version": __version__}
 
         print("\n\n\nStart process")
         print("in_fname:", self.in_fname)
@@ -209,21 +211,32 @@ class ProcessBase(object):
         else:
             used_run_numbers = ["r{:04d}".format(run).encode('utf8')
                                 for run in self.runs]
+        self.collection["run_number"] = used_run_numbers
 
-        collection = {
-            "run_number": used_run_numbers,
-            "creation_date": str(date.today()),
-            "version": __version__
-        }
-
+        # TODO: make this better!  Currently hard-coded with set number
+        # of levels to go down.  Better would be recursive...
         with h5py.File(self._out_fname, "w", libver='latest') as f:
             for key, dset in self.result.items():
-                f.create_dataset(dset['path'],
-                                 data=dset['data'],
-                                 dtype=dset['type'])
+                if "path" in dset.keys():
+                    f.create_dataset(dset['path'],
+                                     data=dset['data'],
+                                     dtype=dset['type'])
+                else:
+                    for key2, dset2 in dset.items():
+                        #print("dset2", dset2.items())
+                        if "path" in dset2.keys():
+                            f.create_dataset(dset2['path'],
+                                             data=dset2['data'],
+                                             dtype=dset2['type'])
+                        else:
+                            for key3, dset3 in dset2.items():
+                                f.create_dataset(dset3['path'],
+                                                 data=dset3['data'],
+                                                 dtype=dset3['type'])
+                    
 
             prefix = "collection"
-            for key, value in collection.items():
+            for key, value in self.collection.items():
                 name = "{}/{}".format(prefix, key)
                 f.create_dataset(name, data=value)
 
