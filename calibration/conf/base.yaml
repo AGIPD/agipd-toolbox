@@ -6,7 +6,7 @@ general:
     module: null
     channel: null
 
-    partition: all
+    partition: upex
     #partition: cfel
 
     temperature: null
