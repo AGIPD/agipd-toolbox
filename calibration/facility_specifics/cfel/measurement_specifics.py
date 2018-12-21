@@ -21,7 +21,7 @@
 """
 
 import sys
-from __init__ import FACILITY_DIR
+from calibration.facility_specifics.cfel.__init__ import FACILITY_DIR
 
 if FACILITY_DIR not in sys.path:
     sys.path.insert(0, FACILITY_DIR)

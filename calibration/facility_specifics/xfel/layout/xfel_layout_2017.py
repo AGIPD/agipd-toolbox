@@ -26,8 +26,8 @@ import os
 import sys
 import configparser
 
-from __init__ import SRC_DIR
-import cfel_optarg
+from calibration.facility_specifics.xfel.layout.__init__ import SRC_DIR
+import calibration.facility_specifics.xfel.layout.cfel_optarg
 
 if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)

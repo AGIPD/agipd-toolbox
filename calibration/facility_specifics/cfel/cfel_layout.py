@@ -26,7 +26,7 @@ import os
 import sys
 import glob
 
-from __init__ import SRC_DIR
+from calibration.facility_specifics.cfel.__init__ import SRC_DIR
 
 if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)

@@ -29,10 +29,10 @@ import os
 import sys
 import time
 
-import utils
+import calibration.src.utils
 # from merge_drscs import ParallelMerge
 # from correct import Correct
-from join_constants import JoinConstants
+from calibration.src.join_constants import JoinConstants
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 print("BASE_DIR", BASE_DIR)

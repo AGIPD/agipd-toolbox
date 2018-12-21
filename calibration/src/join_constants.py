@@ -28,7 +28,7 @@ import glob
 import h5py
 import os
 
-import utils
+import calibration.src.utils
 
 
 def get_arguments():

@@ -31,7 +31,7 @@ import subprocess
 import sys
 import time
 
-from job_overview import JobOverview
+from calibration.job_scripts.job_overview import JobOverview
 
 BATCH_JOB_DIR = os.path.dirname(os.path.realpath(__file__))
 SCRIPT_BASE_DIR = os.path.dirname(BATCH_JOB_DIR)

@@ -26,7 +26,7 @@ import json
 import os
 import sys
 
-from generate_paths import GeneratePaths
+from calibration.facility_specifics.cfel.generate_paths import GeneratePaths
 
 
 class RunType(object):
@@ -74,7 +74,21 @@ class RunType(object):
                            input_dir,
                            meas_conf,
                            run_name):
+        """Get the cfel run list
 
+        Args:
+            measurement (): 
+            module_list ():
+            temperature ():
+            meas_spec ():
+            subdir ():
+            input_dir ():
+            meas_conf ():
+            run_name ():
+
+        Return:
+            run_numbers (list): A list of run numbers
+        """
         generate_paths = GeneratePaths(
             run_type=None,
             measurement=measurement,

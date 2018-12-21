@@ -32,11 +32,14 @@ import sys
 import yaml
 
 
+def integrate_result(idx, result, source_file):
+    return
+
 def create_dir(directory_name):
     """Creates a directory including supdirectories if it does not exist.
 
     Args:
-        direcoty_name: The path of the direcory to be created.
+        directory_name: The path of the directory to be created.
     """
 
     if not os.path.exists(directory_name):
@@ -209,6 +212,15 @@ def get_asic_order_xfel(channel):
 
 
 def located_in_wing1(channel):
+    """Determine if the module is located in wing 1. (XFEL)
+
+    Args:
+        channel: channel (module) number
+
+    Returns:
+        True if in wing 1, false if in wing 2
+    """
+
     channel_order = get_channel_order()
 
     if int(channel) in channel_order[1]:
@@ -219,6 +231,12 @@ def located_in_wing1(channel):
 
 def located_in_upper_half(asic):
     """If the ASIC is located in the upper half of the module or not.
+
+    Args:
+        asic: asic number
+
+    Returns:
+        First asic in asic_order
     """
 
     asic_order = get_asic_order()
@@ -227,6 +245,14 @@ def located_in_upper_half(asic):
 
 
 def is_xfel_format(data_shape):
+    """Determine whether data is in XFEL format.
+    
+    Args:
+        data_shape: shape of dataset
+
+    Returns:
+        True if shape is consistent with XFEL data format, otherwise False.
+    """
     if data_shape[-2:] == (512, 128):
         return True
     else:
@@ -262,6 +288,18 @@ def convert_dtype(data, dtype):
 
 
 def convert_to_agipd_format(module, data, check=True):
+    """Convert data into AGIPD format
+
+    Args:
+        module: module number
+
+        data: dataset to convert
+
+        check: Default True.  Check if data is already in AGIPD format.
+
+    Returns:
+        data: dataset converted to AGIPD format
+    """
     if isinstance(data, np.ndarray):
         if check and not is_xfel_format(data.shape):
             pass
@@ -302,6 +340,15 @@ def convert_to_agipd_format(module, data, check=True):
 
 
 def convert_to_xfel_format(channel, data):
+    """ Convert data to XFEL format
+
+    Args:
+        channel: channel number
+        data: dataset to convert
+
+    Returns:
+        data: dataset converted to XFEL format
+    """
     if isinstance(data, np.ndarray):
         if is_xfel_format(data.shape):
             pass
@@ -416,6 +463,7 @@ def calculate_mapped_asic(asic, asic_order):
         |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |
         |____|____|____|____|____|____|____|____|
 
+
                         into
          ____ ____ ____ ____ ____ ____ ____ ____
         |    |    |    |    |    |    |    |    |
@@ -423,6 +471,7 @@ def calculate_mapped_asic(asic, asic_order):
         |____|____|____|____|____|____|____|____|
         |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
         |____|____|____|____|____|____|____|____|
+
 
     or if ordering like this::
 
@@ -619,7 +668,16 @@ def build_module(data):
 
 
 def concatenate_to_module(data, row_axis=2, col_axis=1):
+    """Takes data which was split into asics and recombines into full module
 
+    Args:
+        data:
+        row_axis: Default 2. Which axis of data is row.
+        col_axis: Default 1. Which axis of data is col.
+
+    Returns:
+        result: data of full module
+    """
     # data was not splitted into asics but contained the whole module
     if len(data) == 1:
         return data[0]

@@ -27,8 +27,8 @@ import time
 import numpy as np
 import os
 from string import Template
-from process import check_file_exists
-from parallel_process import integrate_result
+from calibration.src.utils import check_file_exists, integrate_result
+#from parallel_process import integrate_result
 from multiprocessing import Pool
 
 

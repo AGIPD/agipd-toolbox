@@ -24,7 +24,7 @@ import os
 import argparse
 import h5py
 
-import __init__
+import calibration.facility_specifics.xfel.__init__
 import utils
 
 

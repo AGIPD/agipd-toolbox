@@ -28,7 +28,7 @@ import numpy as np
 import os
 import sys
 
-import __init__
+import calibration.facility_specifics.xfel.preprocess.__init__
 import utils  # noqa E402
 from _version import __version__  # noqa E402
 

@@ -24,7 +24,7 @@ import numpy as np
 import os
 import sys
 
-from gather_base import GatherBase
+from calibration.src.gather.gather_base import GatherBase
 
 try:
     CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
