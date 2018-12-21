@@ -4,3 +4,4 @@ __pycache__/
 *.error
 *.swp
 *.pyc
+docs/build/
