@@ -21,7 +21,7 @@
 """
 
 import numpy as np
-from gather_base import GatherBase
+from calibration.src.gather.gather_base import GatherBase
 
 
 class GatherDrspc(GatherBase):

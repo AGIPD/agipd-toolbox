@@ -32,6 +32,9 @@ import sys
 import yaml
 
 
+def integrate_result(idx, result, source_file):
+    return
+
 def create_dir(directory_name):
     """Creates a directory including supdirectories if it does not exist.
 

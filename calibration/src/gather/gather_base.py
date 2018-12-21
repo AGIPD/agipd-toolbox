@@ -27,7 +27,7 @@ import sys
 import time
 import glob
 
-from __init__ import FACILITY_DIR
+from calibration.src.gather.__init__ import FACILITY_DIR
 
 import utils
 from _version import __version__

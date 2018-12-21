@@ -28,7 +28,7 @@ import numpy as np
 import os
 import sys
 
-from __init__ import SRC_DIR, SHARED_DIR
+from calibration.facility_specifics.xfel.preprocess.__init__ import SRC_DIR, SHARED_DIR
 
 #if SRC_PATH not in sys.path:
 #    sys.path.insert(0, SRC_PATH)
