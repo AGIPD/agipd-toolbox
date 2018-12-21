@@ -345,6 +345,7 @@ def load_file_content(fname, excluded=[]):
 
     Args:
         fname: The name of the HDF5 file to be loaded.
+
         excluded: The data paths which should be excluded from loading.
 
     Return:
@@ -381,12 +382,15 @@ def write_content(fname, file_content, prefix="", excluded=[]):
 
     Args:
         fname: The file to store the data to.
+
         file_content: A dictionary descibing the data to be stored,
                       in the form {key: value}
                       where:
-                        key: path inside the hdf5 file
+                        key: path inside the hdf5 file 
                         value: data stored in that path.
+
         prefix (optional): A prefix to be prepended to all keys.
+
         excluded (optional): List of keys to be excluded from storing.
     """
 
@@ -403,23 +407,24 @@ def write_content(fname, file_content, prefix="", excluded=[]):
 def calculate_mapped_asic(asic, asic_order):
     """Converts asic numbering
 
-    e.g. convert an ordering like this (defined in asic_order):
-      ____ ____ ____ ____ ____ ____ ____ ____
-     |    |    |    |    |    |    |    |    |
-     | 16 | 15 | 14 | 13 | 12 | 11 | 10 |  9 |
-     |____|____|____|____|____|____|____|____|
-     |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |
-     |____|____|____|____|____|____|____|____|
+    e.g. convert an ordering like this (defined in asic_order)::
 
-                       into
-      ____ ____ ____ ____ ____ ____ ____ ____
-     |    |    |    |    |    |    |    |    |
-     |  0 |  1 | 2  | 3  |  4 |  5 |  6 |  7 |
-     |____|____|____|____|____|____|____|____|
-     |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
-     |____|____|____|____|____|____|____|____|
+         ____ ____ ____ ____ ____ ____ ____ ____
+        |    |    |    |    |    |    |    |    |
+        | 16 | 15 | 14 | 13 | 12 | 11 | 10 |  9 |
+        |____|____|____|____|____|____|____|____|
+        |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |
+        |____|____|____|____|____|____|____|____|
 
-    or if ordering like this
+                        into
+         ____ ____ ____ ____ ____ ____ ____ ____
+        |    |    |    |    |    |    |    |    |
+        |  0 |  1 | 2  | 3  |  4 |  5 |  6 |  7 |
+        |____|____|____|____|____|____|____|____|
+        |  8 |  9 | 10 | 11 | 12 | 13 | 14 | 15 |
+        |____|____|____|____|____|____|____|____|
+
+    or if ordering like this::
 
         wing 2            wing 1
        _________        _________          _________
@@ -444,12 +449,14 @@ def calculate_mapped_asic(asic, asic_order):
 
     Args:
         asic: Asic to be mapped.
+
         asic_order: Desciption of how the asics are numbered on the module,
                     e.g. [[16, 15, 14, 13, 12, 11, 10, 9],  # top half
                           [8, 7, 6, 5, 4, 3, 2, 1]]  # bottom half
 
     Return:
         Mapping result of the asic, e.g asic 8 -> 1 or 13-> 3.
+
     Raises:
         Exception: If the asic can not be found in the asic_order.
     """
@@ -476,7 +483,8 @@ def determine_asic_border(mapped_asic,
     """Determines the start and end point of an asic.
 
     Determines on which row and col the asic starts and stops according to
-    the layout defined, default layout is the this one:
+    the layout defined, default layout is the this one::
+
            ____ ____ ____ ____ ____ ____ ____ ____
      0x64 |    |    |    |    |    |    |    |    |
           |  0 |  1 | 2  | 3  |  4 |  5 |  6 |  7 |
@@ -485,7 +493,7 @@ def determine_asic_border(mapped_asic,
      2x64 |____|____|____|____|____|____|____|____|
           0*64 1x64 2x64 3x64 4x64 5x64 6x64 7x64 8x64
 
-    Another example would be the xfel layout:
+    Another example would be the xfel layout::
 
            _________
      0x64 |    |    |
@@ -510,15 +518,19 @@ def determine_asic_border(mapped_asic,
     Args:
         mapped_asic: Asic number in the internernal numbering scheme
                      (can be determined with calculate_mapped_asic).
+
         asic_size: How many pixel are on an asic, e.g. 64
+
         asic_order (optional): Desciption of how the asics are numbered on the
                                module, e.g.
                                [[16, 15, 14, 13, 12, 11, 10, 9],  # top half
                                 [8, 7, 6, 5, 4, 3, 2, 1]]  # bottom half
                                If not set, or set to None, the default asic
                                order is taken.
+
         verbose (optional, bool): If enabled (intermediate) results are
                                   printed.
+
     Return:
         The start and end point of the columns and rows of the asic in this
         order:
@@ -527,6 +539,7 @@ def determine_asic_border(mapped_asic,
             row stop
             column start
             column stop.
+
     """
 
     if asic_order is None:
@@ -650,7 +663,9 @@ def flatten(d, prefix='', sep='/'):
 
     Args:
         d: The dictionary to be flattened.
+
         prefix (optional): A prefix to be prepended to all keys.
+
         sep (optional): Seperater to be used, default is "/"
 
     Return:
