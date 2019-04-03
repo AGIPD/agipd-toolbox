@@ -1,26 +1,44 @@
-from __future__ import print_function
+# (c) Copyright 2017-2018 DESY, FS-DS
+#
+# This file is part of the FS-DS AGIPD toolbox.
+#
+# This software is free: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this software.  If not, see <http://www.gnu.org/licenses/>.
+
+"""
+@author: Manuela Kuhn <manuela.kuhn@desy.de>
+         Jennifer Poehlsen <jennifer.poehlsen@desy.de>
+"""
+
+#from __future__ import print_function
 
 from multiprocessing import Pool, TimeoutError
 import numpy as np
 import os
 import time
 import h5py
-from process import ProcessDrscs, initiate_result, check_file_exists
-from functools import reduce  # forward compatibility for Python 3
+from Process import ProcessDrscs, initiate_result, check_file_exists
+#from functools import reduce  # forward compatibility for Python 3
 import operator
 
-def exec_process(asic, input_file, analog, digital, pixel_v_list, pixel_u_list, mem_cell_list, safety_factor):
+def exec_process(in_fname, out_fname, pixel_v_list, pixel_u_list, mem_cell_list):
 
     create_error_plots=False
 
-    #plot_dir = "/gpfs/cfel/fsds/labs/agipd/calibration/processed/M314/temperature_m15C/drscs/plots/itestc150/manu_test/asic01_failed/"
-    #plot_prefix = "M314_itestc150"
-    #create_error_plots=True
 
     #cal = ProcessDrscs(asic, analog=analog, digital=digital)
-    cal = ProcessDrscs(asic, input_file, safety_factor=safety_factor)#,
-    #                   plot_prefix=plot_prefix, plot_dir=plot_dir, create_plots=False)
-    cal.run(pixel_v_list, pixel_u_list, mem_cell_list, create_error_plots=create_error_plots)
+    cal = ProcessDrscs(input_file, out_fname, runs, run_name)
+    cal.run(pixel_v_list, pixel_u_list, mem_cell_list)
 
     return cal.result, pixel_v_list, pixel_u_list, mem_cell_list
 
@@ -117,38 +135,67 @@ def integrate_result(idx, result, source):
 
 
 
-class ParallelProcess():
-    def __init__(self, asic, input_fname, pixel_v_list, pixel_u_list,
-                 mem_cell_list, n_processes, safety_factor, output_fname):
-        self.asic = asic
-        self.input_fname = input_fname
+class ParallelProcess(object):
+    def __init__(self, in_fname, out_fname, runs, run_name, n_processes):
+#    def __init__(self,input_fname, pixel_v_list, pixel_u_list,
+#                 mem_cell_list, n_processes, output_fname):
 
-        self.pixel_v_list = pixel_v_list
-        self.pixel_u_list = pixel_u_list
-        self.mem_cell_list = mem_cell_list
+        self._out_fname = out_fname
+
+        self.in_fname = in_fname
+
+        self.runs = runs
+        self.run_names = run_name
+        self._row_location = None
+        self._col_location = None
+        self._memcell_location = None
+        self._frame_location = None
+        self._set_data_order()
+
+        self._set_dims_and_metadata()
+
         self.n_gain_stages = 3
 
         self.n_processes = n_processes
         self.process_lists = []
 
-        self.safety_factor = safety_factor
-
-        self.output_fname = output_fname
         self.result = None
 
-        self.digital_path = "/entry/instrument/detector/data_digital"
-        self.analog_path = "/entry/instrument/detector/data"
 
-        self.analog = None
-        self.digital = None
-
-        check_file_exists(self.output_fname)
+#        check_file_exists(self._out_fname)
 
         self.generate_process_lists()
 
         #self.load_data()
 
         self.run()
+
+    def _set_data_order(self):
+        """Set the locations where the data is stored
+
+        This give the different process methods the posibility to act genericly
+        to data reordering.
+
+        """
+        self._row_location = 0
+        self._col_location = 1
+        self._memcell_location = 2
+        self._frame_location = 3
+
+    def _set_dims_and_metadata(self):
+        run_number = self.runs[0]
+        run_name = self.run_names[0]
+
+        in_fname = self.in_fname.format(run_number=run_number, run_name=run_name)
+        with h5py.File(in_fname, "r") as f:
+            shape = f['analog'].shape
+
+            self.module = f['collection/module'][()]
+            self.channel = f['collection/channel'][()]
+
+        self.n_rows = shape[self._row_location]
+        self.n_cols = shape[self._col_location]
+        self.n_memcells = shape[self._memcell_location]
 
     def generate_process_lists(self):
 
@@ -184,7 +231,7 @@ class ParallelProcess():
         #print("n_intervals", n_intervals)
         #print("n_bins", n_bins)
 
-        self.result = initiate_result(self.pixel_v_list, self.pixel_u_list,
+        self.result = initiate(self.pixel_v_list, self.pixel_u_list,
                                       self.mem_cell_list, n_gain_stages,
                                       n_intervals, n_diff_changes_stored)
 
@@ -211,11 +258,10 @@ class ParallelProcess():
                 print("process pixel_v_sublist", pixel_v_sublist)
                 result_list.append(
                     pool.apply_async(exec_process,
-                                     (self.asic, self.input_fname,
+                                     (self.input_fname,
                                       self.analog, self.digital,
                                       pixel_v_sublist, self.pixel_u_list,
-                                      self.mem_cell_list,
-                                      self.safety_factor)))
+                                      self.mem_cell_list))
 
             for process_result in result_list:
                 p_result, v_list, u_list, mem_cell_list = process_result.get()
