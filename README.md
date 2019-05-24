@@ -28,7 +28,7 @@ To update the framework:
 Establish environment of the XFEL offline cluster:
 
 ```
-source /etc/profile.d/modules.sh; source /gpfs/cfel/cxi/common/cfelsoft-rh7/setup.sh; module load cfel-python3/latest
+source /gpfs/cfel/cxi/common/public/cfelsoft-rh7-public/conda-setup.sh; conda activate base
 ```
 
 Run:
