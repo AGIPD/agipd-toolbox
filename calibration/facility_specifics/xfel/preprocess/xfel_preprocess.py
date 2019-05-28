@@ -34,31 +34,32 @@ from _version import __version__  # noqa E402
 
 
 class Preprocess(object):
-    def __init__(self, in_fname, out_fname, use_interleaved=False, interactive=False):
+    def __init__(self, in_fname, out_fname, detector_string, use_interleaved=False, interactive=False):
 
         self._in_fname = in_fname
         self._out_fname = out_fname
         self._use_interleaved = use_interleaved
         self._interactive = interactive
+        self._detector_string = detector_string
 
         self._usable_start_first_seq = 0
         #self._usable_start_first_seq = 2
 
         self._n_channels = 16
         self._path = {
-            'image_first': ("INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
-                            "image/first"),
-            'train_count': ("INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
-                            "image/count"),
+            'image_first': ("INDEX/{}/DET/{{}}CH0:xtdf/"
+                            "image/first".format(self._detector_string)),
+            'train_count': ("INDEX/{}/DET/{{}}CH0:xtdf/"
+                            "image/count".format(self._detector_string)),
             'trainid': ("INDEX/trainId"),
-            'pulse_count': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
-                            "header/pulseCount"),
-            'cellid': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
-                       "image/cellId")
-            #'status': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
-            #           "image/status"),
-            #'header_trainid': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
-            #                   "header/trainId")
+            'pulse_count': ("INSTRUMENT/{}/DET/{{}}CH0:xtdf/"
+                            "header/pulseCount".format(self._detector_string)),
+            'cellid': ("INSTRUMENT/{}/DET/{{}}CH0:xtdf/"
+                       "image/cellId".format(self._detector_string))
+            #'status': ("INSTRUMENT/{}/DET/{{}}CH0:xtdf/"
+            #           "image/status".format(self._detector_string)),
+            #'header_trainid': ("INSTRUMENT/{}/DET/{{}}CH0:xtdf/"
+            #                   "header/trainId".format(self._detector_string))
         }
 
         # trainids which are jumping by this amount are seen as outlier and
