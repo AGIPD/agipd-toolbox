@@ -41,6 +41,7 @@ class GatherBase(object):
                  run_names,
                  properties,
                  use_interleaved,
+                 detector_string,
                  preproc_fname=None,
                  max_part=False,
                  asic=None,
@@ -53,6 +54,7 @@ class GatherBase(object):
         self._out_fname = out_fname
         self._properties = properties
         self._use_interleaved = use_interleaved
+        self._detector_string = detector_string
 
         self.runs = [int(r) for r in runs]
         self.run_names = run_names
@@ -149,7 +151,8 @@ class GatherBase(object):
             properties=self._properties,
             preproc_fname=preproc_fname,
             max_part=self._max_part,
-            asic=self._asic
+            asic=self._asic,
+            detector_string=self._detector_string
         )
 
         self._initiate()

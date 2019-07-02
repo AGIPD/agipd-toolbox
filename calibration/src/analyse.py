@@ -106,7 +106,8 @@ class Analyse(object):
             meas_in=self.meas_in,
             asic=self.asic,
             runs=self.runs,
-            run_name=self.run_name
+            run_name=self.run_name,
+            detector_string=self.detector_string
         )
 
         if self.run_type in ["preprocess", "gather"]:
@@ -188,7 +189,8 @@ class Analyse(object):
             print("in_fname=", in_fname)
             print("out_fname=", out_fname)
             print()
-            obj = Preprocess(in_fname, out_fname, self.use_interleaved)
+            obj = Preprocess(in_fname, out_fname, detector_string=self.detector_string,
+                             use_interleaved=self.use_interleaved)
             obj.run()
 
     def run_gather(self):
@@ -244,7 +246,8 @@ class Analyse(object):
                          max_part=self.max_part,
                          asic=self.asic,
                          layout=self.layout_module,
-                         facility=self._facility)
+                         facility=self._facility,
+                         detector_string=self.detector_string)
             obj.run()
 
     def run_process(self):

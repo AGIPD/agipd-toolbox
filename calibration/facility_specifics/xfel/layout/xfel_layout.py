@@ -42,6 +42,7 @@ class Layout(object):
                  run_names,
                  use_interleaved,
                  properties,
+                 detector_string,
                  preproc_fname=None,
                  max_part=False,
                  asic=None):
@@ -53,15 +54,16 @@ class Layout(object):
         self._preprocessing_fname = preproc_fname
         self._max_part = max_part
         self._asic = asic
+        self._detector_string = detector_string
 
         self._path_temp = {
-            'image_first': ("INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
-                            "image/first"),
-            'train_count': ("INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/count"),
+            'image_first': ("INDEX/{}/DET/{{}}CH0:xtdf/"
+                            "image/first".format(self._detector_string)),
+            'train_count': ("INDEX/{}/DET/{{}}CH0:xtdf/image/count".format(self._detector_string)),
 
-            'data': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/data",
-            'cellid': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
-                       "image/cellId"),
+            'data': "INSTRUMENT/{}/DET/{{}}CH0:xtdf/image/data".format(self._detector_string),
+            'cellid': ("INSTRUMENT/{}/DET/{{}}CH0:xtdf/"
+                       "image/cellId".format(self._detector_string)),
 
         }
 

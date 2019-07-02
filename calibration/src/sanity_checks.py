@@ -39,6 +39,7 @@ file_raw_prefix_temp = None
 file_raw_temp = None
 data = None
 path_temp = None
+detector_string = None
 run_information = {}
 
 
@@ -132,6 +133,10 @@ def get_arguments():
                         type=str,
                         required=True,
                         help="The beamtime to check")
+    parser.add_argument('--detector_string',
+                        type=str,
+                        required=True,
+                        help="Detector string")                        
     parser.add_argument('--run',
                         type=int,
                         required=True,
@@ -215,6 +220,7 @@ def setUpModule():
     global data
     global path_temp
     global run_information
+    global detector_string
 
     file_raw_prefix_temp = ("/gpfs/exfel/exp/SPB/{bt}/raw/r{r:04d}/"
                             "RAW-R{r:04d}".format(bt=beamtime, r=run) +
@@ -224,20 +230,20 @@ def setUpModule():
     file_raw_temp = file_raw_prefix_temp + "{:05d}.h5"
 
     path_temp = {
-        'image_first': "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/first",
-        'image_last': "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/last",
-#        'status': "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/status",
-        'header': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header",
-        'image': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image",
-        'trailer': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/trailer",
-        'detector_train_id': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/detector/trainId",  # noqa E501
-        'header_train_id': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header/trainId",  # noqa E501
-        'image_train_id': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/trainId",  # noqa E501
-        'trailer_train_id': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/trailer/trainId",  # noqa E501
-        'pulse_count': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/header/pulseCount",  # noqa E501
-        'cell_id': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/cellId",
-        'pulse_id': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/pulseId",  # noqa E501
-        'data': "INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/data"
+        'image_first': "INDEX/{}/DET/{{}}CH0:xtdf/image/first".format(detector_string),
+        'image_last': "INDEX/{}/DET/{{}}CH0:xtdf/image/last".format(detector_string),
+#        'status': "INDEX/{}/DET/{{}}CH0:xtdf/image/status".format(detector_string),
+        'header': "INSTRUMENT/{}/DET/{{}}CH0:xtdf/header".format(detector_string),
+        'image': "INSTRUMENT/{}/DET/{{}}CH0:xtdf/image".format(detector_string),
+        'trailer': "INSTRUMENT/{}/DET/{{}}CH0:xtdf/trailer".format(detector_string),
+        'detector_train_id': "INSTRUMENT/{}/DET/{{}}CH0:xtdf/detector/trainId".format(detector_string),  # noqa E501
+        'header_train_id': "INSTRUMENT/{}/DET/{{}}CH0:xtdf/header/trainId".format(detector_string),  # noqa E501
+        'image_train_id': "INSTRUMENT/{}/DET/{{}}CH0:xtdf/image/trainId".format(detector_string),  # noqa E501
+        'trailer_train_id': "INSTRUMENT/{}/DET/{{}}CH0:xtdf/trailer/trainId".format(detector_string),  # noqa E501
+        'pulse_count': "INSTRUMENT/{}/DET/{{}}CH0:xtdf/header/pulseCount".format(detector_string),  # noqa E501
+        'cell_id': "INSTRUMENT/{}/DET/{{}}CH0:xtdf/image/cellId".format(detector_string),
+        'pulse_id': "INSTRUMENT/{}/DET/{{}}CH0:xtdf/image/pulseId".format(detector_string),  # noqa E501
+        'data': "INSTRUMENT/{}/DET/{{}}CH0:xtdf/image/data".format(detector_string)
     }
 
     n_channels = 16
@@ -1069,6 +1075,7 @@ if __name__ == "__main__":
     instrument_cycle = args.instrument_cycle
     bt = args.beamtime
 
+    detector_string = args.detector_string
     beamtime = "{}/{}".format(instrument_cycle, bt)
     run = args.run
     detail_level = args.detail_level
