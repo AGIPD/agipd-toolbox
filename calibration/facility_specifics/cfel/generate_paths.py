@@ -38,7 +38,7 @@ class GeneratePaths(object):
                  asic,
                  runs,
                  run_name,
-                 detector_sting):
+                 detector_string):
 
         self._run_type = run_type
         self._measurement = measurement
@@ -52,7 +52,7 @@ class GeneratePaths(object):
         self._asic = asic
         self._runs = runs
         self._run_name = run_name
-        self._detector_string = detector_sting
+        self._detector_string = detector_string
 
     def get_layout_versions(self, base_dir):
         """ Detects which file structure version of the raw files.

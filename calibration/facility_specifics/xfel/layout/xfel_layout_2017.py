@@ -64,7 +64,7 @@ class Layout(object):
 
             'data': "INSTRUMENT/{}/DET/{{}}CH0:xtdf/image/data".format(self._detector_string),
             'cellid': ("INSTRUMENT/{}/DET/{{}}CH0:xtdf/"
-                       "image/cellId".format(self_detector_string)),
+                       "image/cellId".format(self._detector_string)),
 
         }
 
