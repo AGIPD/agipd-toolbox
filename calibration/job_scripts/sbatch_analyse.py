@@ -561,6 +561,7 @@ class SubmitJobs(object):
             "--time", self.time_limit[run_type],
             "--nodes", "1",
             "--chdir", work_dir,
+            "--overcommit",
             "--parsable"
         ]
 
