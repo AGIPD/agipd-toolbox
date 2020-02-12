@@ -98,7 +98,7 @@ class GeneratePaths(object):
                 print("found")
                 version = 2017
             except KeyError:
-                print("Entry {} not found".format(entry_to_test))
+                print("Entry {} not found, version = 2018".format(entry_to_test))
                 version = 2018
 
         if version == 2017:

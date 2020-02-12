@@ -76,7 +76,7 @@ optional arguments:
 Establish environment of the XFEL offline cluster:
 
 ```
-source /etc/profile.d/modules.sh; source /gpfs/cfel/cxi/common/cfelsoft-rh7/setup.sh; module load cfel-python3/latest
+module load anaconda/3
 ```
 
 Run:
