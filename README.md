@@ -76,7 +76,7 @@ optional arguments:
 Establish environment of the XFEL offline cluster:
 
 ```
-source /etc/profile.d/modules.sh; source /gpfs/cfel/cxi/common/cfelsoft-rh7/setup.sh; module load cfel-python3/latest
+module load anaconda/3
 ```
 
 Run:
@@ -94,7 +94,7 @@ when running without sbatch (local, sequencially) is required: add option --no_s
 
 ##### With config file
 
-###### Adjust config file
+**Adjust config file**
 
 * create a new configuration file (e.g. by copying an already existing one) into <repo-path>/calibration/conf/<my_conf_name>.yaml
   e.g. <repo_path>/calibration/conf/M304.yaml
@@ -160,7 +160,7 @@ all:
 
 ```
 
-Run
+**Run**
 ```
 cd <repo_location>/calibration
 ./job_scripts/sbatch_analyse.py --config <config_file> --cfel --type <measurement_type>
@@ -173,7 +173,7 @@ cd <repo_location>/calibration
 ```
 The measurement type can also be defined statically in the config file.
 
-###### From command line
+##### From command line
 
 ```
 cd <repo_location>/calibration

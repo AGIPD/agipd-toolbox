@@ -3,15 +3,20 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to agipd-toolbox's documentation!
+agipd-toolbox
 =========================================
+
+The agipd-toolbox is designed to be a modular software framework for the calibration, characterization, and correction of data from the AGIPD detector developed by the DESY FS-DS group.
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
+   README <readme_link>
    calibration
-
+   characterization
+   correction
+   
 
 
 Indices and tables
