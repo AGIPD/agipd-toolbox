@@ -569,7 +569,7 @@ class SubmitJobs(object):
             "--partition", self.partition,
             "--time", self.time_limit[run_type],
             "--nodes", "1",
-            "--workdir", work_dir,
+            "--chdir", work_dir,
             "--parsable"
         ]
 
