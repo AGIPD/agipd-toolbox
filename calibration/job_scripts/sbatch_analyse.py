@@ -98,7 +98,9 @@ def get_arguments():
                         help="The temperature for which the data was taken "
                              "(e.g. temperature_m25C).\n"
                              "This is only used in cfel mode")
-
+    parser.add_argument('--detector_string',
+                        type=str,
+                        help="Detector string")
     parser.add_argument("--overwrite",
                         action="store_true",
                         help="Overwrite existing output file(s)")
@@ -167,6 +169,7 @@ class SubmitJobs(object):
         self.partition = self.config["general"]["partition"]
         self.asic_set = self.config["general"]["asic_set"]
         self.use_interleaved = self.config["general"]["use_interleaved"]
+        self.detector_string = self.config["general"]["detector_string"]
 
         # load facility specifics
         fac_dir = os.path.join(FACILITY_DIR, self._facility)
@@ -308,6 +311,12 @@ class SubmitJobs(object):
             raise Exception("No measurement type specified. Abort.")
             sys.exit(1)
 
+        try:
+            c_general['detector_string'] = args.detector_string or c_general['detector_string']
+        except KeyError:
+            raise Exception("No detector_string specified. Abort.")
+            sys.exit(1)
+        
         # cfel specific
         try:
             c_general['module'] = args.module or c_general['module']
@@ -585,6 +594,7 @@ class SubmitJobs(object):
             safety_factor=self.safety_factor,
             max_part=self.max_part,
             use_interleaved=self.use_interleaved,
+            detector_string=self.detector_string,
             current_list=None,
             overwrite=self.overwrite,
         )

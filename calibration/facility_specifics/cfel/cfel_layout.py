@@ -41,6 +41,7 @@ class Layout(object):
                  run_names,
                  use_interleaved,
                  properties,
+                 detector_string,
                  preproc_fname=None,
                  max_part=False,
                  asic=None):
@@ -52,6 +53,7 @@ class Layout(object):
         self._preprocessing_fname = preproc_fname
         self._max_part = max_part
         self._asic = asic
+        self._detector_string = detector_string
 
         self._path = {
             'data': "entry/instrument/detector/data",

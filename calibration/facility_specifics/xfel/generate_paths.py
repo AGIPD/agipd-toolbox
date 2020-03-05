@@ -37,7 +37,8 @@ class GeneratePaths(object):
                  meas_in,
                  asic,
                  runs,
-                 run_name):
+                 run_name,
+                 detector_string):
 
         self._run_type = run_type
         self._measurement = measurement
@@ -51,6 +52,7 @@ class GeneratePaths(object):
         self._asic = asic
         self._runs = runs
         self._run_name = run_name
+        self._detector_string = detector_string
 
     def get_layout_versions(self, base_dir):
         """ Detects which file structure version of the raw files.
@@ -86,8 +88,8 @@ class GeneratePaths(object):
             channel = self._channel
 
         entry_to_test = (
-            "INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/last"
-            .format(channel)
+            "INDEX/{}/DET/{}CH0:xtdf/image/last"
+            .format(self._detector_string, channel)
         )
 
         raw_fname = raw_fname.format(run_number=self._runs[0], part=0)

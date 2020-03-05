@@ -37,20 +37,21 @@ import utils  # noqa E402
 
 
 class Preprocess(object):
-    def __init__(self, in_fname, out_fname, use_interleaved=False):
+    def __init__(self, in_fname, out_fname, detector_string, use_interleaved=False):
 
         self.in_fname = in_fname
         self.out_fname = out_fname
         self.use_interleaved = use_interleaved
+        self.detector_string = detector_string
 
         self.n_channels = 16
         self.path_temp = {
-            'status': ("INDEX/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
-                       "image/status"),
-            'pulse_count': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
-                            "header/pulseCount"),
-            'header_trainid': ("INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/"
-                               "header/trainId")
+            'status': ("INDEX/{}/DET/{{}}CH0:xtdf/"
+                       "image/status".format(self.detector_string)),
+            'pulse_count': ("INSTRUMENT/{}/DET/{{}}CH0:xtdf/"
+                            "header/pulseCount".format(self.detector_string)),
+            'header_trainid': ("INSTRUMENT/{}/DET/{{}}CH0:xtdf/"
+                               "header/trainId".format(self.detector_string))
         }
 
         self.prop = {}

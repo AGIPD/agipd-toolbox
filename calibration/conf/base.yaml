@@ -12,6 +12,8 @@ general:
     temperature: null
     use_interleaved: True
 
+    detector_string: MID_DET_AGIPD1M-1
+
 drscs:
     safety_factor: 1000
     current: [itestc20, itestc80, itestc150]
