@@ -82,7 +82,7 @@ class Measurement(object):
             A list of run_types, e.g. ["gather", "process"].
         """
 
-        run_type_list = ["gather", "process"]
+        run_type_list = ["gather", "process", "join"]
 
         return run_type_list
 

@@ -333,18 +333,27 @@ class Analyse(object):
         )
         out_fname = os.path.join(out_dir, out_file_name)
 
-        obj = JoinConstants(in_fname, out_fname)
+        obj = JoinConstants(in_fname, out_fname, facility=self._facility)
         obj.run()
 
+        # If CFEL format, don't convert
+        if self._facility == 'cfel':
+            use_xfel_format = False
+        elif self._facility == 'xfel':
+            use_xfel_format = True
+        else:
+            raise Exception("Facility not supported.")
+        
         # Convert to XFEL format
-        print("Converting to XFEL format")
         c_out_dir, c_out_file_name = (
             self.generate_join_path(base_dir=self.output_dir,
-                                       use_xfel_format=True)
+                                       use_xfel_format=use_xfel_format)
         )
         c_out_fname = os.path.join(c_out_dir, c_out_file_name)
+
         #do not convert cfel data
         if out_fname != c_out_fname:
+            print("Converting to XFEL format")
             print("convert format")
             print("output filename = {}".format(c_out_fname))
             if not self.overwrite and os.path.exists(c_out_fname):

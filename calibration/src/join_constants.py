@@ -57,19 +57,20 @@ def get_arguments():
 
 
 class JoinConstants(object):
-    def __init__(self, in_fname, out_fname):
+    def __init__(self, in_fname, out_fname, facility="xfel"):
         self._in_fname = in_fname
         self._out_fname = out_fname
+        self._facility = facility
 
     def get_file_names(self):
         fname = self._in_fname.replace("AGIPD{:02}", "AGIPD[0-9][0-9]")
 
         if "asic" in self._in_fname:
             fname = fname.replace("asic{:02}", "asic[0-9][0-9]")
-
+                
         file_list = glob.glob(fname)
         file_list.sort()
-
+        
         return file_list
 
     def run(self):
@@ -77,7 +78,10 @@ class JoinConstants(object):
 
         files = {}
         for fname in file_list:
-            channel = int(fname.split("AGIPD")[1][:2])
+            if self._facility == 'cfel':
+                channel = 0
+            else:
+                channel = int(fname.split("AGIPD")[1][:2])
 
             if channel in files:
                 files[channel].append(fname)
