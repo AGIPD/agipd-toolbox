@@ -348,7 +348,6 @@ class Analyse(object):
         c_out_dir, c_out_file_name = (
             self.generate_join_path(base_dir=self.output_dir,
                                        use_xfel_format=use_xfel_format)
-#                                       use_xfel_format=True)
         )
         c_out_fname = os.path.join(c_out_dir, c_out_file_name)
 

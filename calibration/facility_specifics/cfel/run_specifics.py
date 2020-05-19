@@ -344,8 +344,6 @@ class All(RunType):
 
     def get_run_type_lists_split(self, run_type_list):
         rtl_panel_dep_before = []
-#        rtl_per_panel = run_type_list
-#        rtl_panel_dep_after = []
         rtl_per_panel = [t for t in run_type_list
                          if t not in ["join"]]
         rtl_panel_dep_after = ["join"]

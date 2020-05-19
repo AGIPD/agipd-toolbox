@@ -262,7 +262,6 @@ class GeneratePaths(object):
         Return:
             Join directory and file name, each as string.
         """
-#        raise Exception("CFEL gpfs not supported for join at the moment")
 
         # set the directory
         fdir = os.path.join(self._out_base_dir,
@@ -276,7 +275,6 @@ class GeneratePaths(object):
         if self._subdir is not None:
             fdir = os.path.join(fidr, self._subdir)
 
-        #fdir = os.path.join(fdir, self._run_type)
 
         # set the file name
         if use_xfel_format:
