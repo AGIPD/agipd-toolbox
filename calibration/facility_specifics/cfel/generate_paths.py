@@ -226,14 +226,16 @@ class GeneratePaths(object):
         if self._subdir is not None:
             fdir = os.path.join(fdir, self._subdir)
 
-        fdir = os.path.join(fdir, self._run_type)
+        #fdir = os.path.join(fdir, self._run_type)
+        fdir = os.path.join(fdir, "process")
 
         # set the file name
-
+        print("self._asic ", self._asic)
         if self._asic is None:
             postfix = "processed.h5"
         else:
-            postfix = "asic{:02}_processed.h5".format(self._asic)
+            #postfix = "asic{:02}_processed.h5".format(self._asic)
+            postfix = "asic{:02}_processed.h5"
 
         if self._meas_spec is not None:
             postfix = "{}_{}".format(self._meas_spec, postfix)
@@ -242,20 +244,44 @@ class GeneratePaths(object):
                  .format(self._module,
                          self._measurement,
                          postfix))
+        if not as_template:
+            fname = fname.format(self._asic)
 
         print("process fname", fname)
 
         return fdir, fname
 
     def join(self, base_dir, use_xfel_format):
-        """Generates the join file path. NOT IMPLEMENTED.
+        """Generates the join file path.
 
         Args:
             base_dir: Base directory under which the output is stored.
             use_xfel_format (bool): If enabled the output is in xfel
-                                    format.
+                                    format. Currently not supported.
 
         Return:
             Join directory and file name, each as string.
         """
-        raise Exception("CFEL gpfs not supported for join at the moment")
+#        raise Exception("CFEL gpfs not supported for join at the moment")
+
+        # set the directory
+        fdir = os.path.join(self._out_base_dir,
+                            self._module,
+                            self._temperature,
+                            self._measurement)
+
+        if self._meas_spec is not None:
+            fdir = os.path.join(fdir, self._meas_spec)
+
+        if self._subdir is not None:
+            fdir = os.path.join(fidr, self._subdir)
+
+        #fdir = os.path.join(fdir, self._run_type)
+
+        # set the file name
+        if use_xfel_format:
+            fname = "{}_joined_constants_xfel.h5".format(self._measurement)
+        else:
+            fname = "{}_joined_constants_agipd.h5".format(self._measurement)
+
+        return fdir, fname
