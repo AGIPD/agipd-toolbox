@@ -189,7 +189,7 @@ class Analyse(object):
             print("in_fname=", in_fname)
             print("out_fname=", out_fname)
             print()
-            obj = Preprocess(in_fname, out_fname, detector_string=self.detector_string,
+            obj = Preprocess(in_fname, out_fname, channel_list=self.channel, detector_string=self.detector_string,
                              use_interleaved=self.use_interleaved)
             obj.run()
 

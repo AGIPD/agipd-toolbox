@@ -83,11 +83,11 @@ class Preprocess(RunType):
         super().__init__(*args, **kwargs)
         self.run_type = "preprocess"
 
-    def get_channel_list(self, conf):
+    def get_channel_list(self, channel_list):
         # preprocess only should run once and not for every channel
-        # -> because the channel is not used in prepocess at all use
-        # channel 0 as placeholder
-        channel_list = [0]
+        # -> because the channel is not used in preprocess at all use
+        # first element of channel_list
+        channel_list = channel_list
 
         return channel_list
 

@@ -34,7 +34,7 @@ from _version import __version__  # noqa E402
 
 
 class Preprocess(object):
-    def __init__(self, in_fname, out_fname, detector_string, use_interleaved=False, interactive=False):
+    def __init__(self, in_fname, out_fname, detector_string, channel_list=None, use_interleaved=False, interactive=False):
 
         self._in_fname = in_fname
         self._out_fname = out_fname
@@ -45,7 +45,13 @@ class Preprocess(object):
         self._usable_start_first_seq = 0
         #self._usable_start_first_seq = 2
 
-        self._n_channels = 16
+        self._channel_list = channel_list
+        if self._channel_list == None:
+            self._channel_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        #self._n_channels = 16
+        print("channel_list = ", self._channel_list)
+        self._n_channels = len(self._channel_list)
+
         self._path = {
             'image_first': ("INDEX/{}/DET/{{}}CH0:xtdf/"
                             "image/first".format(self._detector_string)),
@@ -70,7 +76,8 @@ class Preprocess(object):
 
     def run(self):
 
-        for ch in range(self._n_channels):
+        for ch in self._channel_list:
+        #for ch in range(self._n_channels):
             self._prop["channel{:02}".format(ch)] = {
                 "n_seqs": self._get_n_seqs(channel=ch),
                 "n_trains": [],
@@ -88,7 +95,8 @@ class Preprocess(object):
             "max_shifting": 0,
             "max_n_trains": [],
             "max_n_seqs": max([self._prop["channel{:02}".format(ch)]["n_seqs"]
-                               for ch in range(self._n_channels)])
+                               #for ch in range(self._n_channels)])
+                               for ch in self._channel_list])
         }
 
         self._evaluate_trainid()
@@ -111,7 +119,8 @@ class Preprocess(object):
 
     def _get_n_memcells(self):
         seq = 0
-        channel = 0
+        #channel = 0
+        channel = self._channel_list[0]
 
         fname = self._in_fname.format(channel, part=seq)
         #read_in_path = self._path['pulse_count'].format(channel)
@@ -140,7 +149,8 @@ class Preprocess(object):
         max_n_seqs = self._prop["general"]["max_n_seqs"]
         max_n_trains = self._prop["general"]["max_n_trains"]
 
-        seq_offset = [0 for ch in range(self._n_channels)]
+        #seq_offset = [0 for ch in range(self._n_channels)]
+        seq_offset = [0 for ch in self._channel_list]
 
         for seq in range(max_n_seqs):
             if seq == 0:
@@ -150,7 +160,8 @@ class Preprocess(object):
 
             trainids = []
             channels_with_trains = []
-            for ch in range(self._n_channels):
+            for ch in self._channel_list:
+            #for ch in range(self._n_channels):
                 fname = self._in_fname.format(ch, part=seq)
 
                 #status_path = self._path['status'].format(ch)
@@ -271,7 +282,8 @@ class Preprocess(object):
 
             i = 0
             # finding train loss inside a sequence
-            for ch in range(self._n_channels):
+            for c,ch in enumerate(self._channel_list):
+            #for ch in range(self._n_channels):
                 p = self._prop["channel{:02}".format(ch)]
 
                 n_tr = p["n_trains"]
@@ -284,7 +296,8 @@ class Preprocess(object):
                 train_number = tr - tr[usable_start] + usable_start
                 if seq == 0:
                     train_number[:usable_start] = range(usable_start)
-                    train_number += shifting[ch]
+                    #train_number += shifting[ch]
+                    train_number += shifting[c]
 
                 outliers = self._find_outlier_trainids(train_number)
 
@@ -322,18 +335,22 @@ class Preprocess(object):
                 n_tr = max(n_tr, max(trn) + 1)
 
             max_n_trains.append(n_tr)
+            print(n_tr)
 
         # determine number of total trains
         n_trains_individual = [
             np.sum(self._prop["channel{:02}".format(ch)]["n_trains"])
-            for ch in range(self._n_channels)
+            for ch in self._channel_list
+            #for ch in range(self._n_channels)
         ]
-
+        print(self._prop["channel16"]["n_trains"])
+        print("length: ", len(self._prop["channel16"]["n_trains"]))
+        print("n_trains_individual: ", n_trains_individual)
         self._prop["general"]["n_trains_total"] = (
             int(np.max(n_trains_individual))
             + self._prop["general"]["max_shifting"]
         )
-
+        
         print("shifting:", self._prop["general"]["shifting"])
         print("max_shifting:", self._prop["general"]["max_shifting"])
         print("max_n_trains:", self._prop["general"]["max_n_trains"])
