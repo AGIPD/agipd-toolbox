@@ -21,6 +21,11 @@ To update the framework:
 
 ## Usage
 
+First, establish the computing environment:
+```
+module load anaconda/3
+```
+
 ### Calibration
 
 For general information about what options are available and what they mean, a help function is included:
@@ -73,12 +78,6 @@ optional arguments:
 
 #### XFEL mode
 
-Establish environment of the XFEL offline cluster:
-
-```
-module load anaconda/3
-```
-
 Run:
 ```
 cd <repo_location>/calibration
@@ -89,6 +88,8 @@ e.g.
 ./job_scripts/sbatch_analyse.py --input_dir /gpfs/exfel/exp/SPB/201730/p900009 --output_dir /gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm/tmp --type dark --run_list 819 820 821 --run_type all
 ```
 when running without sbatch (local, sequencially) is required: add option --no_slurm
+
+Currently, when running in XFEL mode, the input and output directories, type, and run list MUST be specified in the command line.  It will not take them from the yaml file and will crash with an error message that the run_list is missing.
 
 #### CFEL mode
 

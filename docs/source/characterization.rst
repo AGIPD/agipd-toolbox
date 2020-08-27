@@ -1,6 +1,8 @@
 characterization
 =========================
 
+This module is currently under construction.
+
 Subpackages
 -----------
 

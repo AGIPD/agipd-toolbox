@@ -34,8 +34,25 @@ from _version import __version__  # noqa E402
 
 
 class Preprocess(object):
-    def __init__(self, in_fname, out_fname, use_interleaved=False, interactive=False):
+    """Preprocess class
 
+    The preprocess step does the setup and sanity checks on the XFEL data. It 
+    finds the number of trains, memory cells, and whether any trains or frames 
+    are missing or outliers. Initializing the preprocess class defines number of
+    channels expected, paths of datasets in the file, and sets the threshold for
+    outlier trainids.
+
+    Args:
+        in_fname (str): Input file name
+        out_fname (str): Output file name
+        use_interleaved (bool): Whether the data format is interleaved (ADAD).
+                                Interleaved data was used only in startup phase
+                                of the EuXFEL. Default value is False.
+        interactive (bool): Interactive mode for troubleshooting. Default value 
+                            is False.
+
+    """
+    def __init__(self, in_fname, out_fname, use_interleaved=False, interactive=False):
         self._in_fname = in_fname
         self._out_fname = out_fname
         self._use_interleaved = use_interleaved
@@ -68,7 +85,12 @@ class Preprocess(object):
         self._prop = {}
 
     def run(self):
-
+        """Run the preprocess step.
+        1. Find the number of sequences for each channel in this run.
+        2. Get number of memory cells used in this run.
+        3. Check if trainid is valid
+        4. 
+        """
         for ch in range(self._n_channels):
             self._prop["channel{:02}".format(ch)] = {
                 "n_seqs": self._get_n_seqs(channel=ch),
