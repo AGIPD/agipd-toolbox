@@ -38,6 +38,8 @@ The ProcessBase class forms the basis, and each analysis is put into a subclass
 which inherits from ProcessBase.  Currently, there are subclasses for darks,
 xray fluorescence, and pulse capacitor.
 
+The process step involves calling three functions: initiate(), calculate(), and write_data().  initiate() and calculate() are defined in the subclasses, while write_data() is defined in process_base.  The initiate function defines, sets, and initiates the parameters and data sets to be used.  The calculate function is unique to each measurement and does the actual analysis of the data, such as fitting or calculations.  Some steps in the calculate function are the same across all measurements, such as loading the data and masking bad pixels and removing frame loss.  The write_data function saves the output datasets in an HDF5 file.
+
 
 merge
 -----
