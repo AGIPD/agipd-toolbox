@@ -14,7 +14,17 @@ There are currently three, soon four different measurements which can be analyze
 Dark
 ----
 
-The pedestals are found by taking dark images; that is, collecting data in the absence of any x-raysource. 10,000 dark images are acquired for every memory cell. For every memory cell, all 10,000 measurements are combined into a histogram. The median of the histogram is taken as the pedestal,and the standard deviation is the noise. The pedestal is used to correct the data, the noise is used to find and mask dead or noisy pixels.
+The pedestals are found by taking dark images; that is, collecting data in the absence of any x-raysource. 10,000 dark images are acquired for every memory cell. For every memory cell, all 10,000 measurements are combined into a histogram. The median of the histogram is taken as the pedestal,and the standard deviation is the noise. The pedestal is used to correct the data, the noise is used to find and mask dead or noisy pixels.  This measurement is done for all three gain stages.  The pixels are forced into medium or low gain by setting specific registers.
+
+The final output file will be saved in <module>/<temperature>/dark/dark_joined_constants_agipd.h5.  If a multimodule system is being calibrated, all modules will be joined into this file.  The output contains four datasets in addition to the metadata for each module:
+
+- gainlevel_mean: The mean value of the gain stage value (often called "digital" data) for each gain stage.
+- offset: The position of the noise peak in ADU for each gain stage.
+- stddev: The standard deviation of the noise peak in ADU for each gain stage.
+- threshold: The threshold between gain stages.  This is defined as the midpoint between the mean gain stage values.    
+  
+    
+
 
 
 
