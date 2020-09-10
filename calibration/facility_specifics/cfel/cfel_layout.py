@@ -183,7 +183,7 @@ class Layout(object):
                                  position should be filled in
 
         Return:
-            The module workin on and on which channel it is plugged in the
+            The module working on and on which channel it is plugged in the
             detector: [module, channel].
 
 
@@ -213,17 +213,17 @@ class Layout(object):
         """Load the data.
 
         Args:
-        fname: The name of the file containing the data to be loaded.
-        run_idx: The run currently looked at (not the actual run number but
-                 the index in the overall run list). This is needed to get
-                 the corresponding preprocessing information.
-        seq: The sequence number to be loaded.
-        load_idx_rows: The data of which rows should be loaded only.
-        load_idx_cols: The data of which columns should be loaded only.
-        file_content: All metadata in corresponding to the data.
-        tmp_data: Array where the data is stored into.
-        pos_idxs: Which data parts should be loaded (shich columns and rows),
-                  load and store positions are the same.
+            fname: The name of the file containing the data to be loaded.
+            run_idx: The run currently looked at (not the actual run number but
+                     the index in the overall run list). This is needed to get
+                     the corresponding preprocessing information.
+            seq: The sequence number to be loaded.
+            load_idx_rows: The data of which rows should be loaded only.
+            load_idx_cols: The data of which columns should be loaded only.
+            file_content: All metadata in corresponding to the data.
+            tmp_data: Array where the data is stored into.
+            pos_idxs: Which data parts should be loaded (which columns and 
+                      rows), load and store positions are the same.
         """
 
         self.pos_idxs = pos_idxs
@@ -341,12 +341,13 @@ class Layout(object):
             print("seq number in first frame loss region: {}".format(seq_num))
 
     def fillup_frame_loss(self, raw_data, loaded_raw_data):
-        """Fills the loaded data into an array while considering frame loss.
+        """
+        Fills the loaded data into an array while considering frame loss.
 
         Args:
-        raw_data: An array allocated with the full size of the run
-                  (total frames) where the loaded data in filled in.
-        loaded_data: Data loaded from this part.
+            raw_data: An array allocated with the full size of the run
+                      (total frames) where the loaded data in filled in.
+            loaded_data: Data loaded from this part.
         """
 
         target_index = self._target_index_full_size

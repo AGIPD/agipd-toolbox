@@ -73,7 +73,7 @@ class GeneratePaths(object):
             as_template (optional, bool): If enabled the channel is kept as a
                                           template instead of being filled in.
                                           (default: True,
-                                                    but not implemented here)
+                                          but not implemented here)
 
         Return:
             Raw directory and file name, each as string. The file name as
@@ -205,7 +205,7 @@ class GeneratePaths(object):
             as_template (optional, bool): If enabled the channel is kept as a
                                           template instead of being filled in
                                           (default: False,
-                                                    but not implemented here)
+                                          but not implemented here)
 
         Return:
             Process directory and file name, each as string.
