@@ -9,10 +9,10 @@ developed by the DESY FS-DS group.
    :maxdepth: 2
    :caption: Contents:
 
-   README <readme_link>
    overview
    measurements
    steps
+   README <readme_link>
    troubleshooting
    modules
 
