@@ -70,14 +70,14 @@ optional arguments:
                         interactively
 ```
 
+Establish environment of the Maxwell cluster:
+
+```
+module load anaconda/3
+```
+
 
 #### XFEL mode
-
-Establish environment of the XFEL offline cluster:
-
-```
-source /gpfs/cfel/cxi/common/public/cfelsoft-rh7-public/conda-setup.sh; conda activate base
-```
 
 Run:
 ```
@@ -89,6 +89,9 @@ e.g.
 ./job_scripts/sbatch_analyse.py --input_dir /gpfs/exfel/exp/SPB/201730/p900009 --output_dir /gpfs/exfel/exp/SPB/201730/p900009/scratch/user/kuhnm/tmp --type dark --run_list 819 820 821 --run_type all
 ```
 when running without sbatch (local, sequencially) is required: add option --no_slurm
+
+Note:  In XFEL mode it is required to set the parameters input_dir, output_dir, type, and run_list on the command line.  The software will NOT take these parameters from the .yaml file!!
+
 
 #### CFEL mode
 
